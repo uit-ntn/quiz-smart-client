@@ -1,9 +1,19 @@
 // src/layout/MultipleChoiceLayout.jsx
-import React from 'react';
-import Breadcrumb from '../components/Breadcrumb';
-import Footer from '../components/Footer';
-import Header from '../components/Header';
-import CreateMultipleChoiceTestButton from '../components/CreateMultipleChoiceTestButton'; // <-- thêm dòng này
+import React from "react";
+import Footer from "../components/Footer";
+import Header from "../components/Header";
+import CreateMultipleChoiceTestButton from "../components/CreateMultipleChoiceTestButton";
+
+const MAX_WIDTH_CLASS = {
+  sm: "max-w-screen-sm",
+  md: "max-w-screen-md",
+  lg: "max-w-screen-lg",
+  xl: "max-w-screen-xl",
+  "2xl": "max-w-screen-2xl",
+  "7xl": "max-w-7xl",
+  full: "max-w-full",
+  none: "max-w-none",
+};
 
 const MultipleChoiceLayout = ({
   children,
@@ -13,8 +23,11 @@ const MultipleChoiceLayout = ({
   icon,
   actions,
   showBackground = true,
-  maxWidth = "7xl"
+  maxWidth = "7xl",
+  containerClassName = "", // thêm để customize từng page
 }) => {
+  const maxW = MAX_WIDTH_CLASS[maxWidth] || "max-w-7xl";
+
   return (
     <>
       <Header />
@@ -27,13 +40,9 @@ const MultipleChoiceLayout = ({
           </>
         )}
 
-        <div className={`relative z-10 max-w-${maxWidth} mx-auto px-4 sm:px-6 lg:px-8 py-6`}>
-          {breadcrumbItems.length > 0 && (
-            <div className="mb-6">
-              <Breadcrumb items={breadcrumbItems} />
-            </div>
-          )}
-
+        <div
+          className={`relative z-10 w-full ${maxW} mx-auto px-3 sm:px-4 lg:px-6 py-6 ${containerClassName}`}
+        >
           {(title || description) && (
             <div className="mb-8">
               <div className="flex items-start justify-between gap-4">
@@ -57,10 +66,9 @@ const MultipleChoiceLayout = ({
                   </div>
                 </div>
 
-                {/* Actions + Create Button */}
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {actions}
-                  <CreateMultipleChoiceTestButton /> {/* <-- nút mới */}
+                  <CreateMultipleChoiceTestButton />
                 </div>
               </div>
             </div>

@@ -35,7 +35,14 @@ const HomePage = () => {
                 to="/multiple-choice/topics"
                 className="px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl text-lg shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300"
               >
-                Bắt đầu thi ngay
+                Làm trắc nghiệm ngay
+              </Link>
+
+              <Link
+                to="/vocabulary/topics"
+                className="px-8 py-4 bg-green-600 hover:bg-green-700 text-white font-bold rounded-2xl text-lg shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300"
+              >
+                Làm bài từ vựng ngay
               </Link>
 
               <Link

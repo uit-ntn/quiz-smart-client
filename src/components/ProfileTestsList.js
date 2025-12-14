@@ -1,6 +1,6 @@
 import React from 'react';
 
-const MyTestsList = ({ tests, loading, error, onRetry, onTakeTest, onEditTest }) => {
+const ProfileTestsList = ({ tests, loading, error, onRetry, onTakeTest, onEditTest }) => {
   const getTestTypeIcon = (testType) => {
     switch (testType) {
       case 'vocabulary':
@@ -232,4 +232,4 @@ const MyTestsList = ({ tests, loading, error, onRetry, onTakeTest, onEditTest })
   );
 };
 
-export default MyTestsList;
+export default ProfileTestsList;

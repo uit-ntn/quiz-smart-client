@@ -1,5 +1,4 @@
 import React from 'react';
-import Breadcrumb from '../components/Breadcrumb';
 import Footer from '../components/Footer';
 import Header from '../components/Header';
 import CreateVocabularyTestButton from '../components/CreateVocabularyTestButton';
@@ -7,7 +6,6 @@ import CreateVocabularyWithAIButton from '../components/CreateVocabularyWithAIBu
 
 const VocabularyLayout = ({
   children,
-  breadcrumbItems = [],
   title,
   description,
   icon,
@@ -18,7 +16,7 @@ const VocabularyLayout = ({
   return (
     <>
       <Header />
-      <div className="min-h-screen relative bg-gradient-to-br from-slate-50 via-emerald-50 to-blue-50">
+      <div className="min-h-screen relative bg-slate-200">
         {showBackground && (
           <>
             <div className="pointer-events-none absolute inset-0 bg-grid-pattern opacity-[0.02]" />
@@ -28,12 +26,6 @@ const VocabularyLayout = ({
         )}
 
         <div className={`relative z-10 max-w-${maxWidth} mx-auto px-4 sm:px-6 lg:px-8 py-6`}>
-          {breadcrumbItems.length > 0 && (
-            <div className="mb-6">
-              <Breadcrumb items={breadcrumbItems} />
-            </div>
-          )}
-
           {(title || description) && (
             <div className="mb-8">
               <div className="flex items-start justify-between gap-4">

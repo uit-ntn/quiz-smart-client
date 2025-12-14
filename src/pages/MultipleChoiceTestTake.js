@@ -1,12 +1,18 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import testService from "../services/testService";
 import MultipleChoiceService from "../services/multipleChoiceService";
 import testResultService from "../services/testResultService";
 
-// Helper shuffle
+// ===================== utils =====================
 const shuffleArray = (arr) => {
-  const a = [...arr];
+  const a = [...(arr || [])];
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [a[i], a[j]] = [a[j], a[i]];
@@ -14,62 +20,392 @@ const shuffleArray = (arr) => {
   return a;
 };
 
+const safeJsonParse = (s, fallback) => {
+  try {
+    return JSON.parse(s);
+  } catch {
+    return fallback;
+  }
+};
+
+const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+
+function getSelectionOffsets(containerEl) {
+  const sel = window.getSelection?.();
+  if (!sel || sel.rangeCount === 0) return null;
+
+  const range = sel.getRangeAt(0);
+  if (!range || range.collapsed) return null;
+
+  const common = range.commonAncestorContainer;
+  if (!containerEl.contains(common)) return null;
+
+  const preRange = document.createRange();
+  preRange.selectNodeContents(containerEl);
+  preRange.setEnd(range.startContainer, range.startOffset);
+  const start = preRange.toString().length;
+
+  const selectedText = range.toString();
+  const end = start + selectedText.length;
+
+  if (!selectedText.trim()) return null;
+  return { start, end, text: selectedText };
+}
+
+function renderTextWithHighlights(text, highlights = []) {
+  const t = text || "";
+  if (!highlights.length) return t;
+
+  const sorted = [...highlights]
+    .map((h) => ({
+      ...h,
+      start: Math.max(0, Math.min(t.length, h.start)),
+      end: Math.max(0, Math.min(t.length, h.end)),
+    }))
+    .filter((h) => h.end > h.start)
+    .sort((a, b) => a.start - b.start);
+
+  const merged = [];
+  for (const h of sorted) {
+    if (!merged.length) merged.push({ ...h });
+    else {
+      const last = merged[merged.length - 1];
+      if (h.start <= last.end) last.end = Math.max(last.end, h.end);
+      else merged.push({ ...h });
+    }
+  }
+
+  const parts = [];
+  let idx = 0;
+  merged.forEach((h, i) => {
+    if (idx < h.start)
+      parts.push(
+        <span key={`n-${i}-${idx}`}>{t.slice(idx, h.start)}</span>
+      );
+    parts.push(
+      <mark key={`m-${i}-${h.start}`} className="rounded px-0.5 bg-yellow-200/80">
+        {t.slice(h.start, h.end)}
+      </mark>
+    );
+    idx = h.end;
+  });
+  if (idx < t.length)
+    parts.push(<span key={`tail-${idx}`}>{t.slice(idx)}</span>);
+  return parts;
+}
+
+// ===================== component =====================
 const MultipleChoiceTestTake = () => {
   const { testId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Data
+  // -------- data ----------
   const [test, setTest] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Answers & result
+  // -------- answers / result ----------
   const [userAnswers, setUserAnswers] = useState({}); // qid -> [labels]
   const [lockedQuestions, setLockedQuestions] = useState({}); // qid -> true
   const [showResult, setShowResult] = useState({}); // qid -> result obj
 
-  // Timers
+  // mark for review
+  const [markedQuestions, setMarkedQuestions] = useState({}); // qid -> true
+
+  // -------- highlight ----------
+  const [isHighlightMode, setIsHighlightMode] = useState(false);
+  const [highlights, setHighlights] = useState({}); // qid -> {question: [{start,end}], options: {label: [{start,end}]}}
+  const questionTextRef = useRef(null);
+  const optionTextRefs = useRef({}); // label -> el
+
+  // -------- timers ----------
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [totalTime, setTotalTime] = useState(0);
   const [questionTimeRemaining, setQuestionTimeRemaining] = useState(0);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isQuestionTimerPaused, setIsQuestionTimerPaused] = useState(false);
 
-  // Modal
-  const [showModal, setShowModal] = useState(false);
-  const [modalData, setModalData] = useState(null);
+  // -------- modals ----------
+  const [showResultModal, setShowResultModal] = useState(false);
+  const [resultModalData, setResultModalData] = useState(null);
+  const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [submitMeta, setSubmitMeta] = useState(null);
 
-  // Settings
+  // -------- settings ----------
   const [settings, setSettings] = useState({
-    testMode: "flexible", // 'flexible' | 'question_timer'
+    testMode: "flexible", // flexible | question_timer
     showTimer: true,
-    checkMode: "after_submit", // chưa dùng nhiều
+    checkMode: "after_each", // after_each
     showQuestionNumber: true,
     shuffleQuestions: false,
     shuffleAnswers: false,
     questionTimeLimit: 30,
   });
 
-  // Tải settings + data
+  // -------- storage keys ----------
+  const STORE_KEY = `mc_take_state_${testId}`;
+  const SETTINGS_KEY = `test_settings_${testId}`;
+  const DRAFT_KEY = `mc_draft_${testId}`;
+
+  // -------- refs (avoid stale closures) ----------
+  const questionsRef = useRef(questions);
+  const testRef = useRef(test);
+  const settingsRef = useRef(settings);
+  const userAnswersRef = useRef(userAnswers);
+  const markedRef = useRef(markedQuestions);
+  const highlightsRef = useRef(highlights);
+
+  const timeRemainingRef = useRef(timeRemaining);
+  const totalTimeRef = useRef(totalTime);
+  const isSubmittedRef = useRef(isSubmitted);
+
+  useEffect(() => { questionsRef.current = questions; }, [questions]);
+  useEffect(() => { testRef.current = test; }, [test]);
+  useEffect(() => { settingsRef.current = settings; }, [settings]);
+  useEffect(() => { userAnswersRef.current = userAnswers; }, [userAnswers]);
+  useEffect(() => { markedRef.current = markedQuestions; }, [markedQuestions]);
+  useEffect(() => { highlightsRef.current = highlights; }, [highlights]);
+  useEffect(() => { timeRemainingRef.current = timeRemaining; }, [timeRemaining]);
+  useEffect(() => { totalTimeRef.current = totalTime; }, [totalTime]);
+  useEffect(() => { isSubmittedRef.current = isSubmitted; }, [isSubmitted]);
+
+  // ===================== UNDO/REDO =====================
+  const undoStackRef = useRef([]);
+  const redoStackRef = useRef([]);
+  const MAX_STACK = 60;
+
+  const pushHistory = useCallback(() => {
+    undoStackRef.current.push({
+      userAnswers: userAnswersRef.current,
+      markedQuestions: markedRef.current,
+      highlights: highlightsRef.current,
+      currentQuestionIndex,
+    });
+    if (undoStackRef.current.length > MAX_STACK) undoStackRef.current.shift();
+    redoStackRef.current = [];
+  }, [currentQuestionIndex]);
+
+  const undo = useCallback(() => {
+    const prev = undoStackRef.current.pop();
+    if (!prev) return;
+
+    redoStackRef.current.push({
+      userAnswers: userAnswersRef.current,
+      markedQuestions: markedRef.current,
+      highlights: highlightsRef.current,
+      currentQuestionIndex,
+    });
+    if (redoStackRef.current.length > MAX_STACK) redoStackRef.current.shift();
+
+    setUserAnswers(prev.userAnswers || {});
+    setMarkedQuestions(prev.markedQuestions || {});
+    setHighlights(prev.highlights || {});
+    if (typeof prev.currentQuestionIndex === "number") setCurrentQuestionIndex(prev.currentQuestionIndex);
+  }, [currentQuestionIndex]);
+
+  const redo = useCallback(() => {
+    const next = redoStackRef.current.pop();
+    if (!next) return;
+
+    undoStackRef.current.push({
+      userAnswers: userAnswersRef.current,
+      markedQuestions: markedRef.current,
+      highlights: highlightsRef.current,
+      currentQuestionIndex,
+    });
+    if (undoStackRef.current.length > MAX_STACK) undoStackRef.current.shift();
+
+    setUserAnswers(next.userAnswers || {});
+    setMarkedQuestions(next.markedQuestions || {});
+    setHighlights(next.highlights || {});
+    if (typeof next.currentQuestionIndex === "number") setCurrentQuestionIndex(next.currentQuestionIndex);
+  }, [currentQuestionIndex]);
+
+  // ===================== derived =====================
+  const currentQuestion = useMemo(() => {
+    return questions?.length ? questions[currentQuestionIndex] : null;
+  }, [questions, currentQuestionIndex]);
+
+  const answeredCount = useMemo(() => {
+    return Object.values(userAnswers).filter((a) => Array.isArray(a) && a.length > 0).length;
+  }, [userAnswers]);
+
+  const isLocked = useCallback((qid) => !!lockedQuestions[qid], [lockedQuestions]);
+  const isMarked = useCallback((qid) => !!markedQuestions[qid], [markedQuestions]);
+
+  const formatTime = (s) => {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+  };
+
+  const isMultiChoice = useCallback((q) => {
+    if (!q) return false;
+    if (typeof q.allow_multiple === "boolean") return q.allow_multiple;
+    return (q.correct_answers || []).length > 1;
+  }, []);
+
+  const computeResult = useCallback((q, selected) => {
+    const correctSet = new Set(q.correct_answers || []);
+    const selectedSet = new Set(selected || []);
+    const isCorrect =
+      correctSet.size === selectedSet.size &&
+      [...correctSet].every((c) => selectedSet.has(c));
+
+    const wrongSelected = [...selectedSet].filter((s) => !correctSet.has(s));
+
+    return {
+      isCorrect,
+      correctAnswer: [...correctSet],
+      selectedAnswers: [...selectedSet],
+      wrongSelected,
+      explanation: q.explanation || {},
+      questionText: q.question_text,
+    };
+  }, []);
+
+  // ===================== autosave/resume =====================
+  useEffect(() => {
+    const payload = {
+      userAnswers,
+      markedQuestions,
+      highlights,
+      currentQuestionIndex,
+    };
+    localStorage.setItem(STORE_KEY, JSON.stringify(payload));
+  }, [STORE_KEY, userAnswers, markedQuestions, highlights, currentQuestionIndex]);
+
+  // ===================== load settings + fetch =====================
   useEffect(() => {
     const loadSettingsAndData = async () => {
       try {
-        let newSettings = { ...settings };
+        setLoading(true);
+        setError(null);
 
-        const savedSettings = localStorage.getItem(`test_settings_${testId}`);
-        if (savedSettings) {
-          newSettings = JSON.parse(savedSettings);
-        } else if (location.state?.settings) {
-          newSettings = location.state.settings;
-        }
+        // load settings
+        let newSettings = { ...settingsRef.current };
+        const savedSettings = localStorage.getItem(SETTINGS_KEY);
+        if (savedSettings) newSettings = safeJsonParse(savedSettings, newSettings);
+        else if (location.state?.settings) newSettings = location.state.settings;
 
         setSettings(newSettings);
-        await fetchTestData(newSettings);
-      } catch (err) {
-        console.error(err);
+
+        // fetch
+        const [testResponse, questionsData] = await Promise.all([
+          testService.getTestById(testId),
+          MultipleChoiceService.getQuestionsByTestId(testId),
+        ]);
+
+        const testData = testResponse?.test || testResponse;
+
+        if (!testData || !questionsData?.length) {
+          throw new Error("Không thể tải dữ liệu bài test hoặc bài test không có câu hỏi");
+        }
+
+        setTest(testData);
+
+        let processed = [...questionsData];
+
+        if (newSettings.shuffleQuestions) processed = shuffleArray(processed);
+
+        // ✅ Shuffle answers: chỉ A–E (khớp BE)
+        if (newSettings.shuffleAnswers) {
+          processed = processed.map((q) => {
+            const options = q.options || [];
+            if (options.length === 0) return q;
+
+            const allowedLabels = ["A", "B", "C", "D", "E"];
+            if (options.length > allowedLabels.length) {
+              throw new Error(
+                `Câu hỏi có ${options.length} lựa chọn (>5). Hiện hệ thống chỉ hỗ trợ tối đa 5 lựa chọn (A–E).`
+              );
+            }
+
+            const shuffledOptions = shuffleArray([...options]);
+            const labelMapping = {}; // oldLabel -> newLabel
+
+            shuffledOptions.forEach((shuffledOption, newIndex) => {
+              labelMapping[shuffledOption.label] = allowedLabels[newIndex];
+            });
+
+            const newOptions = shuffledOptions.map((option, index) => ({
+              ...option,
+              label: allowedLabels[index],
+            }));
+
+            const newCorrectAnswers = (q.correct_answers || []).map(
+              (oldLabel) => labelMapping[oldLabel] || oldLabel
+            );
+
+            return {
+              ...q,
+              options: newOptions,
+              correct_answers: newCorrectAnswers,
+            };
+          });
+        } else {
+          // nếu không shuffle, vẫn nên check số options
+          processed.forEach((q) => {
+            if ((q.options || []).length > 5) {
+              throw new Error(
+                `Câu hỏi có ${(q.options || []).length} lựa chọn (>5). Hiện hệ thống chỉ hỗ trợ tối đa 5 lựa chọn (A–E).`
+              );
+            }
+          });
+        }
+
+        setQuestions(processed);
+
+        const limitSeconds = (testData?.time_limit_minutes || 0) * 60;
+        setTimeRemaining(limitSeconds);
+        setTotalTime(limitSeconds);
+
+        if (newSettings.testMode === "question_timer") {
+          setQuestionTimeRemaining(newSettings.questionTimeLimit || 30);
+          setIsQuestionTimerPaused(false);
+        } else {
+          setQuestionTimeRemaining(0);
+        }
+
+        // restore state
+        const saved = safeJsonParse(localStorage.getItem(STORE_KEY), null);
+        if (saved) {
+          setUserAnswers(saved.userAnswers || {});
+          setMarkedQuestions(saved.markedQuestions || {});
+          setHighlights(saved.highlights || {});
+          if (typeof saved.currentQuestionIndex === "number") {
+            setCurrentQuestionIndex(
+              clamp(saved.currentQuestionIndex, 0, Math.max(processed.length - 1, 0))
+            );
+          } else {
+            setCurrentQuestionIndex(0);
+          }
+        } else {
+          setUserAnswers({});
+          setMarkedQuestions({});
+          setHighlights({});
+          setCurrentQuestionIndex(0);
+        }
+
+        undoStackRef.current = [];
+        redoStackRef.current = [];
+
+        setIsSubmitted(false);
+        setLockedQuestions({});
+        setShowResult({});
+        setShowResultModal(false);
+        setResultModalData(null);
+        setShowSubmitModal(false);
+        setSubmitMeta(null);
+
+        setLoading(false);
+      } catch (e) {
+        console.error(e);
+        setError(e.message || "Có lỗi xảy ra khi tải bài test");
+        setLoading(false);
       }
     };
 
@@ -77,56 +413,112 @@ const MultipleChoiceTestTake = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [testId]);
 
-  const fetchTestData = async (currentSettings) => {
-    setLoading(true);
-    setError(null);
+  // ===================== submit =====================
+  const doSubmitTest = useCallback(
+    async ({ reason = "manual_confirm" } = {}) => {
+      if (isSubmittedRef.current) return;
+      setIsSubmitted(true);
 
-    try {
-      const [testResponse, questionsData] = await Promise.all([
-        testService.getTestById(testId),
-        MultipleChoiceService.getQuestionsByTestId(testId),
-      ]);
+      const qs = questionsRef.current || [];
+      const ua = userAnswersRef.current || {};
+      const t = testRef.current;
 
-      const testData = testResponse?.test || testResponse;
+      const results = qs.map((q) => {
+        const selected = ua[q._id] || [];
+        const r = computeResult(q, selected);
+        return {
+          questionId: q._id,
+          userAnswer: selected,
+          correctAnswer: r.correctAnswer,
+          isCorrect: r.isCorrect,
+          explanation: r.explanation,
+        };
+      });
 
-      if (!testData || !questionsData || questionsData.length === 0) {
-        throw new Error(
-          "Không thể tải dữ liệu bài test hoặc bài test không có câu hỏi"
-        );
+      const correctAnswers = results.filter((r) => r.isCorrect).length;
+      const totalQuestions = results.length;
+      const percentage =
+        totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
+
+      const tt = totalTimeRef.current || 0;
+      const tr = timeRemainingRef.current || 0;
+      const timeTakenMs = tt > 0 ? (tt - tr) * 1000 : 0;
+
+      try {
+        // ✅ Payload khớp BE mới: tạo draft tự động
+        const payload = {
+          test_id: testId,
+          duration_ms: timeTakenMs,
+          start_time: new Date(Date.now() - timeTakenMs),
+          end_time: new Date(),
+          status: "draft",
+          answers: qs.map((q) => {
+            const selected = Array.isArray(ua[q._id]) ? ua[q._id] : [];
+            const r = computeResult(q, selected);
+
+            return {
+              question_id: q._id,
+              question_collection: "multiple_choices",
+              question_text: q.question_text || "",
+              options: (q.options || []).map((o) => ({
+                label: o.label, // A–E
+                text: o.text,
+              })),
+              correct_answers: Array.isArray(q.correct_answers) ? q.correct_answers : [],
+              user_answers: selected,
+              is_correct: !!r.isCorrect,
+            };
+          }),
+        };
+
+        const draftResult = await testResultService.createTestResult(payload);
+        const draftId = draftResult?._id || draftResult?.id;
+
+        // ✅ lưu draftId để review page có thể fetch lại khi refresh
+        if (draftId) localStorage.setItem(DRAFT_KEY, String(draftId));
+
+        localStorage.removeItem(STORE_KEY);
+
+        navigate(`/multiple-choice/test/${testId}/review?draft=${draftId || ""}`, {
+          state: {
+            test: t,
+            questions: qs,
+            userAnswers: ua,
+            results,
+            settings: settingsRef.current,
+            draftResultId: draftId,
+            percentage,
+            correctCount: correctAnswers,
+            totalQuestions,
+            timeTaken: timeTakenMs,
+            reason,
+          },
+        });
+      } catch (err) {
+        console.error("Error creating draft result:", err);
+
+        // fallback: vẫn cho review từ dữ liệu local, nhưng không có draftId
+        navigate(`/multiple-choice/test/${testId}/review`, {
+          state: {
+            test: t,
+            questions: qs,
+            userAnswers: ua,
+            results,
+            settings: settingsRef.current,
+            percentage,
+            correctCount: correctAnswers,
+            totalQuestions,
+            timeTaken: timeTakenMs,
+            reason,
+            draftCreateError: err?.message || "Không thể lưu bản nháp",
+          },
+        });
       }
+    },
+    [DRAFT_KEY, STORE_KEY, computeResult, navigate, testId]
+  );
 
-      setTest(testData);
-
-      let processed = [...questionsData];
-      if (currentSettings.shuffleQuestions) {
-        processed = shuffleArray(processed);
-      }
-      if (currentSettings.shuffleAnswers) {
-        processed = processed.map((q) => ({
-          ...q,
-          options: shuffleArray([...q.options]),
-        }));
-      }
-
-      setQuestions(processed);
-
-      const limitSeconds = (testData?.time_limit_minutes || 0) * 60;
-      setTimeRemaining(limitSeconds);
-      setTotalTime(limitSeconds);
-
-      if (currentSettings.testMode === "question_timer") {
-        setQuestionTimeRemaining(currentSettings.questionTimeLimit || 30);
-      }
-
-      setLoading(false);
-    } catch (err) {
-      console.error("Error fetching test data:", err);
-      setError(err.message || "Có lỗi xảy ra khi tải bài test");
-      setLoading(false);
-    }
-  };
-
-  // Tổng thời gian bài test
+  // total timer
   useEffect(() => {
     if (!settings.showTimer || isSubmitted || totalTime === 0) return;
 
@@ -134,7 +526,7 @@ const MultipleChoiceTestTake = () => {
       setTimeRemaining((prev) => {
         if (prev <= 1) {
           clearInterval(id);
-          handleSubmitTest();
+          doSubmitTest({ reason: "timeout_total" });
           return 0;
         }
         return prev - 1;
@@ -142,23 +534,17 @@ const MultipleChoiceTestTake = () => {
     }, 1000);
 
     return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings.showTimer, isSubmitted, totalTime]);
+  }, [settings.showTimer, isSubmitted, totalTime, doSubmitTest]);
 
-  // Thời gian mỗi câu hỏi
+  // per question timer
   useEffect(() => {
-    if (
-      settings.testMode !== "question_timer" ||
-      isSubmitted ||
-      isQuestionTimerPaused
-    )
-      return;
+    if (settings.testMode !== "question_timer" || isSubmitted || isQuestionTimerPaused) return;
 
     const id = setInterval(() => {
       setQuestionTimeRemaining((prev) => {
         if (prev <= 1) {
-          // Hết thời gian 1 câu -> tự sang câu tiếp theo
-          if (questions && currentQuestionIndex < questions.length - 1) {
+          const qs = questionsRef.current || [];
+          if (qs.length && currentQuestionIndex < qs.length - 1) {
             setCurrentQuestionIndex((i) => i + 1);
             setIsQuestionTimerPaused(false);
             return settings.questionTimeLimit || 30;
@@ -176,202 +562,242 @@ const MultipleChoiceTestTake = () => {
     settings.questionTimeLimit,
     isSubmitted,
     isQuestionTimerPaused,
-    questions,
   ]);
 
-  const currentQuestion = useMemo(
-    () =>
-      questions && questions.length > 0
-        ? questions[currentQuestionIndex]
-        : null,
-    [questions, currentQuestionIndex]
+  // ===================== actions =====================
+  const toggleAnswer = useCallback(
+    (qid, label) => {
+      if (isSubmittedRef.current || isLocked(qid)) return;
+
+      pushHistory();
+
+      const q = (questionsRef.current || []).find((x) => x._id === qid);
+      const multi = isMultiChoice(q);
+
+      setUserAnswers((prev) => {
+        const current = prev[qid] || [];
+        if (!multi) return { ...prev, [qid]: [label] };
+
+        const next = current.includes(label)
+          ? current.filter((x) => x !== label)
+          : [...current, label];
+
+        return { ...prev, [qid]: next };
+      });
+    },
+    [isLocked, isMultiChoice, pushHistory]
   );
 
-  const formatTime = (s) => {
-    const m = Math.floor(s / 60);
-    const sec = s % 60;
-    return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
-  };
+  const toggleMarkCurrent = useCallback(() => {
+    if (!currentQuestion) return;
+    if (isSubmittedRef.current) return;
 
-  const getAnsweredCount = () =>
-    Object.values(userAnswers).filter(
-      (a) => Array.isArray(a) && a.length > 0
-    ).length;
+    pushHistory();
 
-  const isLocked = (qid) => !!lockedQuestions[qid];
-
-  const toggleAnswer = (qid, label) => {
-    if (isSubmitted || isLocked(qid)) return;
-
-    setUserAnswers((prev) => {
-      const current = prev[qid] || [];
-      const next = current.includes(label)
-        ? current.filter((x) => x !== label)
-        : [...current, label];
-      return { ...prev, [qid]: next };
+    const qid = currentQuestion._id;
+    setMarkedQuestions((prev) => {
+      const next = { ...prev };
+      if (next[qid]) delete next[qid];
+      else next[qid] = true;
+      return next;
     });
-  };
+  }, [currentQuestion, pushHistory]);
 
-  const computeResult = (q, selected) => {
-    const correctSet = new Set(q.correct_answers || []);
-    const selectedSet = new Set(selected || []);
-
-    const isCorrect =
-      correctSet.size === selectedSet.size &&
-      [...correctSet].every((c) => selectedSet.has(c));
-
-    const wrongSelected = [...selectedSet].filter((s) => !correctSet.has(s));
-
-    return {
-      isCorrect,
-      correctAnswer: [...correctSet],
-      selectedAnswers: [...selectedSet],
-      wrongSelected,
-      explanation: q.explanation || {},
-      questionText: q.question_text,
-    };
-  };
-
-  const handleCheckAnswer = () => {
+  const handleCheckAnswer = useCallback(() => {
     if (!currentQuestion) return;
     const qid = currentQuestion._id;
-    const selected = userAnswers[qid] || [];
-    if (selected.length === 0) return;
+    const selected = userAnswersRef.current[qid] || [];
+    if (!selected.length) return;
 
     const result = computeResult(currentQuestion, selected);
-    setShowResult((prev) => ({
-      ...prev,
-      [qid]: result,
-    }));
+
+    setShowResult((prev) => ({ ...prev, [qid]: result }));
     setLockedQuestions((prev) => ({ ...prev, [qid]: true }));
+    setResultModalData(result);
+    setShowResultModal(true);
 
-    setModalData(result);
-    setShowModal(true);
+    if (settingsRef.current.testMode === "question_timer") setIsQuestionTimerPaused(true);
+  }, [computeResult, currentQuestion]);
 
-    if (settings.testMode === "question_timer") {
-      setIsQuestionTimerPaused(true);
-    }
-  };
+  const handleCloseResultModal = useCallback(() => {
+    setShowResultModal(false);
+    if (settingsRef.current.testMode === "question_timer") setIsQuestionTimerPaused(false);
+  }, []);
 
-  const handleCloseModal = () => {
-    setShowModal(false);
-    if (settings.testMode === "question_timer") {
-      setIsQuestionTimerPaused(false);
-    }
-  };
-
-  const handleNext = () => {
-    if (!questions) return;
-    if (currentQuestionIndex < questions.length - 1) {
+  const handleNext = useCallback(() => {
+    const qs = questionsRef.current || [];
+    if (currentQuestionIndex < qs.length - 1) {
       setCurrentQuestionIndex((i) => i + 1);
-      if (settings.testMode === "question_timer") {
-        setQuestionTimeRemaining(settings.questionTimeLimit || 30);
+      if (settingsRef.current.testMode === "question_timer") {
+        setQuestionTimeRemaining(settingsRef.current.questionTimeLimit || 30);
         setIsQuestionTimerPaused(false);
       }
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
-  };
+  }, [currentQuestionIndex]);
 
-  const handlePrev = () => {
-    if (settings.testMode !== "flexible") return;
+  const handlePrev = useCallback(() => {
+    if (settingsRef.current.testMode !== "flexible") return;
     if (currentQuestionIndex > 0) {
       setCurrentQuestionIndex((i) => i - 1);
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
-  };
+  }, [currentQuestionIndex]);
 
-  const handleSubmitTest = async () => {
-    if (isSubmitted) return;
-    setIsSubmitted(true);
+  const handleSubmitClick = useCallback(() => {
+    if (isSubmittedRef.current) return;
+    const total = (questionsRef.current || []).length;
+    const answered = Object.values(userAnswersRef.current || {}).filter(
+      (a) => Array.isArray(a) && a.length > 0
+    ).length;
+    const unanswered = Math.max(total - answered, 0);
+    setSubmitMeta({ total, answered, unanswered });
+    setShowSubmitModal(true);
+  }, []);
 
-    const results = (questions || []).map((q) => {
-      const selected = userAnswers[q._id] || [];
-      const r = computeResult(q, selected);
-      return {
-        questionId: q._id,
-        userAnswer: selected,
-        correctAnswer: r.correctAnswer,
-        isCorrect: r.isCorrect,
-        explanation: r.explanation,
-      };
+  // ===================== highlight handlers =====================
+  const addHighlightFromSelection = useCallback(
+    (type = "question", optionLabel = null) => {
+      if (!isHighlightMode) return;
+      if (!currentQuestion) return;
+
+      let container;
+      if (type === "question") container = questionTextRef.current;
+      else if (type === "option" && optionLabel) container = optionTextRefs.current[optionLabel];
+      if (!container) return;
+
+      const off = getSelectionOffsets(container);
+      if (!off) return;
+
+      const qid = currentQuestion._id;
+      pushHistory();
+
+      setHighlights((prev) => {
+        const questionData = prev[qid] || { question: [], options: {} };
+
+        if (type === "question") {
+          const list = questionData.question ? [...questionData.question] : [];
+          list.push({ start: off.start, end: off.end });
+          return {
+            ...prev,
+            [qid]: { ...questionData, question: list },
+          };
+        }
+
+        if (type === "option" && optionLabel) {
+          const optionList = questionData.options[optionLabel]
+            ? [...questionData.options[optionLabel]]
+            : [];
+          optionList.push({ start: off.start, end: off.end });
+          return {
+            ...prev,
+            [qid]: {
+              ...questionData,
+              options: { ...questionData.options, [optionLabel]: optionList },
+            },
+          };
+        }
+
+        return prev;
+      });
+
+      const sel = window.getSelection?.();
+      sel?.removeAllRanges?.();
+    },
+    [currentQuestion, isHighlightMode, pushHistory]
+  );
+
+  const clearHighlightsCurrent = useCallback(() => {
+    if (!currentQuestion) return;
+    const qid = currentQuestion._id;
+
+    const questionData = highlightsRef.current?.[qid];
+    const hasQuestionHighlights = (questionData?.question || []).length > 0;
+    const hasOptionHighlights = Object.values(questionData?.options || {}).some((arr) => arr.length > 0);
+    const has = hasQuestionHighlights || hasOptionHighlights;
+    if (!has) return;
+
+    pushHistory();
+    setHighlights((prev) => {
+      const next = { ...prev };
+      delete next[qid];
+      return next;
     });
+  }, [currentQuestion, pushHistory]);
 
-    const correctAnswers = results.filter((r) => r.isCorrect).length;
-    const totalQuestions = results.length;
-    const percentage =
-      totalQuestions > 0
-        ? Math.round((correctAnswers / totalQuestions) * 100)
-        : 0;
+  // ===================== keyboard shortcuts =====================
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      const tag = document.activeElement?.tagName?.toLowerCase();
+      const editable = document.activeElement?.isContentEditable;
+      if (tag === "input" || tag === "textarea" || editable) return;
 
-    const timeTakenMs =
-      totalTime > 0 ? (totalTime - timeRemaining) * 1000 : 0;
+      const isMac = /mac/i.test(navigator.platform);
+      const mod = isMac ? e.metaKey : e.ctrlKey;
 
-    try {
-      // Tạo payload theo đúng model TestResult
-      const testResultData = {
-        test_id: testId,
-        total_questions: totalQuestions,
-        correct_count: correctAnswers,
-        percentage: percentage,
-        duration_ms: timeTakenMs,
-        end_time: new Date(),
-        device_info: navigator.userAgent || 'Unknown',
-        answers: results.map((r) => ({
-          question_id: r.questionId,
-          question_collection: 'multiple_choices',
-          question_text: questions.find((q) => q._id === r.questionId)?.question_text || '',
-          correct_answer: r.correctAnswer,
-          user_answer: r.userAnswer,
-          is_correct: r.isCorrect,
-        })),
-        status: 'draft', // Lưu dưới dạng bản nháp trước
-      };
+      if (mod && e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        if (e.shiftKey) redo();
+        else undo();
+        return;
+      }
+      if (mod && e.key.toLowerCase() === "y") {
+        e.preventDefault();
+        redo();
+        return;
+      }
 
-      const draftResult =
-        await testResultService.createTestResult(testResultData);
+      if (e.key === "ArrowRight") handleNext();
+      if (e.key === "ArrowLeft") handlePrev();
 
-      // Chuyển đến trang review với thông tin draft result
-      navigate(`/multiple-choice/test/${testId}/review`, {
-        state: {
-          test,
-          questions,
-          userAnswers,
-          results,
-          settings,
-          draftResultId: draftResult._id || draftResult.id,
-          percentage,
-          correctCount: correctAnswers,
-          totalQuestions,
-          timeTaken: timeTakenMs,
-        },
-      });
-    } catch (err) {
-      console.error("Error creating draft result:", err);
-      // Nếu lỗi, vẫn chuyển đến review nhưng không có draftResultId
-      navigate(`/multiple-choice/test/${testId}/review`, {
-        state: {
-          test,
-          questions,
-          userAnswers,
-          results,
-          settings,
-          percentage,
-          correctCount: correctAnswers,
-          totalQuestions,
-          timeTaken: timeTakenMs,
-        },
-      });
-    }
-  };
+      if (e.key.toLowerCase() === "h") setIsHighlightMode((v) => !v);
+    };
 
-  // ======= RENDER =======
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [handleNext, handlePrev, redo, undo]);
 
+  // ===================== timer UI helpers =====================
+  const timePercent = useMemo(() => {
+    if (!totalTime) return 0;
+    return Math.max(0, Math.min(100, (timeRemaining / totalTime) * 100));
+  }, [timeRemaining, totalTime]);
+
+  const timeWarnLevel = useMemo(() => {
+    if (!totalTime) return "normal";
+    const p = timeRemaining / totalTime;
+    if (p <= 0.1) return "danger";
+    if (p <= 0.25) return "warn";
+    return "normal";
+  }, [timeRemaining, totalTime]);
+
+  const timerBoxClass =
+    timeWarnLevel === "danger"
+      ? "bg-red-50 border-red-200 text-red-800"
+      : timeWarnLevel === "warn"
+      ? "bg-amber-50 border-amber-200 text-amber-800"
+      : "bg-indigo-50 border-indigo-100 text-indigo-800";
+
+  const timerBarClass =
+    timeWarnLevel === "danger"
+      ? "bg-red-500"
+      : timeWarnLevel === "warn"
+      ? "bg-amber-500"
+      : "bg-indigo-500";
+
+  const questionTimePercent = useMemo(() => {
+    const limit = settings.questionTimeLimit || 30;
+    if (settings.testMode !== "question_timer" || !limit) return 0;
+    return Math.max(0, Math.min(100, (questionTimeRemaining / limit) * 100));
+  }, [questionTimeRemaining, settings.testMode, settings.questionTimeLimit]);
+
+  // ===================== render guards =====================
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="text-center">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mx-auto mb-3" />
-          <p className="text-indigo-600 text-sm font-medium">
-            Đang tải bài kiểm tra...
-          </p>
+          <p className="text-indigo-600 text-sm font-medium">Đang tải bài kiểm tra...</p>
         </div>
       </div>
     );
@@ -382,23 +808,13 @@ const MultipleChoiceTestTake = () => {
       <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="text-center max-w-md mx-auto p-6">
           <div className="text-red-500 mb-4">
-            <svg
-              className="w-16 h-16 mx-auto"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
+            <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
                 d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
               />
             </svg>
           </div>
-          <h3 className="text-lg font-semibold text-red-800 mb-2">
-            Lỗi tải bài test
-          </h3>
+          <h3 className="text-lg font-semibold text-red-800 mb-2">Lỗi tải bài test</h3>
           <p className="text-sm text-red-600 mb-4">{error}</p>
           <div className="space-x-3">
             <button
@@ -419,50 +835,87 @@ const MultipleChoiceTestTake = () => {
     );
   }
 
-  if (!currentQuestion || !test || questions.length === 0) {
+  if (!currentQuestion || !test || !questions.length) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
-        <p className="text-indigo-600 text-sm font-medium">
-          Đang tải câu hỏi...
-        </p>
+        <p className="text-indigo-600 text-sm font-medium">Đang tải câu hỏi...</p>
       </div>
     );
   }
 
+  // ===================== locals for render =====================
   const qid = currentQuestion._id;
   const selectedForQ = userAnswers[qid] || [];
   const isCurrentLocked = isLocked(qid);
   const currentComputed = showResult[qid];
+  const multi = isMultiChoice(currentQuestion);
 
   const isLastQuestion = currentQuestionIndex === questions.length - 1;
   const canGoPrev = settings.testMode === "flexible" && currentQuestionIndex > 0;
-  const canGoNext =
-    settings.testMode === "flexible" &&
-    currentQuestionIndex < questions.length - 1;
+  const canGoNext = settings.testMode === "flexible" && currentQuestionIndex < questions.length - 1;
 
+  const currentHighlights = highlights[qid] || { question: [], options: {} };
+
+  // ===================== UI =====================
   return (
     <div className="min-h-screen bg-slate-50 pb-24">
-      <div className="max-w-6xl mx-auto px-3 sm:px-4 pt-4 sm:pt-6">
+      <div className="w-full px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6">
         <div className="grid grid-cols-12 gap-4 lg:gap-6">
-          {/* MAIN QUESTION AREA */}
+          {/* MAIN */}
           <div className="col-span-12 lg:col-span-9">
-            <div className="border border-gray-200 rounded-2xl bg-white shadow-sm p-4 sm:p-6">
+            <div className="border border-slate-300 rounded-2xl bg-white shadow-sm p-4 sm:p-6">
+              {/* header */}
               <div className="mb-4 sm:mb-6">
-                <div className="flex items-start gap-3">
-                  {settings.showQuestionNumber && (
-                    <div className="bg-blue-600 text-white font-semibold w-8 h-8 rounded-lg flex items-center justify-center text-sm flex-shrink-0">
-                      {currentQuestionIndex + 1}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    {settings.showQuestionNumber && (
+                      <div className="bg-blue-600 text-white font-semibold w-8 h-8 rounded-lg flex items-center justify-center text-sm flex-shrink-0">
+                        {currentQuestionIndex + 1}
+                      </div>
+                    )}
+
+                    <div>
+                      <h2 className="text-base sm:text-lg font-medium mb-1 text-gray-900">
+                        <span
+                          ref={questionTextRef}
+                          onMouseUp={() => addHighlightFromSelection("question")}
+                          className={isHighlightMode ? "cursor-text select-text" : ""}
+                        >
+                          {renderTextWithHighlights(currentQuestion.question_text, currentHighlights.question || [])}
+                        </span>
+                      </h2>
+
+                      <p className="text-xs sm:text-sm text-gray-600">
+                        {multi ? "Chọn (có thể nhiều đáp án)" : "Chọn 1 đáp án phù hợp"}{" "}
+                        {isCurrentLocked && "(câu này đã khóa)"}
+                      </p>
                     </div>
-                  )}
-                  <div>
-                    <h2 className="text-base sm:text-lg font-medium mb-1 text-gray-900">
-                      {currentQuestion.question_text}
-                    </h2>
-                    <p className="text-xs sm:text-sm text-gray-600">
-                      Chọn đáp án phù hợp{" "}
-                      {isCurrentLocked && "(câu này đã khóa)"}
-                    </p>
                   </div>
+
+                  {/* Mark button */}
+                  <button
+                    type="button"
+                    onClick={toggleMarkCurrent}
+                    className={`px-3 py-2 rounded-lg text-xs font-semibold border transition ${
+                      isMarked(qid)
+                        ? "bg-amber-50 border-amber-200 text-amber-800"
+                        : "bg-white border-slate-300 text-gray-700 hover:bg-gray-50"
+                    }`}
+                    title="Đánh dấu để xem lại"
+                  >
+                    {isMarked(qid) ? "★ Đã đánh dấu" : "☆ Đánh dấu"}
+                  </button>
+                </div>
+
+                {/* hint */}
+                <div className="mt-3 text-xs text-gray-500 space-y-1">
+                  <div>
+                    Mẹo: dùng phím <span className="font-semibold">←</span> /{" "}
+                    <span className="font-semibold">→</span> để chuyển câu.{" "}
+                    <span className="font-semibold">H</span> để bật/tắt highlight.{" "}
+                    <span className="font-semibold">Ctrl+Z</span> để hoàn tác.
+                  </div>
+                  {isHighlightMode && <div className="text-amber-700">✍️ Chọn text để đánh dấu!</div>}
                 </div>
               </div>
 
@@ -471,27 +924,23 @@ const MultipleChoiceTestTake = () => {
                 {currentQuestion?.options?.map((op) => {
                   const isSelected = selectedForQ.includes(op.label);
                   return (
-                    <button
+                    <div
                       key={op.label}
-                      type="button"
-                      onClick={() => toggleAnswer(qid, op.label)}
-                      disabled={isCurrentLocked}
-                      className={`w-full text-left flex items-start gap-3 px-3 py-3 sm:px-4 sm:py-4 rounded-xl border text-sm sm:text-base transition-colors ${
-                        isCurrentLocked
-                          ? "cursor-not-allowed opacity-60"
-                          : "cursor-pointer"
+                      className={`w-full flex items-start gap-3 px-3 py-3 sm:px-4 sm:py-4 rounded-xl border text-sm sm:text-base transition-colors ${
+                        isCurrentLocked ? "cursor-not-allowed opacity-60" : "cursor-pointer"
                       } ${
                         isSelected
                           ? "border-blue-500 bg-blue-50"
-                          : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                          : "border-slate-300 hover:border-gray-300 hover:bg-gray-50"
                       }`}
+                      onClick={() => {
+                        if (!isCurrentLocked && !isSubmitted) toggleAnswer(qid, op.label);
+                      }}
                     >
                       <div className="flex-shrink-0 mt-0.5">
                         <div
                           className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 flex items-center justify-center ${
-                            isSelected
-                              ? "border-blue-500 bg-blue-600"
-                              : "border-gray-300 bg-white"
+                            isSelected ? "border-blue-500 bg-blue-600" : "border-gray-300 bg-white"
                           }`}
                         >
                           {isSelected && (
@@ -502,43 +951,87 @@ const MultipleChoiceTestTake = () => {
                               stroke="currentColor"
                               strokeWidth="2.5"
                             >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                d="M5 13l4 4L19 7"
-                              />
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                             </svg>
                           )}
                         </div>
                       </div>
+
                       <div className="flex-1">
                         <div className="flex items-start gap-2">
                           <span className="inline-flex items-center justify-center w-7 h-7 rounded-md bg-blue-100 text-blue-700 text-xs sm:text-sm font-semibold flex-shrink-0">
                             {op.label}
                           </span>
                           <p
+                            ref={(el) => {
+                              if (el) optionTextRefs.current[op.label] = el;
+                            }}
+                            onMouseUp={(e) => {
+                              if (isHighlightMode) {
+                                e.stopPropagation();
+                                addHighlightFromSelection("option", op.label);
+                              }
+                            }}
                             className={`leading-relaxed ${
-                              isSelected
-                                ? "text-gray-900 font-medium"
-                                : "text-gray-800"
-                            }`}
+                              isSelected ? "text-gray-900 font-medium" : "text-gray-800"
+                            } ${isHighlightMode ? "cursor-text select-text" : ""}`}
                           >
-                            {op.text}
+                            {renderTextWithHighlights(op.text, currentHighlights.options?.[op.label] || [])}
                           </p>
                         </div>
                       </div>
-                    </button>
+                    </div>
                   );
                 })}
+              </div>
+
+              {/* Highlight toolbar */}
+              <div className="mt-6 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsHighlightMode((v) => !v)}
+                  className={`px-4 py-2 rounded-lg text-xs font-semibold border transition flex items-center gap-2 ${
+                    isHighlightMode
+                      ? "bg-yellow-100 border-yellow-200 text-yellow-900"
+                      : "bg-white border-slate-300 text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  <span>✏️</span>
+                  {isHighlightMode ? "Đang đánh dấu" : "Bật đánh dấu"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={clearHighlightsCurrent}
+                  className="px-4 py-2 rounded-lg text-xs font-semibold border border-slate-300 bg-white text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                >
+                  🗑️ Xóa
+                </button>
+
+                <button
+                  type="button"
+                  onClick={undo}
+                  className="px-4 py-2 rounded-lg text-xs font-semibold border border-slate-300 bg-white text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                >
+                  ↩️ Hoàn tác
+                </button>
+
+                <button
+                  type="button"
+                  onClick={redo}
+                  className="px-4 py-2 rounded-lg text-xs font-semibold border border-slate-300 bg-white text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                >
+                  ↪️ Làm lại
+                </button>
               </div>
             </div>
           </div>
 
           {/* SIDEBAR */}
           <div className="col-span-12 lg:col-span-3 flex flex-col">
-            <div className="flex-1 rounded-2xl border border-gray-200 shadow-sm bg-white p-4 space-y-4">
+            <div className="flex-1 rounded-2xl border border-slate-300 shadow-sm bg-white p-4 flex flex-col gap-4">
               {/* Header */}
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex items-start justify-between gap-2">
                 <div>
                   <h4 className="text-xs font-semibold text-indigo-700">
                     {test?.main_topic} {test?.sub_topic && "·"} {test?.sub_topic}
@@ -549,25 +1042,27 @@ const MultipleChoiceTestTake = () => {
                     </p>
                   )}
                 </div>
+
                 <div className="flex items-center gap-2">
                   {settings.showTimer && (
-                    <div className="px-2 py-1 rounded-md bg-indigo-50 border border-indigo-100 flex flex-col items-center">
-                      <span className="text-[10px] text-indigo-700">
-                        Toàn bài
-                      </span>
-                      <span className="text-xs font-semibold text-indigo-800">
-                        {formatTime(timeRemaining)}
-                      </span>
+                    <div className={`px-2 py-1 rounded-md border flex flex-col items-center ${timerBoxClass}`}>
+                      <span className="text-[10px] opacity-90">Toàn bài</span>
+                      <span className="text-xs font-semibold">{formatTime(timeRemaining)}</span>
+                      <div className="w-20 h-1 bg-white/60 rounded mt-1 overflow-hidden">
+                        <div className={`h-full ${timerBarClass}`} style={{ width: `${timePercent}%` }} />
+                      </div>
                     </div>
                   )}
+
                   {settings.testMode === "question_timer" && (
                     <div className="px-2 py-1 rounded-md bg-orange-50 border border-orange-100 flex flex-col items-center">
-                      <span className="text-[10px] text-orange-700">
-                        Mỗi câu
-                      </span>
+                      <span className="text-[10px] text-orange-700">Mỗi câu</span>
                       <span className="text-xs font-semibold text-orange-800">
                         {formatTime(questionTimeRemaining)}
                       </span>
+                      <div className="w-20 h-1 bg-orange-100 rounded mt-1 overflow-hidden">
+                        <div className="h-full bg-orange-500" style={{ width: `${questionTimePercent}%` }} />
+                      </div>
                     </div>
                   )}
                 </div>
@@ -578,46 +1073,49 @@ const MultipleChoiceTestTake = () => {
                 <div className="flex justify-between text-[11px] mb-1">
                   <span>Đã trả lời</span>
                   <span className="font-medium">
-                    {getAnsweredCount()}/{questions.length}
+                    {answeredCount}/{questions.length}
                   </span>
                 </div>
                 <div className="h-1.5 bg-gray-200 rounded-full">
                   <div
                     className="h-full bg-blue-500 rounded-full"
-                    style={{
-                      width: `${
-                        (getAnsweredCount() /
-                          Math.max(questions.length || 1, 1)) *
-                        100
-                      }%`,
-                    }}
+                    style={{ width: `${(answeredCount / Math.max(questions.length || 1, 1)) * 100}%` }}
                   />
                 </div>
               </div>
 
-              {/* Grid câu hỏi */}
-              <div className="flex-1 overflow-auto">
+              {/* Legend */}
+              <div className="flex flex-wrap gap-2 text-[10px] text-gray-600">
+                <span className="inline-flex items-center gap-1">
+                  <span className="w-3 h-3 rounded bg-purple-600" /> Đang làm
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <span className="w-3 h-3 rounded bg-emerald-500" /> Đã trả lời
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <span className="w-3 h-3 rounded bg-gray-200 border border-gray-300" /> Chưa trả lời
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <span className="w-3 h-3 rounded bg-amber-400" /> Đánh dấu
+                </span>
+              </div>
+
+              {/* Grid */}
+              <div className="flex-1 min-h-0 overflow-auto">
                 <div className="grid grid-cols-6 sm:grid-cols-5 gap-2">
                   {questions.map((q, idx) => {
-                    const isAnswered =
-                      (userAnswers[q._id] || []).length > 0;
-                    const isCurrent = idx === currentQuestionIndex;
+                    const answered = (userAnswers[q._id] || []).length > 0;
+                    const current = idx === currentQuestionIndex;
+                    const marked = !!markedQuestions[q._id];
 
                     let cls =
                       "w-8 h-8 sm:w-9 sm:h-9 rounded-lg text-xs font-semibold flex items-center justify-center transition-all ";
-                    if (isCurrent) {
-                      cls +=
-                        "bg-purple-600 text-white shadow ring-2 ring-purple-300";
-                    } else if (isAnswered) {
-                      cls += "bg-emerald-500 text-white hover:bg-emerald-600";
-                    } else {
-                      cls +=
-                        "bg-gray-100 text-gray-600 border border-gray-300 hover:bg-gray-200";
-                    }
+                    if (current) cls += "bg-purple-600 text-white shadow ring-2 ring-purple-300";
+                    else if (marked) cls += "bg-amber-400 text-white hover:bg-amber-500";
+                    else if (answered) cls += "bg-emerald-500 text-white hover:bg-emerald-600";
+                    else cls += "bg-gray-100 text-gray-600 border border-gray-300 hover:bg-gray-200";
 
-                    const disabled =
-                      settings.testMode === "question_timer" &&
-                      idx !== currentQuestionIndex;
+                    const disabled = settings.testMode === "question_timer" && idx !== currentQuestionIndex;
 
                     return (
                       <button
@@ -627,9 +1125,11 @@ const MultipleChoiceTestTake = () => {
                         onClick={() => {
                           if (settings.testMode === "flexible") {
                             setCurrentQuestionIndex(idx);
+                            window.scrollTo({ top: 0, behavior: "smooth" });
                           }
                         }}
                         disabled={disabled}
+                        title={marked ? "Đã đánh dấu xem lại" : ""}
                       >
                         {idx + 1}
                       </button>
@@ -638,26 +1138,26 @@ const MultipleChoiceTestTake = () => {
                 </div>
               </div>
 
-              {/* Submit nhanh ở sidebar (desktop) */}
+              {/* SUBMIT */}
               <button
                 type="button"
-                onClick={handleSubmitTest}
-                disabled={getAnsweredCount() === 0}
-                className={`hidden sm:block w-full px-4 py-2.5 rounded-lg text-xs font-medium ${
-                  getAnsweredCount() === 0
+                onClick={handleSubmitClick}
+                disabled={answeredCount === 0}
+                className={`mt-auto w-full px-4 py-3 rounded-lg text-sm font-semibold ${
+                  answeredCount === 0
                     ? "bg-gray-200 text-gray-400 cursor-not-allowed"
                     : "bg-red-600 text-white hover:bg-red-700"
                 }`}
               >
-                Nộp bài ({getAnsweredCount()}/{questions.length})
+                Nộp bài ({answeredCount}/{questions.length})
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* BOTTOM ACTION BAR – luôn dính dưới màn hình, thân thiện mobile */}
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 bg-white/95 backdrop-blur-sm">
+      {/* BOTTOM ACTION BAR */}
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-300 bg-white/95 backdrop-blur-sm">
         <div className="max-w-6xl mx-auto px-3 sm:px-4 py-2.5">
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             {settings.testMode === "flexible" && (
@@ -667,7 +1167,7 @@ const MultipleChoiceTestTake = () => {
                 disabled={!canGoPrev}
                 className={`w-full sm:w-auto px-3 py-2 rounded-lg text-sm border ${
                   !canGoPrev
-                    ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
+                    ? "bg-gray-100 text-gray-400 border-slate-300 cursor-not-allowed"
                     : "bg-white text-gray-800 border-gray-300 hover:bg-gray-50"
                 }`}
               >
@@ -699,10 +1199,10 @@ const MultipleChoiceTestTake = () => {
               {isLastQuestion && (
                 <button
                   type="button"
-                  onClick={handleSubmitTest}
-                  disabled={getAnsweredCount() === 0}
+                  onClick={handleSubmitClick}
+                  disabled={answeredCount === 0}
                   className={`flex-1 px-3 py-2 rounded-lg text-sm font-semibold ${
-                    getAnsweredCount() === 0
+                    answeredCount === 0
                       ? "bg-gray-200 text-gray-400 cursor-not-allowed"
                       : "bg-green-600 text-white hover:bg-green-700"
                   }`}
@@ -715,73 +1215,51 @@ const MultipleChoiceTestTake = () => {
         </div>
       </div>
 
-      {/* RESULT MODAL - đơn giản */}
-      {showModal && modalData && (
+      {/* RESULT MODAL */}
+      {showResultModal && resultModalData && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg border border-gray-200 w-full max-w-xl">
-            {/* Header */}
-            <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+          <div className="bg-white rounded-lg border border-slate-300 w-full max-w-xl">
+            <div className="p-4 border-b border-slate-300 flex items-center justify-between">
               <div>
-                <p
-                  className={`text-sm font-semibold ${
-                    modalData.isCorrect ? "text-green-700" : "text-red-700"
-                  }`}
-                >
-                  {modalData.isCorrect
-                    ? "Trả lời chính xác"
-                    : "Trả lời chưa chính xác"}
+                <p className={`text-sm font-semibold ${resultModalData.isCorrect ? "text-green-700" : "text-red-700"}`}>
+                  {resultModalData.isCorrect ? "Trả lời chính xác" : "Trả lời chưa chính xác"}
                 </p>
                 <p className="text-xs text-gray-500 mt-1">
                   Câu {currentQuestionIndex + 1} / {questions.length}
                 </p>
               </div>
-              <button
-                onClick={handleCloseModal}
-                className="text-xs text-gray-500 hover:text-gray-800"
-              >
+              <button onClick={handleCloseResultModal} className="text-xs text-gray-500 hover:text-gray-800">
                 Đóng
               </button>
             </div>
 
-            {/* Content */}
             <div className="p-4 space-y-4 text-sm">
-              {/* Câu hỏi */}
               <div>
                 <p className="text-gray-900 font-medium mb-1">Câu hỏi</p>
-                <p className="text-gray-800 text-sm">
-                  {modalData.questionText}
-                </p>
+                <p className="text-gray-800 text-sm">{resultModalData.questionText}</p>
               </div>
 
-              {/* Đáp án đúng & bạn chọn */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="border border-gray-200 rounded p-3">
-                  <p className="font-semibold text-gray-900 text-xs mb-2">
-                    Đáp án đúng
-                  </p>
+                <div className="border border-slate-300 rounded p-3">
+                  <p className="font-semibold text-gray-900 text-xs mb-2">Đáp án đúng</p>
                   <div className="flex flex-wrap gap-2">
-                    {modalData.correctAnswer.map((lbl) => (
-                      <span
-                        key={lbl}
-                        className="inline-flex items-center px-2 py-1 rounded border border-gray-300 text-xs text-gray-800"
-                      >
+                    {resultModalData.correctAnswer.map((lbl) => (
+                      <span key={lbl} className="inline-flex items-center px-2 py-1 rounded border border-gray-300 text-xs text-gray-800">
                         {lbl}
                       </span>
                     ))}
                   </div>
                 </div>
 
-                <div className="border border-gray-200 rounded p-3">
-                  <p className="font-semibold text-gray-900 text-xs mb-2">
-                    Bạn đã chọn
-                  </p>
+                <div className="border border-slate-300 rounded p-3">
+                  <p className="font-semibold text-gray-900 text-xs mb-2">Bạn đã chọn</p>
                   <div className="flex flex-wrap gap-2">
-                    {modalData.selectedAnswers.length > 0 ? (
-                      modalData.selectedAnswers.map((lbl) => (
+                    {resultModalData.selectedAnswers.length > 0 ? (
+                      resultModalData.selectedAnswers.map((lbl) => (
                         <span
                           key={lbl}
                           className={`inline-flex items-center px-2 py-1 rounded border text-xs ${
-                            modalData.correctAnswer.includes(lbl)
+                            resultModalData.correctAnswer.includes(lbl)
                               ? "border-green-500 text-green-700"
                               : "border-red-500 text-red-700"
                           }`}
@@ -797,57 +1275,11 @@ const MultipleChoiceTestTake = () => {
                   </div>
                 </div>
               </div>
-
-              {/* Giải thích (nếu có) */}
-              {modalData.explanation && (
-                <div className="space-y-3">
-                  {modalData.explanation.correct && (
-                    <div className="border border-gray-200 rounded p-3">
-                      <p className="font-semibold text-gray-900 text-xs mb-1">
-                        Giải thích đáp án đúng
-                      </p>
-                      <p className="text-gray-800 text-xs leading-relaxed">
-                        {modalData.explanation.correct}
-                      </p>
-                    </div>
-                  )}
-
-                  {modalData.explanation.incorrect_choices &&
-                    Object.keys(
-                      modalData.explanation.incorrect_choices
-                    ).length > 0 && (
-                      <div className="border border-gray-200 rounded p-3">
-                        <p className="font-semibold text-gray-900 text-xs mb-2">
-                          Lý do các lựa chọn sai
-                        </p>
-                        <div className="space-y-2">
-                          {Object.entries(
-                            modalData.explanation.incorrect_choices
-                          ).map(([choice, explanation]) => (
-                            <div
-                              key={choice}
-                              className="flex items-start gap-2 text-xs"
-                            >
-                              <span className="inline-flex items-center justify-center w-5 h-5 rounded border border-gray-300 text-gray-700 font-semibold">
-                                {choice}
-                              </span>
-                              <p className="text-gray-800 leading-relaxed">
-                                {explanation ||
-                                  "Không đúng với bối cảnh câu hỏi."}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                </div>
-              )}
             </div>
 
-            {/* Footer */}
-            <div className="p-4 border-t border-gray-200 flex items-center justify-end gap-2 text-xs">
+            <div className="p-4 border-t border-slate-300 flex items-center justify-end gap-2 text-xs">
               <button
-                onClick={handleCloseModal}
+                onClick={handleCloseResultModal}
                 className="px-3 py-1.5 rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
               >
                 Đóng
@@ -855,7 +1287,7 @@ const MultipleChoiceTestTake = () => {
               {questions && currentQuestionIndex < questions.length - 1 && (
                 <button
                   onClick={() => {
-                    handleCloseModal();
+                    handleCloseResultModal();
                     handleNext();
                   }}
                   className="px-3 py-1.5 rounded bg-gray-900 text-white hover:bg-black"
@@ -863,6 +1295,50 @@ const MultipleChoiceTestTake = () => {
                   Câu tiếp theo
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SUBMIT CONFIRM MODAL */}
+      {showSubmitModal && submitMeta && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg border border-slate-300 w-full max-w-md">
+            <div className="p-4 border-b border-slate-300">
+              <p className="text-sm font-semibold text-gray-900">Xác nhận nộp bài</p>
+              <p className="text-xs text-gray-600 mt-1">
+                Bạn đã trả lời <span className="font-semibold">{submitMeta.answered}</span>/{submitMeta.total} câu.
+              </p>
+            </div>
+
+            <div className="p-4 text-sm">
+              {submitMeta.unanswered > 0 ? (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900 text-xs">
+                  Bạn còn <span className="font-semibold">{submitMeta.unanswered}</span> câu chưa trả lời. Bạn vẫn muốn nộp bài chứ?
+                </div>
+              ) : (
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-emerald-900 text-xs">
+                  Bạn đã trả lời tất cả câu hỏi. Nộp bài ngay?
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 border-t border-slate-300 flex items-center justify-end gap-2">
+              <button
+                onClick={() => setShowSubmitModal(false)}
+                className="px-3 py-2 rounded border border-gray-300 bg-white text-gray-700 text-xs hover:bg-gray-50"
+              >
+                Quay lại
+              </button>
+              <button
+                onClick={() => {
+                  setShowSubmitModal(false);
+                  doSubmitTest({ reason: "manual_confirm" });
+                }}
+                className="px-3 py-2 rounded bg-red-600 text-white text-xs font-semibold hover:bg-red-700"
+              >
+                Nộp bài
+              </button>
             </div>
           </div>
         </div>
