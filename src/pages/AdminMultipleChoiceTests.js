@@ -5,8 +5,8 @@ import testService from '../services/testService';
 import CreateMultipleChoiceTestButton from '../components/CreateMultipleChoiceTestButton';
 import LoadingSpinner from '../components/LoadingSpinner';
 import Toast from '../components/Toast';
-import DeleteTestModal from '../components/DeleteTestModal';
-import TestDetailModal from '../components/TestDetailModal';
+import DeleteTestModal from '../components/AdminDeleteTestModal';
+import TestDetailModal from '../components/AdminTestDetailModal';
 
 const AdminMultipleChoiceTests = () => {
   const { user } = useAuth();
@@ -661,10 +661,10 @@ const AdminMultipleChoiceTests = () => {
 
       {/* Modals */}
       <DeleteTestModal
-        show={showDeleteModal}
+        isOpen={showDeleteModal}
         onClose={() => setShowDeleteModal(false)}
-        onConfirm={handleDeleteConfirm}
-        testTitle={testToDelete?.test_title}
+        test={testToDelete}
+        onDeleteConfirmed={handleDeleteConfirm}
       />
 
       <TestDetailModal

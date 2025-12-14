@@ -6,7 +6,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorMessage from '../components/ErrorMessage';
 import VocabularyTestCard from '../components/VocabularyTestCard';
 import EmptyState from '../components/EmptyState';
-import FilterSidebar from '../components/FilterSidebar';
+import FilterSidebar from '../components/AdminFilterSidebar';
 import Pagination from '../components/Pagination';
 import VocabularyLayout from '../layout/VocabularyLayout';
 import VocabularyPreviewModal from '../components/VocabularyPreviewModal';
@@ -250,13 +250,6 @@ const VocabularyTestList = () => {
     return <ErrorMessage error={error} onRetry={fetchTests} />;
   }
 
-  const breadcrumbItems = [
-    { label: 'Trang chủ', path: '/' },
-    { label: 'Từ vựng theo chủ đề', path: '/vocabulary/topics' },
-    { label: mainTopic, path: `/vocabulary/${mainTopic}` },
-    { label: subTopic, path: `/vocabulary/${mainTopic}/${subTopic}` },
-  ];
-
   const headerActions = (
     <div className="flex items-center gap-3">
       {/* Refresh Button */}
@@ -307,7 +300,6 @@ const VocabularyTestList = () => {
     <VocabularyLayout
       title="Bài kiểm tra từ vựng"
       description={`${mainTopic} - ${subTopic}`}
-      breadcrumbItems={breadcrumbItems}
       actions={headerActions}
     >
       {/* Enhanced Stats */}

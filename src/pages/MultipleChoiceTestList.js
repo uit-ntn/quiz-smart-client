@@ -5,7 +5,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorMessage from '../components/ErrorMessage';
 import TestCard from '../components/TestCard';
 import EmptyState from '../components/EmptyState';
-import FilterSidebar from '../components/FilterSidebar';
+import FilterSidebar from '../components/AdminFilterSidebar';
 import Pagination from '../components/Pagination';
 import MultipleChoiceLayout from '../layout/MultipleChoiceLayout';
 
@@ -167,13 +167,6 @@ const MultipleChoiceTestList = () => {
     return <ErrorMessage error={error} onRetry={fetchTests} />;
   }
 
-  const breadcrumbItems = [
-    { label: 'Trang chủ', path: '/' },
-    { label: 'Trắc nghiệm theo chủ đề', path: '/multiple-choice' },
-    { label: mainTopic, path: `/multiple-choice/${mainTopic}` },
-    { label: subTopic, path: `/multiple-choice/${mainTopic}/${subTopic}` },
-  ];
-
   const headerActions = (
     <div className="flex bg-white/70 backdrop-blur-sm rounded-xl border border-white/50 p-1 shadow-lg">
       <button
@@ -209,7 +202,6 @@ const MultipleChoiceTestList = () => {
     <MultipleChoiceLayout
       title="Bài kiểm tra trắc nghiệm"
       description={`${mainTopic} - ${subTopic}`}
-      breadcrumbItems={breadcrumbItems}
       actions={headerActions}
     >
       {/* Enhanced Stats */}

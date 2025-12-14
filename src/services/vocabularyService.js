@@ -1,129 +1,129 @@
-// src/services/vocabularyService.js
+// =========================
+// 📘 src/services/vocabularyService.js (functions)
+// =========================
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('token');
-  return {
-    'Content-Type': 'application/json',
-    ...(token && { Authorization: `Bearer ${token}` }),
-  };
+// ---- Helpers
+const token = () => localStorage.getItem('token') || '';
+const jsonHeaders = () => ({ 'Content-Type': 'application/json' });
+const authHeaders = () =>
+  token() ? { ...jsonHeaders(), Authorization: `Bearer ${token()}` } : jsonHeaders();
+
+const toQuery = (obj = {}) => {
+  const p = new URLSearchParams();
+  Object.entries(obj).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && `${v}` !== '') p.append(k, v);
+  });
+  const s = p.toString();
+  return s ? `?${s}` : '';
 };
 
-/** Build query string from filters object */
-const qs = (obj = {}) =>
-  Object.entries(obj)
-    .filter(([, v]) => v !== undefined && v !== null && v !== '')
-    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
-    .join('&');
+async function handle(res) {
+  const text = await res.text();
+  let body = null;
+
+  try {
+    body = text ? JSON.parse(text) : null;
+  } catch {
+    body = null;
+  }
+
+  if (!res.ok) {
+    const msg = body?.message || body?.error || text || `HTTP ${res.status}`;
+    throw new Error(msg);
+  }
+
+  return body ?? { success: true };
+}
 
 /* =========================
    READ
-   ========================= */
+========================= */
 
-/** GET /vocabularies?test_id=&difficulty=&status=  (auth to include private tests) */
 export async function getAllVocabularies(filters = {}) {
-  const url = `${API_BASE_URL}/vocabularies${Object.keys(filters).length ? `?${qs(filters)}` : ''}`;
-  const res = await fetch(url, { headers: getAuthHeaders() });
-  if (!res.ok) throw new Error(await res.text());
-  const data = await res.json();
-  return data.vocabularies || data || [];
+  const res = await fetch(`${API_BASE_URL}/vocabularies${toQuery(filters)}`, {
+    headers: authHeaders(),
+  });
+  const data = await handle(res);
+  return Array.isArray(data.vocabularies) ? data.vocabularies : (Array.isArray(data) ? data : []);
 }
 
-/** GET /vocabularies/test/:testId (auth to access private test vocabularies) */
 export async function getAllVocabulariesByTestId(testId) {
   const res = await fetch(`${API_BASE_URL}/vocabularies/test/${testId}`, {
-    headers: getAuthHeaders(),
+    headers: authHeaders(),
   });
-  if (!res.ok) throw new Error(await res.text());
-  const data = await res.json();
-  return data.vocabularies || data || [];
+  const data = await handle(res);
+  return Array.isArray(data.vocabularies) ? data.vocabularies : (Array.isArray(data) ? data : []);
 }
 
-/** GET /vocabularies/:id (auth to access private test vocabularies) */
 export async function getVocabularyById(id) {
   const res = await fetch(`${API_BASE_URL}/vocabularies/${id}`, {
-    headers: getAuthHeaders(),
+    headers: authHeaders(),
   });
-  if (!res.ok) throw new Error(await res.text());
-  const data = await res.json();
+  const data = await handle(res);
   return data.vocabulary || data;
 }
 
-/** GET /vocabularies/search?q=... (auth to include private tests in search) */
 export async function searchVocabularies(q) {
   const res = await fetch(`${API_BASE_URL}/vocabularies/search?q=${encodeURIComponent(q)}`, {
-    headers: getAuthHeaders(),
+    headers: authHeaders(),
   });
-  if (!res.ok) throw new Error(await res.text());
-  const data = await res.json();
-  return data.vocabularies || data || [];
+  const data = await handle(res);
+  return Array.isArray(data.vocabularies) ? data.vocabularies : (Array.isArray(data) ? data : []);
 }
 
-/** Lấy ngẫu nhiên vocabularies từ BE data (lọc server, random client) */
 export async function getRandomVocabularies(count = 10, filters = {}) {
   const list = await getAllVocabularies(filters);
   if (!list.length) return [];
-  // shuffle nhẹ nhàng
   const shuffled = [...list].sort(() => 0.5 - Math.random());
   return shuffled.slice(0, Math.min(count, shuffled.length));
 }
 
 /* =========================
    WRITE (auth required)
-   ========================= */
+========================= */
 
-/** POST /vocabularies */
 export async function createVocabulary(payload) {
   const res = await fetch(`${API_BASE_URL}/vocabularies`, {
     method: 'POST',
-    headers: getAuthHeaders(),
+    headers: authHeaders(),
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message || `HTTP ${res.status}`);
-  const data = await res.json();
+  const data = await handle(res);
   return data.vocabulary || data;
 }
 
-/** PUT /vocabularies/:id */
 export async function updateVocabulary(id, payload) {
   const res = await fetch(`${API_BASE_URL}/vocabularies/${id}`, {
     method: 'PUT',
-    headers: getAuthHeaders(),
+    headers: authHeaders(),
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message || `HTTP ${res.status}`);
-  const data = await res.json();
+  const data = await handle(res);
   return data.vocabulary || data;
 }
 
-/** DELETE /vocabularies/:id */
 export async function deleteVocabulary(id) {
   const res = await fetch(`${API_BASE_URL}/vocabularies/${id}`, {
     method: 'DELETE',
-    headers: getAuthHeaders(),
+    headers: authHeaders(),
   });
-  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message || `HTTP ${res.status}`);
-  // BE trả { message, vocabulary } — nhưng cũng handle empty body
-  try {
-    const data = await res.json();
-    return data.vocabulary || data || { success: true };
-  } catch {
-    return { success: true };
-  }
+  const data = await handle(res);
+  return data.vocabulary || data || { success: true };
 }
 
 /* =========================
-   DEFAULT EXPORT (tiện import)
-   ========================= */
+   DEFAULT EXPORT
+========================= */
 const VocabularyService = {
   getAllVocabularies,
+  getAllVocabulariesByTestId,
   getVocabularyById,
   searchVocabularies,
+  getRandomVocabularies,
   createVocabulary,
   updateVocabulary,
   deleteVocabulary,
-  getAllVocabulariesByTestId,
-  getRandomVocabularies,
 };
 
 export default VocabularyService;

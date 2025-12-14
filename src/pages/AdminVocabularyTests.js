@@ -6,8 +6,8 @@ import CreateVocabularyTestButton from '../components/CreateVocabularyTestButton
 import CreateVocabularyWithAIButton from '../components/CreateVocabularyWithAIButton';
 import LoadingSpinner from '../components/LoadingSpinner';
 import Toast from '../components/Toast';
-import DeleteTestModal from '../components/DeleteTestModal';
-import TestDetailModal from '../components/TestDetailModal';
+import DeleteTestModal from '../components/AdminDeleteTestModal';
+import TestDetailModal from '../components/AdminTestDetailModal';
 
 const AdminVocabularyTests = () => {
   const { user } = useAuth();
@@ -569,10 +569,10 @@ const AdminVocabularyTests = () => {
 
       {/* Modals */}
       <DeleteTestModal
-        show={showDeleteModal}
+        isOpen={showDeleteModal}
         onClose={() => setShowDeleteModal(false)}
-        onConfirm={handleDeleteConfirm}
-        testTitle={testToDelete?.test_title}
+        test={testToDelete}
+        onDeleteConfirmed={handleDeleteConfirm}
       />
 
       <TestDetailModal

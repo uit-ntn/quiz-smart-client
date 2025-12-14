@@ -4,6 +4,7 @@ import multipleChoiceService from "../services/multipleChoiceService";
 import testService from "../services/testService";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
+import AdminQuestionModal from "../components/AdminQuestionModal";
 
 /* ---------- Small UI helpers ---------- */
 const Badge = ({ children, tone = "sky" }) => {
@@ -20,13 +21,7 @@ const Badge = ({ children, tone = "sky" }) => {
   );
 };
 
-const initialForm = {
-  question: "",
-  options: ["", "", "", ""],
-  correct_answers: [],
-  explanation: "",
-  test_id: "",
-};
+
 
 const AdminMultipleChoices = () => {
   const [questions, setQuestions] = useState([]);
@@ -37,13 +32,12 @@ const AdminMultipleChoices = () => {
   const [searchTerm, setSearchTerm] = useState("");
 
   // modals
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
+  const [showQuestionModal, setShowQuestionModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
 
   const [selectedQuestion, setSelectedQuestion] = useState(null);
-  const [formData, setFormData] = useState(initialForm);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   // test info cache
   const [tests, setTests] = useState({});
@@ -155,121 +149,33 @@ const AdminMultipleChoices = () => {
 
   /* -------------------- CRUD Handlers -------------------- */
   const openCreate = () => {
-    setFormData(initialForm);
-    setShowCreateModal(true);
+    setSelectedQuestion(null);
+    setIsEditMode(false);
+    setShowQuestionModal(true);
+    setShowDetailModal(false); // Close detail modal if open
   };
 
   const openEdit = (q) => {
     setSelectedQuestion(q);
-    
-    // Convert options objects to strings if needed
-    const normalizedOptions = q.options?.length 
-      ? q.options.map(op => typeof op === 'string' ? op : op?.text || '')
-      : ["", "", "", ""];
-    
-    // Convert correct_answers array to boolean array for checkboxes
-    const correctAnswers = q.correct_answers || [];
-    
-    setFormData({
-      question: q.question_text || "",
-      options: normalizedOptions,
-      correct_answers: correctAnswers,
-      explanation: typeof q.explanation === 'object' && q.explanation.correct 
-        ? q.explanation.correct 
-        : q.explanation || "",
-      test_id: q.test_id || "",
-    });
-    setShowEditModal(true);
+    setIsEditMode(true);
+    setShowQuestionModal(true);
+    setShowDetailModal(false); // Close detail modal if open
   };
 
   const openDelete = (q) => {
     setSelectedQuestion(q);
     setShowDeleteModal(true);
+    setShowDetailModal(false); // Close detail modal if open
   };
 
   const openDetail = (q) => {
     setSelectedQuestion(q);
     setShowDetailModal(true);
+    setShowQuestionModal(false); // Close question modal if open
+    setIsEditMode(false);
   };
 
-  const validateForm = () => {
-    const filled = (formData.options || []).filter((o) => o.trim() !== "");
-    if (filled.length < 2) {
-      alert("Vui lòng nhập ít nhất 2 đáp án!");
-      return false;
-    }
-    if (!formData.correct_answers || formData.correct_answers.length === 0) {
-      alert("Vui lòng chọn ít nhất một đáp án đúng!");
-      return false;
-    }
-    if (!formData.question.trim()) {
-      alert("Câu hỏi không được để trống!");
-      return false;
-    }
-    return true;
-  };
 
-  const handleCreateSubmit = async (e) => {
-    e.preventDefault();
-    if (!validateForm()) return;
-    try {
-      // Transform to new schema
-      const payload = {
-        question_text: formData.question,
-        options: formData.options.map((text, idx) => ({
-          label: String.fromCharCode(65 + idx), // A, B, C, D
-          text: text
-        })).filter(opt => opt.text.trim() !== ''), // Only include non-empty options
-        correct_answers: formData.correct_answers,
-        explanation: {
-          correct: formData.explanation || ""
-        },
-        test_id: formData.test_id
-      };
-      
-      const created = await multipleChoiceService.createMultipleChoice(payload);
-      setQuestions((prev) => [created, ...prev]);
-      setShowCreateModal(false);
-      setFormData(initialForm);
-    } catch (e) {
-      console.error(e);
-      alert("Không thể tạo câu hỏi. Vui lòng thử lại!");
-    }
-  };
-
-  const handleEditSubmit = async (e) => {
-    e.preventDefault();
-    if (!selectedQuestion) return;
-    if (!validateForm()) return;
-    try {
-      // Transform to new schema
-      const payload = {
-        question_text: formData.question,
-        options: formData.options.map((text, idx) => ({
-          label: String.fromCharCode(65 + idx), // A, B, C, D
-          text: text
-        })).filter(opt => opt.text.trim() !== ''), // Only include non-empty options
-        correct_answers: formData.correct_answers,
-        explanation: {
-          correct: formData.explanation || ""
-        },
-        test_id: formData.test_id
-      };
-      
-      const updated = await multipleChoiceService.updateMultipleChoice(
-        selectedQuestion._id,
-        payload
-      );
-      setQuestions((prev) =>
-        prev.map((q) => (q._id === selectedQuestion._id ? updated : q))
-      );
-      setShowEditModal(false);
-      setSelectedQuestion(null);
-    } catch (e) {
-      console.error(e);
-      alert("Không thể cập nhật câu hỏi. Vui lòng thử lại!");
-    }
-  };
 
   const handleDeleteConfirm = async () => {
     if (!selectedQuestion) return;
@@ -284,11 +190,22 @@ const AdminMultipleChoices = () => {
     }
   };
 
-  const handleOptionChange = (index, value) => {
-    const next = [...formData.options];
-    next[index] = value;
-    setFormData((p) => ({ ...p, options: next }));
+  const handleQuestionSaved = (response) => {
+    if (isEditMode) {
+      // Update existing question
+      setQuestions((prev) =>
+        prev.map((q) => (q._id === selectedQuestion._id ? response : q))
+      );
+    } else {
+      // Add new question
+      setQuestions((prev) => [response, ...prev]);
+    }
+    setShowQuestionModal(false);
+    setSelectedQuestion(null);
+    setIsEditMode(false);
   };
+
+
 
   const correctLetter = (idx) =>
     typeof idx === "number" ? String.fromCharCode(65 + idx) : "—";
@@ -455,44 +372,22 @@ const AdminMultipleChoices = () => {
           </div>
         </div>
 
-        {/* Create Modal */}
-        {showCreateModal && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto shadow-xl">
-              <h3 className="text-xl font-semibold text-black mb-4">Thêm câu hỏi mới</h3>
-              <QuestionForm
-                formData={formData}
-                setFormData={setFormData}
-                handleOptionChange={handleOptionChange}
-                onCancel={() => setShowCreateModal(false)}
-                onSubmit={handleCreateSubmit}
-                buttonText="Tạo mới"
-                allTests={allTests}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Edit Modal */}
-        {showEditModal && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto shadow-xl">
-              <h3 className="text-xl font-semibold text-black mb-4">Chỉnh sửa câu hỏi</h3>
-              <QuestionForm
-                formData={formData}
-                setFormData={setFormData}
-                handleOptionChange={handleOptionChange}
-                onCancel={() => setShowEditModal(false)}
-                onSubmit={handleEditSubmit}
-                buttonText="Cập nhật"
-                allTests={allTests}
-              />
-            </div>
-          </div>
-        )}
+        {/* Question Modal */}
+        <AdminQuestionModal
+          isOpen={showQuestionModal}
+          onClose={() => {
+            setShowQuestionModal(false);
+            setSelectedQuestion(null);
+            setIsEditMode(false);
+          }}
+          testId={null}
+          testType="multiple_choice"
+          question={isEditMode ? selectedQuestion : null}
+          onQuestionSaved={handleQuestionSaved}
+        />
 
         {/* Delete Modal */}
-        {showDeleteModal && (
+        {showDeleteModal && !showQuestionModal && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
               <div className="flex items-center gap-3 mb-4">
@@ -526,7 +421,7 @@ const AdminMultipleChoices = () => {
         )}
 
         {/* Detail Modal */}
-        {showDetailModal && selectedQuestion && (
+        {showDetailModal && !showQuestionModal && selectedQuestion && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
               <div className="flex items-center justify-between p-6 border-b">
@@ -682,133 +577,58 @@ const AdminMultipleChoices = () => {
             </div>
           </div>
         )}
+
+        {/* Question Modal */}
+        {showQuestionModal && !showDetailModal && (
+          <AdminQuestionModal
+            isOpen={showQuestionModal}
+            onClose={() => {
+              setShowQuestionModal(false);
+              setSelectedQuestion(null);
+              setIsEditMode(false);
+            }}
+            questionData={isEditMode ? selectedQuestion : null}
+            testType="multiple-choice"
+            onQuestionSaved={handleQuestionSaved}
+            allTests={allTests}
+          />
+        )}
+
+        {/* Delete Modal */}
+        {showDeleteModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg max-w-md w-full p-6">
+              <h3 className="text-lg font-semibold text-black mb-4">
+                Xóa câu hỏi
+              </h3>
+              <p className="text-gray-600 mb-6">
+                Bạn có chắc chắn muốn xóa câu hỏi này không? Hành động này không thể hoàn tác.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setSelectedQuestion(null);
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleDeleteConfirm}
+                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                >
+                  Xóa
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </AdminLayout>
   );
 };
 
-/* ---------- Form component (stateless) ---------- */
-const QuestionForm = ({
-  formData,
-  setFormData,
-  handleOptionChange,
-  onCancel,
-  onSubmit,
-  buttonText,
-  allTests,
-}) => {
-  return (
-    <form onSubmit={onSubmit} className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium text-black mb-2">
-          Bài kiểm tra <span className="text-rose-600">*</span>
-        </label>
-        <select
-          value={formData.test_id}
-          onChange={(e) => setFormData({ ...formData, test_id: e.target.value })}
-          required
-          className="w-full px-4 py-2 rounded-lg border border-indigo-200 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-black"
-        >
-          <option value="">Chọn bài kiểm tra...</option>
-          {allTests.map(test => (
-            <option key={test._id} value={test._id}>
-              {test.test_title} - {test.main_topic}
-            </option>
-          ))}
-        </select>
-      </div>
 
-      <div>
-        <label className="block text-sm font-medium text-black mb-2">
-          Câu hỏi <span className="text-rose-600">*</span>
-        </label>
-        <textarea
-          value={formData.question}
-          onChange={(e) => setFormData({ ...formData, question: e.target.value })}
-          required
-          rows={3}
-          className="w-full px-4 py-2 rounded-lg border border-indigo-200 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-black placeholder:text-indigo-400"
-          placeholder="Nhập câu hỏi..."
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-black mb-2">
-          Các đáp án <span className="text-rose-600">*</span>
-        </label>
-        <div className="space-y-3">
-          {formData.options.map((option, idx) => {
-            const optionLabel = String.fromCharCode(65 + idx);
-            const isCorrect = formData.correct_answers.includes(optionLabel);
-            
-            return (
-              <div key={idx} className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  checked={isCorrect}
-                  onChange={(e) => {
-                    const newCorrectAnswers = [...formData.correct_answers];
-                    if (e.target.checked) {
-                      if (!newCorrectAnswers.includes(optionLabel)) {
-                        newCorrectAnswers.push(optionLabel);
-                      }
-                    } else {
-                      const index = newCorrectAnswers.indexOf(optionLabel);
-                      if (index > -1) {
-                        newCorrectAnswers.splice(index, 1);
-                      }
-                    }
-                    setFormData({ ...formData, correct_answers: newCorrectAnswers });
-                  }}
-                  className="w-5 h-5 text-indigo-600 focus:ring-indigo-500 rounded"
-                />
-                <input
-                  type="text"
-                  value={option}
-                  onChange={(e) => handleOptionChange(idx, e.target.value)}
-                  required={idx < 2}
-                  className="flex-1 px-4 py-2 rounded-lg border border-indigo-200 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-black placeholder:text-indigo-400"
-                  placeholder={`Đáp án ${optionLabel}`}
-                />
-              </div>
-            );
-          })}
-        </div>
-        <p className="text-xs text-indigo-900/70 mt-2">
-          Chọn checkbox để đánh dấu các đáp án đúng (có thể chọn nhiều)
-        </p>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-black mb-2">Giải thích</label>
-        <textarea
-          value={formData.explanation}
-          onChange={(e) => setFormData({ ...formData, explanation: e.target.value })}
-          rows={3}
-          className="w-full px-4 py-2 rounded-lg border border-indigo-200 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-black placeholder:text-indigo-400"
-          placeholder="Giải thích đáp án đúng (tùy chọn)..."
-        />
-      </div>
-
-
-
-      <div className="flex gap-3 pt-4">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="flex-1 px-4 py-2 rounded-lg border border-indigo-200 bg-white text-indigo-900 hover:bg-indigo-50"
-        >
-          Hủy
-        </button>
-        <button
-          type="submit"
-          className="flex-1 px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
-        >
-          {buttonText}
-        </button>
-      </div>
-    </form>
-  );
-};
 
 export default AdminMultipleChoices;

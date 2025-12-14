@@ -31,27 +31,33 @@ const teamMembers = [
 
 const milestones = [
   {
-    year: "2025",
+    year: "11/2025",
     title: "Ý tưởng khởi nguồn",
     description:
-      "Sinh viên Nguyễn Thanh Nhân bắt đầu phát triển ứng dụng quizz thông minh.",
+      "Sinh viên Nguyễn Thanh Nhân bắt đầu nghiên cứu và phát triển ý tưởng ứng dụng quizz thông minh.",
   },
   {
-    year: "2025",
+    year: "12/2025",
     title: "Phát triển MVP",
     description:
-      "Hoàn thành phiên bản đầu tiên với tính năng quizz đa dạng và phát âm AI.",
+      "Hoàn thành phiên bản đầu tiên với tính năng quizz đa dạng, phát âm AI và giao diện thân thiện.",
   },
   {
-    year: "2025",
+    year: "12/2025",
     title: "Ra mắt QuizSmart",
-    description: "Chính thức giới thiệu ứng dụng với cộng đồng học tập.",
+    description: "Chính thức giới thiệu ứng dụng với cộng đồng học tập, nhận phản hồi tích cực từ người dùng.",
   },
   {
-    year: "2025",
+    year: "12/2025",
+    title: "Cải tiến UX và sửa lỗi",
+    description:
+      "Đơn giản hóa cài đặt test, sửa lỗi lưu kết quả, thêm chức năng xóa kết quả và thay thế alert bằng toast notifications.",
+  },
+  {
+    year: "2026",
     title: "Tương lai",
     description:
-      "Mở rộng tính năng AI cá nhân hóa và cộng đồng học tập.",
+      "Mở rộng tính năng AI cá nhân hóa, cộng đồng học tập và tích hợp thêm nhiều ngôn ngữ.",
   },
 ];
 

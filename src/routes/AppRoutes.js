@@ -20,9 +20,8 @@ import VocabularyDebugPage from '../pages/VocabularyDebugPage';
 import VocabularyTestList from '../pages/VocabularyTestList';
 import VocabularyTestSettings from '../pages/VocabularyTestSettings';
 import VocabularyTestTake from '../pages/VocabularyTestTake';
-import VocabularyTestReview from '../pages/VocabularyTestReview';
+import ProfileTestReview from '../pages/ProfileTestReview';
 import VocabularyTestResult from '../pages/VocabularyTestResult';
-import MyTestResults from '../pages/MyTestResults';
 import AdminDashboard from '../pages/AdminDashboard';
 import AdminUsers from '../pages/AdminUsers';
 import AdminTestResults from '../pages/AdminTestResults';
@@ -154,14 +153,10 @@ const AppRoutes = () => {
       } />
       <Route path="/vocabulary/test-result/:resultId/review" element={
         <ProtectedRoute>
-          <VocabularyTestReview />
+          <ProfileTestReview />
         </ProtectedRoute>
       } />
-      <Route path="/vocabulary/my-results" element={
-        <ProtectedRoute>
-          <MyTestResults />
-        </ProtectedRoute>
-      } />
+    
       
       {/* Future routes */}
       <Route path="/settings" element={<div className="container py-5 text-center"><h2>Cài đặt (Đang phát triển)</h2></div>} />

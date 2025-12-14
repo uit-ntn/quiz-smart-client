@@ -61,17 +61,10 @@ const VocabularyTestPreview = () => {
   if (loading) return <LoadingSpinner message="Đang tải danh sách từ vựng..." />;
   if (error) return <ErrorMessage error={error} onRetry={() => window.location.reload()} />;
 
-  const breadcrumbItems = [
-    { label: 'Trang chủ', path: '/' },
-    { label: 'Từ vựng', path: '/vocabulary/topics' },
-    { label: 'Danh sách từ vựng', path: '#' }
-  ];
-
   return (
     <VocabularyLayout
       title="Danh sách từ vựng"
       description="Xem qua tất cả từ vựng trong bài kiểm tra"
-      breadcrumbItems={breadcrumbItems}
       maxWidth="7xl"
     >
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">

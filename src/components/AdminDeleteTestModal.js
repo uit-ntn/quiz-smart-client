@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const DeleteTestModal = ({ isOpen, onClose, test, onDeleteConfirmed }) => {
+const AdminDeleteTestModal = ({ isOpen, onClose, test, onDeleteConfirmed }) => {
   const [deleteType, setDeleteType] = useState('soft'); // 'soft' or 'hard'
   const [loading, setLoading] = useState(false);
   const [confirmText, setConfirmText] = useState('');
@@ -222,4 +222,4 @@ const DeleteTestModal = ({ isOpen, onClose, test, onDeleteConfirmed }) => {
   );
 };
 
-export default DeleteTestModal;
+export default AdminDeleteTestModal;

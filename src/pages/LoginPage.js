@@ -1,15 +1,26 @@
 import React, { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import authService from "../services/authService";
-import BackendAlert from "../components/BackendAlert";
+import Toast from "../components/Toast";
 
 const LoginPage = () => {
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [showBackendAlert, setShowBackendAlert] = useState(false);
+  
+  // Toast state
+  const [toast, setToast] = useState({ message: '', type: 'success', isVisible: false });
+  
   const navigate = useNavigate();
   const location = useLocation();
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type, isVisible: true });
+  };
+
+  const hideToast = () => {
+    setToast(prev => ({ ...prev, isVisible: false }));
+  };
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -49,7 +60,7 @@ const LoginPage = () => {
         error.message.includes("Backend server chưa chạy") ||
         error.message.includes("Backend server is not running")
       ) {
-        setShowBackendAlert(true);
+        showToast("Backend server chưa chạy. Vui lòng khởi động backend trước khi đăng nhập bằng Google.", "error");
       } else {
         setError(error.message);
       }
@@ -234,9 +245,12 @@ const LoginPage = () => {
             </button>
           </form>
 
-          <BackendAlert
-            show={showBackendAlert}
-            onClose={() => setShowBackendAlert(false)}
+          {/* Toast */}
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            isVisible={toast.isVisible}
+            onClose={hideToast}
           />
         </div>
       </div>

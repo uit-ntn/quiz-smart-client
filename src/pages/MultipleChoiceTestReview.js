@@ -1,636 +1,619 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import TestService from '../services/testService';
-import testResultService from '../services/testResultService';
-import LoadingSpinner from '../components/LoadingSpinner';
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
+import TestService from "../services/testService";
+import testResultService from "../services/testResultService";
+
+import Toast from '../components/Toast';
 
 const MultipleChoiceTestReview = () => {
   const { testId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [test, setTest] = useState(null);
+  const DRAFT_KEY = `mc_draft_${testId}`;
+
   const [testInfo, setTestInfo] = useState(null);
+
+  const [test, setTest] = useState(null);
   const [questions, setQuestions] = useState([]);
-  const [userAnswers, setUserAnswers] = useState({});
+  const [userAnswers, setUserAnswers] = useState({}); // qid -> [labels]
   const [results, setResults] = useState([]);
+
   const [score, setScore] = useState(0);
   const [selectedQuestion, setSelectedQuestion] = useState(0);
+
   const [draftResultId, setDraftResultId] = useState(null);
   const [isSaved, setIsSaved] = useState(false);
+
   const [loading, setLoading] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // Toast state
+  const [toast, setToast] = useState({ message: '', type: 'success', isVisible: false });
+  
+  const isAnswered = (ua) => (Array.isArray(ua) ? ua.length > 0 : !!ua);
 
+  // helper: get draft id from query
+  const getDraftIdFromQuery = () => {
+    const sp = new URLSearchParams(location.search);
+    const id = sp.get("draft");
+    return id && id.trim() ? id.trim() : null;
+  };
 
+  // fetch test info (optional UI)
   useEffect(() => {
     const fetchTestData = async () => {
       try {
         const data = await TestService.getTestById(testId);
-        setTestInfo(data);
-      } catch (error) {
-        console.error('Error fetching test data:', error);
+        setTestInfo(data?.test || data);
+      } catch (err) {
+        console.error("Error fetching test data:", err);
       }
     };
-
     fetchTestData();
   }, [testId]);
 
+  // init from location.state OR fetch draft from DB
   useEffect(() => {
-    if (location.state) {
-      const { 
-        test, 
-        questions, 
-        userAnswers, 
-        results, 
-        draftResultId,
-        percentage,
-        correctCount,
-        totalQuestions
-      } = location.state;
-      
-      setTest(test);
-      setQuestions(questions);
-      setUserAnswers(userAnswers);
-      setResults(results);
-      setDraftResultId(draftResultId);
+    const init = async () => {
+      try {
+        setPageLoading(true);
+        setError(null);
 
-      // Use percentage from state or calculate from results
-      if (percentage !== undefined) {
-        setScore(percentage);
-      } else {
-        const correctCnt = results.filter((r) => r.isCorrect).length;
-        const totalQ = results.length;
-        const calculatedScore = totalQ > 0 ? Math.round((correctCnt / totalQ) * 100) : 0;
-        setScore(calculatedScore);
+        // 1) if have state -> use it immediately
+        if (location.state?.test && location.state?.questions?.length) {
+          const {
+            test,
+            questions,
+            userAnswers,
+            results,
+            draftResultId,
+            percentage,
+          } = location.state;
+
+          setTest(test);
+          setQuestions(questions || []);
+          setUserAnswers(userAnswers || {});
+          setResults(results || []);
+          setDraftResultId(draftResultId || null);
+
+          if (draftResultId) localStorage.setItem(DRAFT_KEY, String(draftResultId));
+
+          if (percentage !== undefined) setScore(percentage);
+          else {
+            const correctCnt = (results || []).filter((r) => r.isCorrect).length;
+            const totalQ = (results || []).length;
+            setScore(totalQ > 0 ? Math.round((correctCnt / totalQ) * 100) : 0);
+          }
+
+          setPageLoading(false);
+          return;
+        }
+
+        // 2) if no state -> try to fetch draft by id (query or localStorage)
+        const draftFromQuery = getDraftIdFromQuery();
+        const draftFromLocal = localStorage.getItem(DRAFT_KEY);
+        const draftId = draftFromQuery || draftFromLocal;
+
+        if (!draftId) {
+          navigate(`/multiple-choice/test/${testId}/settings`);
+          return;
+        }
+
+        setDraftResultId(draftId);
+
+        // fetch draft result
+        const doc = await testResultService.getTestResultById(draftId);
+
+        // status check
+        if (doc?.status === "active") setIsSaved(true);
+
+        // build questions from snapshot answers
+        const answers = Array.isArray(doc?.answers) ? doc.answers : [];
+        const builtQuestions = answers.map((a) => ({
+          _id: a.question_id,
+          question_text: a.question_text,
+          options: a.options || [],
+          correct_answers: a.correct_answers || [],
+          // explanation không có trong snapshot BE mới (nếu bạn muốn thì thêm vào schema/payload)
+          explanation: a.explanation || null,
+        }));
+
+        // build userAnswers map
+        const ua = {};
+        answers.forEach((a) => {
+          ua[String(a.question_id)] = Array.isArray(a.user_answers) ? a.user_answers : [];
+        });
+
+        // build results
+        const builtResults = answers.map((a) => ({
+          questionId: a.question_id,
+          userAnswer: Array.isArray(a.user_answers) ? a.user_answers : [],
+          correctAnswer: Array.isArray(a.correct_answers) ? a.correct_answers : [],
+          isCorrect: !!a.is_correct,
+          explanation: a.explanation || null,
+        }));
+
+        // compute score
+        const correctCnt = builtResults.filter((r) => r.isCorrect).length;
+        const totalQ = builtResults.length;
+        const pct = totalQ > 0 ? Math.round((correctCnt / totalQ) * 100) : 0;
+
+        setQuestions(builtQuestions);
+        setUserAnswers(ua);
+        setResults(builtResults);
+
+        // build simple test from snapshot
+        setTest({
+          test_title: doc?.test_snapshot?.test_title,
+          main_topic: doc?.test_snapshot?.main_topic,
+          sub_topic: doc?.test_snapshot?.sub_topic,
+          difficulty: doc?.test_snapshot?.difficulty,
+          test_type: doc?.test_snapshot?.test_type,
+          time_limit_minutes: doc?.test_snapshot?.time_limit_minutes,
+        });
+
+        setScore(pct);
+        setPageLoading(false);
+      } catch (e) {
+        console.error(e);
+        setError(e?.message || "Không thể tải dữ liệu bài làm");
+        setPageLoading(false);
       }
-    } else {
-      // If no state, redirect back
-      navigate(`/multiple-choice/test/${testId}/settings`);
-    }
-  }, [location.state, testId, navigate]);
+    };
+
+    init();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [testId]);
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type, isVisible: true });
+  };
+
+  const hideToast = () => {
+    setToast(prev => ({ ...prev, isVisible: false }));
+  };
 
   const saveResult = async () => {
     if (!draftResultId) {
-      setError('Không tìm thấy bản nháp kết quả để lưu');
+      setError("Không tìm thấy bản nháp kết quả để lưu");
       return;
     }
 
     try {
       setLoading(true);
       setError(null);
-      
-      // Update status from draft to active
-      await testResultService.updateStatusById(draftResultId, 'active');
+
+      await testResultService.updateStatusById(draftResultId, "active");
       setIsSaved(true);
-      
-      // Show success message
-      alert('Đã lưu kết quả thành công!');
+
+      // optional: giữ draftId để mở lại
+      localStorage.setItem(DRAFT_KEY, String(draftResultId));
+
+      showToast('Đã lưu kết quả thành công!', 'success');
     } catch (err) {
-      console.error('Error saving result:', err);
-      setError('Không thể lưu kết quả. Vui lòng thử lại!');
+      console.error("Error saving result:", err);
+      setError(err?.message || "Không thể lưu kết quả. Vui lòng thử lại!");
     } finally {
       setLoading(false);
     }
   };
 
-  const getScoreColor = (score) => {
-    if (score >= 80) return 'success';
-    if (score >= 65) return 'warning';
-    if (score >= 50) return 'info';
-    return 'danger';
+  const getScoreMessage = (s) => {
+    if (s >= 90) return "Xuất sắc!";
+    if (s >= 80) return "Rất tốt!";
+    if (s >= 65) return "Khá ổn!";
+    if (s >= 50) return "Trung bình";
+    return "Cần cố gắng hơn";
   };
 
-  const getScoreMessage = (score) => {
-    if (score >= 90) return 'Xuất sắc!';
-    if (score >= 80) return 'Tốt lắm!';
-    if (score >= 65) return 'Khá tốt!';
-    if (score >= 50) return 'Trung bình';
-    return 'Cần cố gắng hơn';
-  };
+  const correctCount = useMemo(() => results.filter((r) => r.isCorrect).length, [results]);
+  const incorrectCount = useMemo(
+    () => results.filter((r) => !r.isCorrect && isAnswered(r.userAnswer)).length,
+    [results]
+  );
+  const unansweredCount = useMemo(() => results.filter((r) => !isAnswered(r.userAnswer)).length, [results]);
 
-  if (!test || questions.length === 0) {
+  const currentQuestion = questions[selectedQuestion];
+  const currentResult = results.find((r) => String(r.questionId) === String(currentQuestion?._id));
+
+  const selectedLabels = Array.isArray(userAnswers[currentQuestion?._id])
+    ? userAnswers[currentQuestion._id]
+    : [];
+
+  const goPrev = useCallback(() => setSelectedQuestion((x) => Math.max(0, x - 1)), []);
+  const goNext = useCallback(
+    () => setSelectedQuestion((x) => Math.min(Math.max(questions.length - 1, 0), x + 1)),
+    [questions.length]
+  );
+
+  // keyboard nav (desktop)
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "ArrowLeft") goPrev();
+      if (e.key === "ArrowRight") goNext();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [goPrev, goNext]);
+
+  if (pageLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Đang tải...</p>
+      <div className="min-h-screen bg-slate-100 flex items-center justify-center">
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-md p-6 text-center">
+          <div className="w-10 h-10 border-4 border-slate-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-slate-600 text-sm">Đang tải dữ liệu bài làm…</p>
         </div>
       </div>
     );
   }
 
-  const correctCount = results.filter((r) => r.isCorrect).length;
-  const incorrectCount = results.filter((r) => !r.isCorrect && r.userAnswer).length;
-  const unansweredCount = results.filter((r) => !r.userAnswer).length;
-  const currentQuestion = questions[selectedQuestion];
-  const currentResult = results.find((r) => r.questionId === currentQuestion._id);
+  if (!test || questions.length === 0) {
+    return (
+      <div className="min-h-screen bg-slate-100 flex items-center justify-center">
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 shadow-md p-6 text-center max-w-md">
+          <p className="text-rose-700 text-sm font-semibold">Không có dữ liệu bài làm để hiển thị.</p>
+          <p className="text-rose-600 text-xs mt-2">{error || "Vui lòng làm bài lại."}</p>
+          <button
+            onClick={() => navigate(`/multiple-choice/test/${testId}/settings`)}
+            className="mt-4 rounded-xl bg-rose-600 text-white px-4 py-2 text-sm font-semibold hover:bg-rose-700"
+          >
+            Về trang cài đặt
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      {/* Enhanced decorative elements */}
-      <div className="absolute inset-0 bg-grid-pattern opacity-[0.02] pointer-events-none" />
-      <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-blue-400/8 to-indigo-400/8 rounded-full blur-3xl" />
-      <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-indigo-400/8 to-blue-400/8 rounded-full blur-3xl" />
+    <div className="h-screen bg-slate-100 overflow-hidden">
+      {/* container */}
+      <div className="mx-auto max-w-7xl h-full px-3 sm:px-4 py-3 sm:py-4 flex flex-col">
+        {/* top bar */}
+        <div className="mb-3 flex items-center justify-between gap-2 shrink-0">
+          <button
+            onClick={() => navigate("/multiple-choice/topics")}
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-md hover:bg-slate-50"
+          >
+            <span className="text-lg leading-none">←</span>
+            Về danh sách
+          </button>
 
-      <div className="relative py-4 px-3">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {/* Main Content */}
-            <div className="lg:col-span-2 space-y-4">
-              {/* Enhanced Score Card */}
-              <div className="relative rounded-xl overflow-hidden shadow-lg border border-gray-200 bg-white">
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-indigo-50" />
-                <div className="relative p-4 text-center">
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
-                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-                    </svg>
-                  </div>
-                  <h2 className="text-3xl font-bold text-gray-800 mb-2">{score}%</h2>
-                  <h4 className="text-lg font-semibold text-blue-600 mb-4">
-                    {getScoreMessage(score)}
-                  </h4>
+          <div className="hidden sm:flex items-center gap-2">
+            <span className="text-xs text-slate-500">Câu hiện tại</span>
+            <span className="rounded-lg bg-white border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-700 shadow-md">
+              {selectedQuestion + 1}/{questions.length}
+            </span>
+          </div>
+        </div>
 
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-lg mx-auto">
-                    <div className="relative rounded-lg overflow-hidden border border-gray-200 bg-white shadow-sm">
-                      <div className="absolute inset-0 bg-gradient-to-br from-gray-50 to-gray-100/50" />
-                      <div className="relative p-3">
-                        <div className="flex items-center">
-                          <div className="w-6 h-6 rounded-md bg-gray-500 flex items-center justify-center mr-2">
-                            <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                            </svg>
-                          </div>
-                          <div>
-                            <p className="text-lg font-bold text-gray-700">{results.length}</p>
-                            <p className="text-xs text-gray-500">Tổng câu</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="relative rounded-lg overflow-hidden border border-emerald-200 bg-white shadow-sm">
-                      <div className="absolute inset-0 bg-gradient-to-br from-emerald-50 to-emerald-100/50" />
-                      <div className="relative p-3">
-                        <div className="flex items-center">
-                          <div className="w-6 h-6 rounded-md bg-emerald-500 flex items-center justify-center mr-2">
-                            <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                            </svg>
-                          </div>
-                          <div>
-                            <p className="text-lg font-bold text-emerald-700">{correctCount}</p>
-                            <p className="text-xs text-gray-500">Đúng</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="relative rounded-lg overflow-hidden border border-red-200 bg-white shadow-sm">
-                      <div className="absolute inset-0 bg-gradient-to-br from-red-50 to-red-100/50" />
-                      <div className="relative p-3">
-                        <div className="flex items-center">
-                          <div className="w-6 h-6 rounded-md bg-red-500 flex items-center justify-center mr-2">
-                            <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </div>
-                          <div>
-                            <p className="text-lg font-bold text-red-700">{incorrectCount}</p>
-                            <p className="text-xs text-gray-500">Sai</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="relative rounded-lg overflow-hidden border border-amber-200 bg-white shadow-sm">
-                      <div className="absolute inset-0 bg-gradient-to-br from-amber-50 to-amber-100/50" />
-                      <div className="relative p-3">
-                        <div className="flex items-center">
-                          <div className="w-6 h-6 rounded-md bg-amber-500 flex items-center justify-center mr-2">
-                            <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                          </div>
-                          <div>
-                            <p className="text-lg font-bold text-amber-700">{unansweredCount}</p>
-                            <p className="text-xs text-gray-500">Chưa làm</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Action Buttons */}
-                  <div className="mt-6 pt-4 border-t border-gray-200">
-                    <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                      {draftResultId && !isSaved && (
-                        <button
-                          onClick={saveResult}
-                          disabled={loading}
-                          className="px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-2"
-                        >
-                          {loading ? (
-                            <>
-                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                              Đang lưu...
-                            </>
-                          ) : (
-                            <>
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                              </svg>
-                              Lưu kết quả
-                            </>
-                          )}
-                        </button>
-                      )}
-                      
-                      {isSaved && (
-                        <div className="flex items-center gap-2 text-green-600 font-semibold">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                          </svg>
-                          Đã lưu kết quả
-                        </div>
-                      )}
-                      
-                      <button
-                        onClick={() => navigate(`/multiple-choice/test/${testId}/settings`)}
-                        className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-2"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                        Làm lại bài test
-                      </button>
-                      
-                      <button
-                        onClick={() => navigate('/multiple-choice')}
-                        className="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-2"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
-                        </svg>
-                        Về danh sách test
-                      </button>
-                    </div>
-                    
-                    {error && (
-                      <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm text-center">
-                        {error}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Enhanced Test Info */}
-              <div className="relative rounded-xl overflow-hidden shadow-lg border border-blue-200 bg-white mb-4">
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-indigo-50" />
-                <div className="relative p-4">
-                  <div className="flex items-center mb-3">
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center mr-3">
-                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </div>
-                    <h3 className="text-lg font-bold text-gray-800">Thông tin bài kiểm tra</h3>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <p className="text-sm text-gray-600">Tiêu đề</p>
-                      <p className="font-semibold text-gray-800">{testInfo?.test_title}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-sm text-gray-600">Chủ đề</p>
-                      <p className="font-semibold text-gray-800">{testInfo?.main_topic} - {testInfo?.sub_topic}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-sm text-gray-600">Độ khó</p>
-                      <span className={`inline-flex items-center px-2 py-1 rounded-md text-sm font-medium capitalize ${test.difficulty === 'easy' ? 'bg-green-100 text-green-800' :
-                        test.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-red-100 text-red-800'
-                        }`}>
-                        {test.difficulty}
-                      </span>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-sm text-gray-600">Thời gian giới hạn</p>
-                      <p className="font-semibold text-gray-800">{test.time_limit_minutes} phút</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Enhanced Question Review */}
-              <div className="relative rounded-xl overflow-hidden shadow-lg border border-gray-200 bg-white mb-4">
-                <div className="absolute inset-0 bg-gradient-to-br from-gray-50 to-blue-50/30" />
-                <div className="relative">
-                  {/* Question Header */}
-                  <div className="bg-gradient-to-r from-blue-500 to-indigo-600 px-4 py-3">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-base font-bold text-white">
-                        Câu {selectedQuestion + 1} / {questions.length}
-                      </h3>
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white font-bold text-sm ${currentResult?.isCorrect ? 'bg-emerald-500' : 'bg-red-500'
-                        }`}>
-                        {currentResult?.isCorrect ? '✓' : '✗'}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="p-4">
-                    <h4 className="text-lg font-semibold text-gray-800 mb-4 leading-relaxed">
-                      {currentQuestion.question_text}
-                    </h4>
-
-                    <div className="space-y-2 mb-4">
-                      {currentQuestion.options.map((option) => {
-                        const isUserAnswer = userAnswers[currentQuestion._id] === option.label;
-                        const isCorrectAnswer = currentQuestion.correct_answers.includes(option.label);
-
-                        let optionStyle = 'border-gray-200 bg-gray-50/50';
-                        let iconColor = 'text-gray-400';
-                        let icon = null;
-
-                        if (isCorrectAnswer) {
-                          optionStyle = 'border-emerald-300 bg-emerald-50';
-                          iconColor = 'text-emerald-600';
-                          icon = (
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                            </svg>
-                          );
-                        } else if (isUserAnswer) {
-                          optionStyle = 'border-red-300 bg-red-50';
-                          iconColor = 'text-red-600';
-                          icon = (
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          );
-                        }
-
-                        return (
-                          <div key={option.label} className={`relative rounded-lg border p-3 transition-all duration-200 ${optionStyle}`}>
-                            <div className="flex items-center space-x-3">
-                              <div className={`w-8 h-8 rounded-md flex items-center justify-center font-bold text-sm bg-white border shadow-sm ${isCorrectAnswer ? 'border-emerald-300 text-emerald-700' :
-                                isUserAnswer ? 'border-red-300 text-red-700' :
-                                  'border-gray-300 text-gray-600'
-                                }`}>
-                                {option.label}
-                              </div>
-                              <span className="flex-1 text-gray-800">{option.text}</span>
-                              {icon && (
-                                <div className={`w-6 h-6 rounded-md flex items-center justify-center ${iconColor}`}>
-                                  {icon}
-                                </div>
-                              )}
-                            </div>
-
-                            {/* User choice indicator */}
-                            {isUserAnswer && (
-                              <div className="absolute -top-1 -right-1">
-                                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-lg ${isCorrectAnswer ? 'bg-emerald-500' : 'bg-red-500'
-                                  }`}>
-                                  <svg className="w-2 h-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                  </svg>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {/* Enhanced Explanation */}
-                    <div className={`relative rounded-lg border p-4 ${currentResult?.isCorrect ? 'border-emerald-300 bg-emerald-50' : 'border-red-300 bg-red-50'
-                      }`}>
-                      <div className="flex items-center mb-3">
-                        <div className={`w-6 h-6 rounded-md flex items-center justify-center mr-2 ${currentResult?.isCorrect ? 'bg-emerald-500' : 'bg-red-500'
-                          }`}>
-                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            {currentResult?.isCorrect ? (
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                            ) : (
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                            )}
-                          </svg>
-                        </div>
-                        <h5 className={`font-bold text-base ${currentResult?.isCorrect ? 'text-emerald-800' : 'text-red-800'
-                          }`}>
-                          {currentResult?.isCorrect ? 'Bạn đã trả lời đúng!' : 'Bạn đã trả lời sai'}
-                        </h5>
-                      </div>
-
-                      <div className="space-y-3">
-                        <div>
-                          <p className="font-semibold text-gray-800 mb-1 text-sm">Giải thích đáp án đúng:</p>
-                          <p className="text-gray-700 text-sm leading-relaxed">{currentQuestion.explanation.correct}</p>
-                        </div>
-
-                        {/* Show explanations for all incorrect choices */}
-                        {currentQuestion.explanation.incorrect_choices && Object.keys(currentQuestion.explanation.incorrect_choices).length > 0 && (
-                          <div className="pt-3 border-t border-gray-200">
-                            <p className="font-semibold text-gray-800 mb-2 text-sm">Giải thích các đáp án sai:</p>
-                            <div className="space-y-2">
-                              {Object.entries(currentQuestion.explanation.incorrect_choices).map(([choice, explanation]) => (
-                                <div key={choice} className="flex items-start space-x-2">
-                                  <span className="inline-flex items-center justify-center w-5 h-5 rounded text-xs font-bold bg-red-100 text-red-700 flex-shrink-0 mt-0.5">
-                                    {choice}
-                                  </span>
-                                  <p className="text-gray-700 text-sm leading-relaxed">{explanation}</p>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Enhanced Navigation */}
-              <div className="flex justify-between items-center gap-3 mb-4">
-                <button
-                  className="group flex items-center px-4 py-2 rounded-lg border border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-gray-200 disabled:hover:bg-white shadow-sm hover:shadow-md"
-                  onClick={() => setSelectedQuestion(Math.max(0, selectedQuestion - 1))}
-                  disabled={selectedQuestion === 0}
-                >
-                  <svg className="w-4 h-4 mr-2 text-gray-600 group-hover:text-blue-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-                  </svg>
-                  <span className="font-medium text-gray-700 group-hover:text-blue-700 transition-colors text-sm">Câu trước</span>
-                </button>
-
-                <div className="text-center">
-                  <div className="inline-flex items-center px-3 py-2 rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-medium shadow-lg text-sm">
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                    </svg>
-                    {selectedQuestion + 1} / {questions.length}
-                  </div>
-                </div>
-
-                <button
-                  className="group flex items-center px-4 py-2 rounded-lg border border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-gray-200 disabled:hover:bg-white shadow-sm hover:shadow-md"
-                  onClick={() =>
-                    setSelectedQuestion(Math.min(questions.length - 1, selectedQuestion + 1))
-                  }
-                  disabled={selectedQuestion === questions.length - 1}
-                >
-                  <span className="font-medium text-gray-700 group-hover:text-blue-700 transition-colors text-sm">Câu tiếp theo</span>
-                  <svg className="w-4 h-4 ml-2 text-gray-600 group-hover:text-blue-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
-              </div>
-
-              {/* Enhanced Action Buttons */}
-              <div className="flex gap-3 mb-4">
-                <button
-                  className="flex-1 group relative overflow-hidden rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 px-4 py-3 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
-                  onClick={() => navigate(`/multiple-choice/test/${testId}/settings`)}
-                >
-                  <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
-                  <div className="relative flex items-center justify-center">
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    Làm lại bài kiểm tra
-                  </div>
-                </button>
-
-                <button
-                  className={`group relative overflow-hidden rounded-lg px-4 py-3 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 ${
-                    isSaved 
-                      ? 'bg-gradient-to-r from-green-500 to-green-600' 
-                      : loading 
-                        ? 'bg-gradient-to-r from-gray-400 to-gray-500 cursor-not-allowed' 
-                        : 'bg-gradient-to-r from-emerald-500 to-emerald-600'
-                  }`}
-                  onClick={isSaved ? undefined : saveResult}
-                  disabled={loading || isSaved}
-                >
-                  <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
-                  <div className="relative flex items-center justify-center">
-                    {loading ? (
-                      <>
-                        <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        Đang lưu...
-                      </>
-                    ) : isSaved ? (
-                      <>
-                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                        </svg>
-                        Đã lưu kết quả
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        Lưu kết quả
-                      </>
-                    )}
-                  </div>
-                </button>
-
-                {/* Error Display */}
-                {error && (
-                  <div className="mt-4 p-4 bg-red-100 border border-red-200 rounded-lg text-red-700 text-sm">
-                    {error}
-                  </div>
-                )}
-              </div>
-
-              {/* Back to Topics Button */}
-              <div className="text-center">
-                <button
-                  className="group flex items-center px-4 py-2 rounded-lg border border-gray-200 bg-white hover:border-indigo-300 hover:bg-indigo-50 transition-all duration-200 shadow-sm hover:shadow-md mx-auto"
-                  onClick={() => navigate('/multiple-choice/topics')}
-                >
-                  <svg className="w-4 h-4 mr-2 text-gray-600 group-hover:text-indigo-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                  </svg>
-                  <span className="font-medium text-gray-700 group-hover:text-indigo-700 transition-colors text-sm">Về danh sách chủ đề</span>
-                </button>
-              </div>
-            </div>
-            {/* Simple Question Grid Sidebar */}
-            <div className="lg:col-span-1">
-              <div className="sticky top-5">
-                <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
-                  {/* Header */}
-                  <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
-                    <h3 className="font-semibold text-gray-800 flex items-center">
-                      <svg className="w-4 h-4 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                      </svg>
-                      Danh sách câu hỏi
+        <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4">
+          {/* MAIN */}
+          <div className="lg:col-span-8 min-h-0 flex flex-col">
+            <div className="flex-1 min-h-0 rounded-2xl border border-slate-200 bg-white shadow-md overflow-hidden flex flex-col">
+              {/* header */}
+              <div className="px-3 sm:px-4 py-3 border-b border-slate-200 bg-slate-50 shrink-0">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs text-slate-500">Câu hỏi</p>
+                    <h3 className="text-sm sm:text-base font-bold text-slate-800">
+                      Câu {selectedQuestion + 1} / {questions.length}
                     </h3>
                   </div>
 
-                  <div className="p-4">
-                    {/* Legend */}
-                    <div className="grid grid-cols-3 gap-2 text-xs mb-4">
-                      <div className="flex items-center">
-                        <div className="w-3 h-3 rounded bg-green-500 mr-1"></div>
-                        <span className="text-gray-600">Đúng ({correctCount})</span>
-                      </div>
-                      <div className="flex items-center">
-                        <div className="w-3 h-3 rounded bg-red-500 mr-1"></div>
-                        <span className="text-gray-600">Sai ({incorrectCount})</span>
-                      </div>
-                      <div className="flex items-center">
-                        <div className="w-3 h-3 rounded bg-yellow-500 mr-1"></div>
-                        <span className="text-gray-600">Chưa làm ({unansweredCount})</span>
-                      </div>
-                    </div>
+                  <div
+                    className={`shrink-0 inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-semibold border ${
+                      currentResult?.isCorrect
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        : "bg-rose-50 text-rose-700 border-rose-200"
+                    }`}
+                  >
+                    <span
+                      className={`inline-flex h-6 w-6 items-center justify-center rounded-lg text-white ${
+                        currentResult?.isCorrect ? "bg-emerald-600" : "bg-rose-600"
+                      }`}
+                    >
+                      {currentResult?.isCorrect ? "✓" : "✗"}
+                    </span>
+                    {currentResult?.isCorrect ? "Đúng" : "Sai"}
+                  </div>
+                </div>
+              </div>
 
-                    {/* Question Grid */}
-                    <div className="grid grid-cols-5 gap-2">
-                      {results.map((result, index) => {
-                        const isCurrent = index === selectedQuestion;
-                        const isAnswered = Array.isArray(result.userAnswer) ? result.userAnswer.length > 0 : !!result.userAnswer;
-                        
-                        let bgColor = 'bg-yellow-500'; // chưa làm
-                        if (result.isCorrect) {
-                          bgColor = 'bg-green-500';
-                        } else if (isAnswered) {
-                          bgColor = 'bg-red-500';
-                        }
+              {/* scrollable content */}
+              <div className="p-3 sm:p-4 flex-1 min-h-0 overflow-auto">
+                <h4 className="text-sm sm:text-base font-semibold text-slate-900 leading-relaxed">
+                  {currentQuestion?.question_text}
+                </h4>
 
-                        return (
-                          <button
-                            key={result.questionId}
-                            onClick={() => setSelectedQuestion(index)}
-                            className={`
-                              w-full aspect-square rounded ${bgColor} text-white font-semibold text-sm 
-                              hover:opacity-80 transition-all duration-200
-                              ${isCurrent ? 'ring-2 ring-blue-500 ring-offset-2' : ''}
-                            `}
+                {/* options */}
+                <div className="mt-3 space-y-1.5">
+                  {(currentQuestion?.options || []).map((option) => {
+                    const isUserAnswer = selectedLabels.includes(option.label);
+                    const isCorrectAnswer = (currentQuestion?.correct_answers || []).includes(option.label);
+
+                    const tone = isCorrectAnswer
+                      ? "border-emerald-200 bg-emerald-50"
+                      : isUserAnswer
+                      ? "border-rose-200 bg-rose-50"
+                      : "border-slate-200 bg-white";
+
+                    const badgeTone = isCorrectAnswer
+                      ? "border-emerald-200 text-emerald-700 bg-white"
+                      : isUserAnswer
+                      ? "border-rose-200 text-rose-700 bg-white"
+                      : "border-slate-200 text-slate-600 bg-white";
+
+                    return (
+                      <div
+                        key={option.label}
+                        className={`rounded-2xl border ${tone} px-3 py-2 transition hover:shadow-md`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div
+                            className={`h-8 w-8 rounded-xl border ${badgeTone} flex items-center justify-center font-bold text-sm shadow-md`}
                           >
-                            {index + 1}
-                          </button>
-                        );
-                      })}
+                            {option.label}
+                          </div>
+
+                          <div className="flex-1">
+                            <p className="text-sm text-slate-800 leading-relaxed">{option.text}</p>
+
+                            <div className="mt-1.5 flex flex-wrap gap-1.5">
+                              {isCorrectAnswer && (
+                                <span className="inline-flex items-center rounded-full bg-emerald-600 px-2 py-0.5 text-[11px] font-semibold text-white">
+                                  Đáp án đúng
+                                </span>
+                              )}
+                              {isUserAnswer && !isCorrectAnswer && (
+                                <span className="inline-flex items-center rounded-full bg-rose-600 px-2 py-0.5 text-[11px] font-semibold text-white">
+                                  Bạn chọn
+                                </span>
+                              )}
+                              {isUserAnswer && isCorrectAnswer && (
+                                <span className="inline-flex items-center rounded-full bg-slate-900 px-2 py-0.5 text-[11px] font-semibold text-white">
+                                  Bạn chọn đúng
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="shrink-0 pt-0.5">
+                            {isCorrectAnswer ? (
+                              <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-md">
+                                ✓
+                              </span>
+                            ) : isUserAnswer ? (
+                              <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-rose-600 text-white shadow-md">
+                                ✗
+                              </span>
+                            ) : (
+                              <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 text-slate-400 bg-white">
+                                •
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* bottom nav */}
+              <div className="shrink-0 px-3 sm:px-4 py-3 border-t border-slate-200 bg-white">
+                <div className="flex items-center justify-between gap-2">
+                  <button
+                    onClick={goPrev}
+                    disabled={selectedQuestion === 0}
+                    className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-md hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    ← Trước
+                  </button>
+
+                  <div className="text-xs text-slate-500">
+                    {selectedQuestion + 1} / {questions.length}
+                  </div>
+
+                  <button
+                    onClick={goNext}
+                    disabled={selectedQuestion === questions.length - 1}
+                    className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-md hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Tiếp →
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* SIDEBAR */}
+          <div className="lg:col-span-4 min-h-0">
+            <div className="lg:sticky lg:top-4 min-h-0 flex flex-col gap-3 lg:max-h-[calc(100vh-2rem)] lg:overflow-auto">
+              {/* score card */}
+              <div className="rounded-2xl border border-slate-200 bg-white shadow-md p-3 sm:p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs text-slate-500">Điểm số</p>
+                    <p className="text-lg sm:text-xl font-extrabold text-slate-900">{score}%</p>
+                    <p className="text-sm font-semibold text-slate-700">{getScoreMessage(score)}</p>
+                  </div>
+
+                  <Ring value={score} />
+                </div>
+
+                <div className="mt-3 grid grid-cols-3 gap-2">
+                  <StatMini label="Đúng" value={correctCount} tone="emerald" />
+                  <StatMini label="Sai" value={incorrectCount} tone="rose" />
+                  <StatMini label="Chưa làm" value={unansweredCount} tone="amber" />
+                </div>
+
+                <div className="mt-3 flex flex-col gap-2">
+                  {draftResultId && !isSaved && (
+                    <button
+                      onClick={saveResult}
+                      disabled={loading}
+                      className={`w-full rounded-xl px-3 py-2 text-sm font-semibold text-white shadow-md transition ${
+                        loading ? "bg-emerald-400" : "bg-emerald-600 hover:bg-emerald-700"
+                      }`}
+                    >
+                      {loading ? "Đang lưu…" : "Lưu kết quả"}
+                    </button>
+                  )}
+
+                  {isSaved && (
+                    <div className="w-full rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 text-center">
+                      ✓ Đã lưu kết quả
                     </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => navigate(`/multiple-choice/test/${testId}/settings`)}
+                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-md hover:bg-slate-50"
+                    >
+                      Làm lại
+                    </button>
+                    <button
+                      onClick={() => navigate("/multiple-choice/topics")}
+                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-md hover:bg-slate-50"
+                    >
+                      Danh sách
+                    </button>
+                  </div>
+
+                  {error && (
+                    <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+                      {error}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* test info */}
+              <div className="rounded-2xl border border-slate-200 bg-white shadow-md p-3 sm:p-4">
+                <h4 className="text-sm font-bold text-slate-900">Thông tin bài kiểm tra</h4>
+                <div className="mt-2 space-y-2 text-sm">
+                  <InfoRow label="Tiêu đề" value={testInfo?.test_title || test?.test_title || "—"} />
+                  <InfoRow
+                    label="Chủ đề"
+                    value={`${testInfo?.main_topic || test?.main_topic || "—"} - ${testInfo?.sub_topic || test?.sub_topic || "—"}`}
+                  />
+                  <InfoRow label="Độ khó" value={(test?.difficulty || "—").toString()} badge />
+                  <InfoRow label="Giới hạn" value={`${testInfo?.time_limit_minutes ?? test?.time_limit_minutes ?? "—"} phút`} />
+                </div>
+              </div>
+
+              {/* question grid */}
+              <div className="rounded-2xl border border-slate-200 bg-white shadow-md overflow-hidden">
+                <div className="px-3 sm:px-4 py-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+                  <h4 className="text-sm font-bold text-slate-900">Danh sách câu</h4>
+                  <span className="text-xs text-slate-500">{questions.length} câu</span>
+                </div>
+
+                <div className="p-3 sm:p-4">
+                  <div className="grid grid-cols-10 sm:grid-cols-12 lg:grid-cols-10 gap-1.5">
+                    {results.map((result, index) => {
+                      const isCurrent = index === selectedQuestion;
+                      const answered = isAnswered(result.userAnswer);
+
+                      let tone = "bg-amber-500";
+                      if (result.isCorrect) tone = "bg-emerald-600";
+                      else if (answered) tone = "bg-rose-600";
+
+                      return (
+                        <button
+                          key={String(result.questionId)}
+                          onClick={() => setSelectedQuestion(index)}
+                          className={`aspect-square rounded-xl text-white text-xs font-bold shadow-md transition hover:opacity-90 ${tone} ${
+                            isCurrent ? "ring-2 ring-blue-500 ring-offset-2" : "ring-0"
+                          }`}
+                          title={`Câu ${index + 1}`}
+                        >
+                          {index + 1}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-600">
+                    <LegendDot color="bg-emerald-600" label={`Đúng (${correctCount})`} />
+                    <LegendDot color="bg-rose-600" label={`Sai (${incorrectCount})`} />
+                    <LegendDot color="bg-amber-500" label={`Chưa làm (${unansweredCount})`} />
                   </div>
                 </div>
               </div>
             </div>
-
-
           </div>
+          {/* end sidebar */}
         </div>
       </div>
+
+      {/* Toast */}
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        isVisible={toast.isVisible}
+        onClose={hideToast}
+      />
     </div>
   );
 };
+
+function Ring({ value = 0 }) {
+  const v = Math.max(0, Math.min(100, Number(value) || 0));
+  return (
+    <div className="relative h-14 w-14 sm:h-16 sm:w-16 shrink-0">
+      <div
+        className="absolute inset-0 rounded-full"
+        style={{
+          background: `conic-gradient(#10b981 ${v * 3.6}deg, #e2e8f0 0deg)`,
+        }}
+      />
+      <div className="absolute inset-[6px] rounded-full bg-white flex items-center justify-center shadow-md">
+        <span className="text-xs font-bold text-slate-700">{v}%</span>
+      </div>
+    </div>
+  );
+}
+
+function StatMini({ label, value, tone }) {
+  const map = {
+    emerald: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    rose: "border-rose-200 bg-rose-50 text-rose-700",
+    amber: "border-amber-200 bg-amber-50 text-amber-700",
+  };
+  return (
+    <div className={`rounded-2xl border px-3 py-2 text-center ${map[tone] || ""}`}>
+      <div className="text-lg font-extrabold leading-none">{value}</div>
+      <div className="mt-1 text-[11px] font-semibold">{label}</div>
+    </div>
+  );
+}
+
+function InfoRow({ label, value, badge }) {
+  return (
+    <div className="flex items-start justify-between gap-3">
+      <span className="text-xs text-slate-500">{label}</span>
+      {badge ? (
+        <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs font-semibold text-slate-700 capitalize">
+          {value}
+        </span>
+      ) : (
+        <span className="text-sm font-semibold text-slate-800 text-right">{value}</span>
+      )}
+    </div>
+  );
+}
+
+function LegendDot({ color, label }) {
+  return (
+    <span className="inline-flex items-center gap-2">
+      <span className={`h-2.5 w-2.5 rounded-full ${color}`} />
+      {label}
+    </span>
+  );
+}
 
 export default MultipleChoiceTestReview;
