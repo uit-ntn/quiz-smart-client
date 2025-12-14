@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import AdminLayout from "../layout/AdminLayout";
 import testResultService from "../services/testResultService";
+import userService from "../services/userService";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
 
@@ -24,25 +25,77 @@ const fmtDateVI = (d) => {
   return dt.toLocaleDateString("vi-VN");
 };
 
-const getTestTitle = (r) =>
-  r?.test_snapshot?.test_title ||
-  r?.test_id?.test_title ||
-  r?.test?.test_title ||
-  "Unknown Test";
+const getTestTitle = (r) => r?.test_snapshot?.test_title || "Unknown Test";
 
-const getTestType = (r) =>
-  r?.test_snapshot?.test_type || r?.test_id?.test_type || r?.test?.test_type || "N/A";
+const getTestType = (r) => r?.test_snapshot?.test_type || "N/A";
 
 const getTopicText = (r) => {
-  const main = r?.test_snapshot?.main_topic || r?.test_id?.main_topic || r?.test?.main_topic || "";
-  const sub = r?.test_snapshot?.sub_topic || r?.test_id?.sub_topic || r?.test?.sub_topic || "";
+  const main = r?.test_snapshot?.main_topic || "";
+  const sub = r?.test_snapshot?.sub_topic || "";
   if (!main && !sub) return "";
   if (main && sub) return `${main} · ${sub}`;
   return main || sub;
 };
 
-const getUserName = (r) => r?.user_id?.full_name || r?.user_id?.name || "Unknown";
-const getUserEmail = (r) => r?.user_id?.email || "";
+const getDifficulty = (r) => r?.test_snapshot?.difficulty || "medium";
+
+const extractUserObject = (r) => {
+  // Common places backend might embed user info
+  return (
+    r?.user_snapshot ||
+    r?.user ||
+    r?.user_id ||
+    r?.createdBy ||
+    r?.created_by ||
+    r?.owner ||
+    null
+  );
+};
+
+const getUserName = (r, userCache = {}) => {
+  const u = extractUserObject(r);
+  // try embedded user first
+  const name = u?.full_name || u?.fullName || u?.name || u?.displayName || u?.username;
+  if (name) return name;
+
+  // try cached user by ID
+  const userId = r?.user_id || r?.userId || (typeof r?.createdBy === 'string' ? r.createdBy : r?.createdBy?._id);
+  const cachedUser = userId ? userCache[userId] : null;
+  if (cachedUser?.full_name) return cachedUser.full_name;
+
+  // fallback: try email local-part
+  const email = u?.email || r?.email || r?.user_email || cachedUser?.email || "";
+  if (email) return email.split("@")[0];
+
+  return "Unknown User";
+};
+
+const getUserEmail = (r, userCache = {}) => {
+  const u = extractUserObject(r);
+  if (u?.email) return u.email;
+  
+  // try cached user by ID
+  const userId = r?.user_id || r?.userId || (typeof r?.createdBy === 'string' ? r.createdBy : r?.createdBy?._id);
+  const cachedUser = userId ? userCache[userId] : null;
+  
+  return r?.email || r?.user_email || cachedUser?.email || "";
+};
+
+const getUserId = (r) => {
+  const u = extractUserObject(r);
+  // if user object contains id fields
+  return u?._id || u?.id || r?.user_id || r?.userId || "";
+};
+
+const getUserAvatar = (r) => {
+  const u = extractUserObject(r);
+  return u?.avatar_url || u?.avatar || u?.photo || null;
+};
+
+const getUserRole = (r) => {
+  const u = extractUserObject(r);
+  return u?.role || u?.user_role || "user";
+};
 
 const getPercentage = (r) => {
   // BE mới: percentage
@@ -72,10 +125,32 @@ const getDurationMs = (r) => {
 
 const getCreatedAt = (r) => r?.createdAt || r?.created_at || r?.end_time || r?.endTime || null;
 
-const normalizeAnswerValue = (v) => {
-  if (Array.isArray(v)) return v.join(", ");
+const normalizeAnswerValue = (answer, field = 'user_answer') => {
+  let v;
+
+  // Multiple choice uses arrays, others use strings
+  if (answer?.question_collection === 'multiple_choices') {
+    v = field === 'user_answer' ? answer?.user_answers : answer?.correct_answers;
+  } else {
+    v = field === 'user_answer' ? answer?.user_answer : answer?.correct_answer;
+  }
+
+  if (Array.isArray(v)) return v.length > 0 ? v.join(", ") : "Không trả lời";
   if (v == null || v === "") return "Không trả lời";
   return String(v);
+};
+
+const getQuestionText = (answer) => {
+  if (answer?.question_collection === 'vocabularies') {
+    // For vocabulary, show word or meaning based on question_mode
+    if (answer?.question_mode === 'word_to_meaning') {
+      return `Nghĩa của "${answer?.word}"`;
+    } else if (answer?.question_mode === 'meaning_to_word') {
+      return `Từ có nghĩa "${answer?.meaning}"`;
+    }
+    return answer?.word || "Vocabulary Question";
+  }
+  return answer?.question_text || "Question";
 };
 
 const AdminTestResults = () => {
@@ -96,11 +171,14 @@ const AdminTestResults = () => {
 
   const [resultToDelete, setResultToDelete] = useState(null);
   const [selectedResult, setSelectedResult] = useState(null);
+  const [userCache, setUserCache] = useState({});
+  const [allUsers, setAllUsers] = useState([]);
 
   const { user } = useAuth(); // (không bắt buộc dùng)
 
   useEffect(() => {
     fetchResults();
+    fetchAllUsers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -119,6 +197,17 @@ const AdminTestResults = () => {
       setError(null);
 
       const data = await testResultService.getAllTestResults(); // ✅ service mới
+
+      // Debug logging to understand data structure
+      if (data && data.length > 0) {
+        console.log("Sample test result:", data[0]);
+        console.log("User data structure:", {
+          user_id: data[0]?.user_id,
+          user: data[0]?.user,
+          createdBy: data[0]?.createdBy
+        });
+      }
+
       setResults(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Error fetching test results:", err);
@@ -127,6 +216,25 @@ const AdminTestResults = () => {
       setLoading(false);
     }
   };
+
+  const fetchAllUsers = async () => {
+    try {
+      const data = await userService.getAllUsers();
+      console.log('Fetched users:', data);
+      setAllUsers(Array.isArray(data) ? data : []);
+      
+      // Build cache by ID
+      const cache = {};
+      (Array.isArray(data) ? data : []).forEach(u => {
+        if (u._id) cache[u._id] = u;
+      });
+      setUserCache(cache);
+    } catch (err) {
+      console.error('Error fetching users:', err);
+    }
+  };
+
+
 
   const filterResults = () => {
     let filtered = [...results];
@@ -233,19 +341,19 @@ const AdminTestResults = () => {
       s === "active"
         ? "bg-green-100 text-green-800"
         : s === "archived"
-        ? "bg-yellow-100 text-yellow-800"
-        : s === "deleted"
-        ? "bg-red-100 text-red-800"
-        : "bg-gray-100 text-gray-800";
+          ? "bg-yellow-100 text-yellow-800"
+          : s === "deleted"
+            ? "bg-red-100 text-red-800"
+            : "bg-gray-100 text-gray-800";
 
     const label =
       s === "active"
         ? "Hoàn thành"
         : s === "archived"
-        ? "Lưu trữ"
-        : s === "deleted"
-        ? "Đã xóa"
-        : "Nháp";
+          ? "Lưu trữ"
+          : s === "deleted"
+            ? "Đã xóa"
+            : "Nháp";
 
     return (
       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${cls}`}>
@@ -261,15 +369,15 @@ const AdminTestResults = () => {
     const duration = msToMMSS(getDurationMs(selectedResult));
     const testTitle = getTestTitle(selectedResult);
     const testType = getTestType(selectedResult);
-    const userName = getUserName(selectedResult);
-    const email = getUserEmail(selectedResult);
+    const userName = getUserName(selectedResult, userCache);
+    const email = getUserEmail(selectedResult, userCache);
 
     const testTypeLabel =
       testType === "vocabulary"
         ? "Từ vựng"
         : testType === "multiple_choice"
-        ? "Trắc nghiệm"
-        : testType;
+          ? "Trắc nghiệm"
+          : testType;
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -292,14 +400,52 @@ const AdminTestResults = () => {
               <h4 className="font-semibold text-gray-700 mb-3">Thông tin User</h4>
               <div className="space-y-2">
                 <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
-                    {safeStr(userName).charAt(0).toUpperCase() ||
-                      safeStr(email).charAt(0).toUpperCase() ||
-                      "U"}
+                  <div className="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold">
+                    {getUserAvatar(selectedResult) ? (
+                      <img
+                        src={getUserAvatar(selectedResult)}
+                        alt={userName}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          e.target.nextSibling.style.display = 'flex';
+                        }}
+                      />
+                    ) : null}
+                    <div
+                      className="w-full h-full flex items-center justify-center"
+                      style={{ display: getUserAvatar(selectedResult) ? 'none' : 'flex' }}
+                    >
+                      {(() => {
+                        if (userName && userName !== "Unknown User") {
+                          return userName.charAt(0).toUpperCase();
+                        }
+                        if (email) {
+                          return email.charAt(0).toUpperCase();
+                        }
+                        const userId = getUserId(selectedResult);
+                        if (userId) {
+                          return userId.slice(-2).toUpperCase();
+                        }
+                        return "?";
+                      })()
+                      }                 </div>
                   </div>
                   <div>
-                    <p className="font-medium text-gray-900">{userName}</p>
-                    <p className="text-sm text-gray-600">{email}</p>
+                    <p className="font-medium text-gray-900">
+                      {userName}
+                      {getUserRole(selectedResult) === 'admin' && (
+                        <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                          Admin
+                        </span>
+                      )}
+                      {userName === "Unknown User" && (
+                        <span className="text-xs text-gray-500 ml-1">(ID: {getUserId(selectedResult)})</span>
+                      )}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      {email || "No email"}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -315,6 +461,10 @@ const AdminTestResults = () => {
                 <p className="text-sm">
                   <span className="font-medium text-gray-700">Loại:</span>{" "}
                   <span className="text-gray-900">{testTypeLabel || "N/A"}</span>
+                </p>
+                <p className="text-sm">
+                  <span className="font-medium text-gray-700">Độ khó:</span>{" "}
+                  <span className="text-gray-900 capitalize">{getDifficulty(selectedResult)}</span>
                 </p>
                 {getTopicText(selectedResult) && (
                   <p className="text-sm">
@@ -385,28 +535,60 @@ const AdminTestResults = () => {
               {selectedResult?.answers && selectedResult.answers.length > 0 ? (
                 selectedResult.answers.map((answer, index) => {
                   const ok = !!answer?.is_correct;
-                  const qText = answer?.question_text || answer?.word || `Câu ${index + 1}`;
-                  const userAns = normalizeAnswerValue(answer?.user_answer);
-                  const correctAns = normalizeAnswerValue(answer?.correct_answer);
+                  const qText = getQuestionText(answer);
+                  const userAns = normalizeAnswerValue(answer, 'user_answer');
+                  const correctAns = normalizeAnswerValue(answer, 'correct_answer');
+                  const isMultipleChoice = answer?.question_collection === 'multiple_choices';
+                  const isVocabulary = answer?.question_collection === 'vocabularies';
 
                   return (
                     <div
                       key={index}
-                      className={`border-2 rounded-lg p-4 ${
-                        ok ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"
-                      }`}
+                      className={`border-2 rounded-lg p-4 ${ok ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"
+                        }`}
                     >
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex items-center space-x-3">
                           <span
-                            className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm ${
-                              ok ? "bg-green-500 text-white" : "bg-red-500 text-white"
-                            }`}
+                            className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm ${ok ? "bg-green-500 text-white" : "bg-red-500 text-white"
+                              }`}
                           >
                             {index + 1}
                           </span>
-                          <div>
+                          <div className="flex-1">
                             <p className="font-medium text-gray-900">{qText}</p>
+                            {isVocabulary && (
+                              <div className="mt-1 text-xs text-gray-600">
+                                <span className="font-medium">Từ:</span> {answer?.word} •
+                                <span className="font-medium">Nghĩa:</span> {answer?.meaning}
+                                {answer?.example_sentence && (
+                                  <div className="mt-1 italic">VD: {answer.example_sentence}</div>
+                                )}
+                              </div>
+                            )}
+                            {isMultipleChoice && answer?.options && (
+                              <div className="mt-2 grid grid-cols-2 gap-2">
+                                {answer.options.map((opt) => {
+                                  const isCorrect = answer.correct_answers?.includes(opt.label);
+                                  const isUserChoice = answer.user_answers?.includes(opt.label);
+                                  return (
+                                    <div
+                                      key={opt.label}
+                                      className={`text-xs p-2 rounded border ${isCorrect
+                                          ? "border-green-300 bg-green-100"
+                                          : isUserChoice
+                                            ? "border-red-300 bg-red-100"
+                                            : "border-gray-200 bg-gray-50"
+                                        }`}
+                                    >
+                                      <span className="font-bold">{opt.label}:</span> {opt.text}
+                                      {isCorrect && <span className="text-green-600 ml-1">✓</span>}
+                                      {isUserChoice && !isCorrect && <span className="text-red-600 ml-1">✗</span>}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
                         </div>
 
@@ -428,7 +610,7 @@ const AdminTestResults = () => {
                       <div className="ml-11 space-y-1">
                         <p className="text-sm">
                           <span className="font-medium text-gray-700">Trả lời:</span>{" "}
-                          <span className="text-gray-900">{userAns}</span>
+                          <span className={ok ? "text-green-600 font-medium" : "text-red-600"}>{userAns}</span>
                         </p>
                         {!ok && correctAns && correctAns !== "Không trả lời" && (
                           <p className="text-sm">
@@ -610,13 +792,36 @@ const AdminTestResults = () => {
                         <td className="px-6 py-4">
                           <div className="flex items-center">
                             <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
-                              {safeStr(getUserName(result)).charAt(0).toUpperCase() ||
-                                safeStr(getUserEmail(result)).charAt(0).toUpperCase() ||
-                                "U"}
+                              {(() => {
+                                const name = getUserName(result, userCache);
+                                const email = getUserEmail(result, userCache);
+                                const userId = getUserId(result);
+
+                                if (name && name !== "Unknown User") {
+                                  return name.charAt(0).toUpperCase();
+                                }
+                                if (email) {
+                                  return email.charAt(0).toUpperCase();
+                                }
+                                if (userId) {
+                                  return userId.slice(-2).toUpperCase();
+                                }
+                                return "?";
+                              })()}
                             </div>
                             <div className="ml-3">
-                              <div className="text-sm font-medium text-gray-900">{getUserName(result)}</div>
-                              <div className="text-xs text-gray-500">{getUserEmail(result)}</div>
+                              <div className="text-sm font-medium text-gray-900">
+                                {getUserName(result, userCache)}
+                                {getUserRole(result) === 'admin' && (
+                                  <span className="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                                    Admin
+                                  </span>
+                                )}
+                                {getUserName(result, userCache) === "Unknown User" && (
+                                  <span className="text-xs text-gray-500 ml-1">(ID: {getUserId(result)})</span>
+                                )}
+                              </div>
+                              <div className="text-xs text-gray-500">{getUserEmail(result, userCache) || "No email"}</div>
                             </div>
                           </div>
                         </td>
@@ -628,8 +833,8 @@ const AdminTestResults = () => {
                             {getTestType(result) === "vocabulary"
                               ? "Từ vựng"
                               : getTestType(result) === "multiple_choice"
-                              ? "Trắc nghiệm"
-                              : getTestType(result)}
+                                ? "Trắc nghiệm"
+                                : getTestType(result)}
                             {getTopicText(result) ? ` · ${getTopicText(result)}` : ""}
                           </div>
                         </td>
@@ -745,9 +950,8 @@ const AdminTestResults = () => {
                       <button
                         key={pageNum}
                         onClick={() => setCurrentPage(pageNum)}
-                        className={`px-3 py-1 rounded ${
-                          currentPage === pageNum ? "bg-indigo-600 text-white" : "border"
-                        }`}
+                        className={`px-3 py-1 rounded ${currentPage === pageNum ? "bg-indigo-600 text-white" : "border"
+                          }`}
                       >
                         {pageNum}
                       </button>

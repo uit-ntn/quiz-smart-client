@@ -1,271 +1,330 @@
-import React, { useEffect, useState } from 'react';
-import AdminLayout from '../layout/AdminLayout';
-import vocabularyService from '../services/vocabularyService';
-import testService from '../services/testService';
-import LoadingSpinner from '../components/LoadingSpinner';
-import ErrorMessage from '../components/ErrorMessage';
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import AdminLayout from "../layout/AdminLayout";
+import vocabularyService from "../services/vocabularyService";
+import testService from "../services/testService";
+import LoadingSpinner from "../components/LoadingSpinner";
+import ErrorMessage from "../components/ErrorMessage";
 
-// VocabForm component moved outside to prevent re-render issues
-const VocabForm = ({ onSubmit, buttonText, formData, setFormData, allTests, onCancel }) => (
-  <form onSubmit={onSubmit} className="space-y-4">
-    <div>
-      <label className="block text-sm font-medium text-indigo-700 mb-2">
-        Bài kiểm tra <span className="text-red-500">*</span>
-      </label>
-      <select
-        value={formData.test_id}
-        onChange={(e) => setFormData({ ...formData, test_id: e.target.value })}
-        required
-        className="w-full px-4 py-2 rounded-lg border border-indigo-200 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-indigo-900"
-      >
-        <option value="">Chọn bài kiểm tra...</option>
-        {allTests.map(test => (
-          <option key={test._id} value={test._id}>
-            {test.test_title} - {test.main_topic}
-          </option>
-        ))}
-      </select>
+/* =========================
+   Small UI helpers
+========================= */
+const Icon = {
+  Search: (p) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}>
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-4.35-4.35m1.85-5.15a7 7 0 11-14 0 7 7 0 0114 0z" />
+    </svg>
+  ),
+  Refresh: (p) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+        d="M4 4v6h6M20 20v-6h-6M20 9a8 8 0 00-14.9-2M4 15a8 8 0 0014.9 2"
+      />
+    </svg>
+  ),
+  Plus: (p) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}>
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 5v14M5 12h14" />
+    </svg>
+  ),
+  X: (p) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}>
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+    </svg>
+  ),
+  Warning: (p) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+        d="M12 9v2m0 4h.01M10.29 3.86l-8.2 14.2A2 2 0 003.83 21h16.34a2 2 0 001.74-2.94l-8.2-14.2a2 2 0 00-3.42 0z"
+      />
+    </svg>
+  ),
+};
+
+const ModalShell = ({ title, subtitle, onClose, children, maxWidth = "max-w-2xl" }) => {
+  useEffect(() => {
+    const onKeyDown = (e) => e.key === "Escape" && onClose?.();
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-50">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative min-h-full flex items-center justify-center p-3">
+        <div className={`w-full ${maxWidth} rounded-xl bg-white shadow-2xl ring-1 ring-black/5 overflow-hidden`}>
+          <div className="px-4 py-3 border-b flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="text-base font-semibold text-slate-900 truncate">{title}</div>
+              {subtitle ? <div className="text-xs text-slate-500 mt-0.5">{subtitle}</div> : null}
+            </div>
+            <button
+              onClick={onClose}
+              className="h-8 w-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center"
+              aria-label="Đóng"
+            >
+              <Icon.X className="w-4 h-4 text-slate-700" />
+            </button>
+          </div>
+
+          <div className="p-4">{children}</div>
+        </div>
+      </div>
     </div>
+  );
+};
 
-    <div className="grid grid-cols-2 gap-4">
+/* =========================
+   Vocab Form (compact, modern)
+========================= */
+const VocabForm = ({ onSubmit, buttonText, formData, setFormData, allTests, onCancel }) => {
+  const update = (k) => (e) => setFormData((p) => ({ ...p, [k]: e.target.value }));
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-3">
       <div>
-        <label className="block text-sm font-medium text-indigo-700 mb-2">
-          Từ vựng <span className="text-red-500">*</span>
+        <label className="block text-xs font-medium text-slate-700 mb-1">
+          Bài kiểm tra <span className="text-rose-500">*</span>
         </label>
-        <input
-          type="text"
-          value={formData.word}
-          onChange={(e) => setFormData({ ...formData, word: e.target.value })}
+        <select
+          value={formData.test_id}
+          onChange={update("test_id")}
           required
-          className="w-full px-4 py-2 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-          placeholder="Nhập từ vựng..."
-        />
+          className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+        >
+          <option value="">Chọn bài kiểm tra...</option>
+          {allTests.map((t) => (
+            <option key={t._id} value={t._id}>
+              {t.test_title} {t.main_topic ? `- ${t.main_topic}` : ""}
+            </option>
+          ))}
+        </select>
       </div>
-      
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-medium text-slate-700 mb-1">
+            Từ vựng <span className="text-rose-500">*</span>
+          </label>
+          <input
+            type="text"
+            value={formData.word}
+            onChange={update("word")}
+            required
+            className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            placeholder="Nhập từ vựng..."
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-slate-700 mb-1">Phiên âm</label>
+          <input
+            type="text"
+            value={formData.phonetic}
+            onChange={update("phonetic")}
+            className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            placeholder="Ví dụ: /ˈaɪəl/"
+          />
+        </div>
+      </div>
+
       <div>
-        <label className="block text-sm font-medium text-indigo-700 mb-2">
-          Phiên âm
+        <label className="block text-xs font-medium text-slate-700 mb-1">
+          Nghĩa <span className="text-rose-500">*</span>
         </label>
         <input
           type="text"
-          value={formData.phonetic}
-          onChange={(e) => setFormData({ ...formData, phonetic: e.target.value })}
-          className="w-full px-4 py-2 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-          placeholder="Ví dụ: /ˈaɪəl/"
+          value={formData.meaning}
+          onChange={update("meaning")}
+          required
+          className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+          placeholder="Nghĩa của từ..."
         />
       </div>
-    </div>
 
-    <div>
-      <label className="block text-sm font-medium text-indigo-700 mb-2">
-        Nghĩa <span className="text-red-500">*</span>
-      </label>
-      <input
-        type="text"
-        value={formData.meaning}
-        onChange={(e) => setFormData({ ...formData, meaning: e.target.value })}
-        required
-        className="w-full px-4 py-2 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-        placeholder="Nghĩa của từ..."
-      />
-    </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-medium text-slate-700 mb-1">Ví dụ</label>
+          <textarea
+            value={formData.example_sentence}
+            onChange={update("example_sentence")}
+            rows={2}
+            className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            placeholder="Câu ví dụ..."
+          />
+        </div>
 
-    <div>
-      <label className="block text-sm font-medium text-indigo-700 mb-2">
-        Ví dụ
-      </label>
-      <textarea
-        value={formData.example_sentence}
-        onChange={(e) => setFormData({ ...formData, example_sentence: e.target.value })}
-        rows="2"
-        className="w-full px-4 py-2 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-        placeholder="Câu ví dụ..."
-      />
-    </div>
+        <div>
+          <label className="block text-xs font-medium text-slate-700 mb-1">Nghĩa ví dụ</label>
+          <textarea
+            value={formData.example_meaning}
+            onChange={update("example_meaning")}
+            rows={2}
+            className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            placeholder="Nghĩa của câu ví dụ..."
+          />
+        </div>
+      </div>
 
-    <div>
-      <label className="block text-sm font-medium text-indigo-700 mb-2">
-        Nghĩa ví dụ
-      </label>
-      <textarea
-        value={formData.example_meaning}
-        onChange={(e) => setFormData({ ...formData, example_meaning: e.target.value })}
-        rows="2"
-        className="w-full px-4 py-2 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-        placeholder="Nghĩa của câu ví dụ..."
-      />
-    </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-medium text-slate-700 mb-1">URL hình ảnh</label>
+          <input
+            type="url"
+            value={formData.image_url}
+            onChange={update("image_url")}
+            className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            placeholder="https://..."
+          />
+        </div>
 
-    <div>
-      <label className="block text-sm font-medium text-indigo-700 mb-2">
-        URL hình ảnh
-      </label>
-      <input
-        type="url"
-        value={formData.image_url}
-        onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-        className="w-full px-4 py-2 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-        placeholder="https://example.com/image.jpg"
-      />
-    </div>
+        <div>
+          <label className="block text-xs font-medium text-slate-700 mb-1">URL audio</label>
+          <input
+            type="url"
+            value={formData.audio_url}
+            onChange={update("audio_url")}
+            className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            placeholder="https://..."
+          />
+        </div>
+      </div>
 
-    <div>
-      <label className="block text-sm font-medium text-indigo-700 mb-2">
-        URL audio
-      </label>
-      <input
-        type="url"
-        value={formData.audio_url}
-        onChange={(e) => setFormData({ ...formData, audio_url: e.target.value })}
-        className="w-full px-4 py-2 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-        placeholder="https://example.com/audio.mp3"
-      />
-    </div>
-    
-    <div className="flex space-x-3 pt-4">
-      <button
-        type="button"
-        onClick={onCancel}
-        className="flex-1 px-4 py-2 border border-indigo-200 rounded-lg text-indigo-700 hover:bg-indigo-50 transition-colors"
-      >
-        Hủy
-      </button>
-      <button
-        type="submit"
-        className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-      >
-        {buttonText}
-      </button>
-    </div>
-  </form>
-);
+      <div className="pt-1 flex gap-2">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50"
+        >
+          Hủy
+        </button>
+        <button
+          type="submit"
+          className="flex-1 px-3 py-2 text-sm rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
+        >
+          {buttonText}
+        </button>
+      </div>
+    </form>
+  );
+};
 
 const AdminVocabularies = () => {
   const [vocabularies, setVocabularies] = useState([]);
-  const [filteredVocabs, setFilteredVocabs] = useState([]);
+  const [testsById, setTestsById] = useState({});
+  const [allTests, setAllTests] = useState([]);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
+
+  const [searchTerm, setSearchTerm] = useState("");
+
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+
   const [selectedVocab, setSelectedVocab] = useState(null);
-  const [tests, setTests] = useState({});
-  const [allTests, setAllTests] = useState([]);
+
   const [formData, setFormData] = useState({
-    word: '',
-    meaning: '',
-    example_sentence: '',
-    phonetic: '',
-    image_url: '',
-    audio_url: '',
-    test_id: ''
+    word: "",
+    meaning: "",
+    example_sentence: "",
+    example_meaning: "",
+    phonetic: "",
+    image_url: "",
+    audio_url: "",
+    test_id: "",
   });
 
-  useEffect(() => {
-    fetchVocabularies();
-    fetchAllTests();
-  }, []);
+  const normalizeTests = (data) => {
+    if (Array.isArray(data)) return data;
+    if (data && typeof data === "object") return data.data || data.tests || data.results || data.items || [];
+    return [];
+  };
 
-  useEffect(() => {
-    filterVocabularies();
-  }, [vocabularies, searchTerm]);
-
-  const fetchVocabularies = async () => {
+  const loadPageData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await vocabularyService.getAllVocabularies();
-      setVocabularies(data);
-      
-      // Fetch test info for each vocabulary
-      const testIds = [...new Set(data.map(v => v.test_id).filter(Boolean))];
-      const testInfo = {};
-      
-      await Promise.all(testIds.map(async (testId) => {
-        try {
-          const test = await testService.getTestById(testId);
-          testInfo[testId] = test;
-        } catch (err) {
-          console.error(`Error fetching test ${testId}:`, err);
-        }
-      }));
-      
-      setTests(testInfo);
+
+      const [vocabsData, testsDataRaw] = await Promise.all([
+        vocabularyService.getAllVocabularies(),
+        testService.getAllTests(),
+      ]);
+
+      const testsArray = normalizeTests(testsDataRaw);
+
+      // Filter only vocabulary tests for dropdown
+      const vocabularyTests = testsArray.filter((t) => t.test_type === "vocabulary" || t.test_type === "vocab");
+      setAllTests(vocabularyTests);
+
+      // Map tests by id for quick lookup in table/cards
+      const map = {};
+      testsArray.forEach((t) => {
+        if (t?._id) map[t._id] = t;
+      });
+      setTestsById(map);
+
+      setVocabularies(Array.isArray(vocabsData) ? vocabsData : []);
     } catch (err) {
-      setError('Không thể tải danh sách từ vựng');
-      console.error('Error fetching vocabularies:', err);
+      console.error("Load vocabularies/tests error:", err);
+      setError("Không thể tải danh sách từ vựng");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const fetchAllTests = async () => {
-    try {
-      const data = await testService.getAllTests();
-      console.log('All tests data:', data);
-      
-      let testsArray = [];
-      if (Array.isArray(data)) {
-        testsArray = data;
-      } else if (data && typeof data === 'object') {
-        testsArray = data.data || data.tests || data.results || data.items || [];
-      }
-      
-      // Filter only vocabulary tests
-      const vocabularyTests = testsArray.filter(test => 
-        test.test_type === 'vocabulary' || test.test_type === 'vocab'
-      );
-      
-      setAllTests(vocabularyTests);
-    } catch (e) {
-      console.error('Error fetching all tests:', e);
-    }
-  };
+  useEffect(() => {
+    loadPageData();
+  }, [loadPageData]);
 
-  const filterVocabularies = () => {
-    let filtered = [...vocabularies];
+  const filteredVocabs = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) return vocabularies;
 
-    if (searchTerm) {
-      filtered = filtered.filter(vocab =>
-        vocab.word?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        vocab.meaning?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
+    return vocabularies.filter((v) => {
+      const w = (v.word || "").toLowerCase();
+      const m = (v.meaning || "").toLowerCase();
+      return w.includes(q) || m.includes(q);
+    });
+  }, [vocabularies, searchTerm]);
 
-    setFilteredVocabs(filtered);
-  };
-
-  const handleCreateClick = () => {
+  const openCreate = () => {
+    setSelectedVocab(null);
     setFormData({
-      word: '',
-      meaning: '',
-      example_sentence: '',
-      example_meaning: '',
-      phonetic: '',
-      image_url: '',
-      audio_url: '',
-      test_id: ''
+      word: "",
+      meaning: "",
+      example_sentence: "",
+      example_meaning: "",
+      phonetic: "",
+      image_url: "",
+      audio_url: "",
+      test_id: "",
     });
     setShowCreateModal(true);
   };
 
-  const handleEditClick = (vocab) => {
+  const openEdit = (vocab) => {
     setSelectedVocab(vocab);
     setFormData({
-      word: vocab.word || '',
-      meaning: vocab.meaning || '',
-      example_sentence: vocab.example_sentence || '',
-      example_meaning: vocab.example_meaning || '',
-      phonetic: vocab.phonetic || '',
-      image_url: vocab.image_url || '',
-      audio_url: vocab.audio_url || '',
-      test_id: vocab.test_id || ''
+      word: vocab.word || "",
+      meaning: vocab.meaning || "",
+      example_sentence: vocab.example_sentence || "",
+      example_meaning: vocab.example_meaning || "",
+      phonetic: vocab.phonetic || "",
+      image_url: vocab.image_url || "",
+      audio_url: vocab.audio_url || "",
+      test_id: vocab.test_id || "",
     });
     setShowEditModal(true);
   };
 
-  const handleDeleteClick = (vocab) => {
+  const openDelete = (vocab) => {
     setSelectedVocab(vocab);
     setShowDeleteModal(true);
   };
@@ -274,21 +333,11 @@ const AdminVocabularies = () => {
     e.preventDefault();
     try {
       const newVocab = await vocabularyService.createVocabulary(formData);
-      setVocabularies([newVocab, ...vocabularies]);
+      setVocabularies((prev) => [newVocab, ...prev]);
       setShowCreateModal(false);
-      setFormData({
-        word: '',
-        meaning: '',
-        example_sentence: '',
-        example_meaning: '',
-        phonetic: '',
-        image_url: '',
-        audio_url: '',
-        test_id: ''
-      });
     } catch (err) {
-      console.error('Error creating vocabulary:', err);
-      alert('Không thể tạo từ vựng. Vui lòng thử lại!');
+      console.error("Error creating vocabulary:", err);
+      alert("Không thể tạo từ vựng. Vui lòng thử lại!");
     }
   };
 
@@ -297,15 +346,13 @@ const AdminVocabularies = () => {
     if (!selectedVocab) return;
 
     try {
-      const updatedVocab = await vocabularyService.updateVocabulary(selectedVocab._id, formData);
-      setVocabularies(vocabularies.map(v => 
-        v._id === selectedVocab._id ? updatedVocab : v
-      ));
+      const updated = await vocabularyService.updateVocabulary(selectedVocab._id, formData);
+      setVocabularies((prev) => prev.map((v) => (v._id === selectedVocab._id ? updated : v)));
       setShowEditModal(false);
       setSelectedVocab(null);
     } catch (err) {
-      console.error('Error updating vocabulary:', err);
-      alert('Không thể cập nhật từ vựng. Vui lòng thử lại!');
+      console.error("Error updating vocabulary:", err);
+      alert("Không thể cập nhật từ vựng. Vui lòng thử lại!");
     }
   };
 
@@ -314,51 +361,14 @@ const AdminVocabularies = () => {
 
     try {
       await vocabularyService.deleteVocabulary(selectedVocab._id);
-      setVocabularies(vocabularies.filter(v => v._id !== selectedVocab._id));
+      setVocabularies((prev) => prev.filter((v) => v._id !== selectedVocab._id));
       setShowDeleteModal(false);
       setSelectedVocab(null);
     } catch (err) {
-      console.error('Error deleting vocabulary:', err);
-      alert('Không thể xóa từ vựng. Vui lòng thử lại!');
+      console.error("Error deleting vocabulary:", err);
+      alert("Không thể xóa từ vựng. Vui lòng thử lại!");
     }
   };
-
-
-
-  const DeleteModal = () => (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl max-w-md w-full p-6">
-        <div className="flex items-center space-x-3 mb-4">
-          <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-            <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-indigo-900">Xác nhận xóa</h3>
-            <p className="text-sm text-indigo-700">Hành động này không thể hoàn tác</p>
-          </div>
-        </div>
-        <p className="text-indigo-800 mb-6">
-          Bạn có chắc chắn muốn xóa từ <strong>"{selectedVocab?.word}"</strong>?
-        </p>
-        <div className="flex space-x-3">
-          <button
-            onClick={() => setShowDeleteModal(false)}
-            className="flex-1 px-4 py-2 border border-indigo-200 rounded-lg text-indigo-700 hover:bg-indigo-50 transition-colors"
-          >
-            Hủy
-          </button>
-          <button
-            onClick={handleDeleteConfirm}
-            className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-          >
-            Xóa
-          </button>
-        </div>
-      </div>
-    </div>
-  );
 
   if (loading) {
     return (
@@ -370,151 +380,158 @@ const AdminVocabularies = () => {
 
   return (
     <AdminLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex-1 min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold text-indigo-900 truncate">Quản lý Từ vựng</h1>
-            <p className="text-indigo-700 mt-1 text-sm sm:text-base">Tổng số: {filteredVocabs.length} từ</p>
+      <div className="max-w-7xl mx-auto px-3 sm:px-5 lg:px-8 py-5 space-y-4">
+        {/* Top header / toolbar */}
+        <div className="bg-white border border-slate-200 rounded-xl shadow-sm">
+          <div className="px-4 py-3 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="min-w-0">
+              <h1 className="text-lg sm:text-xl font-semibold text-slate-900 truncate">Quản lý Từ vựng</h1>
+              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+                Tổng số: <span className="font-medium text-slate-700">{filteredVocabs.length}</span> từ
+              </p>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={loadPageData}
+                className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50"
+              >
+                <Icon.Refresh className="w-4 h-4" />
+                <span className="hidden sm:inline">Làm mới</span>
+              </button>
+
+              <button
+                onClick={openCreate}
+                className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
+              >
+                <Icon.Plus className="w-4 h-4" />
+                <span>Thêm từ</span>
+              </button>
+            </div>
           </div>
-          <div className="flex gap-2 sm:gap-3">
-            <button
-              onClick={fetchVocabularies}
-              className="flex items-center space-x-1 px-3 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-colors text-sm"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              <span className="hidden sm:inline">Làm mới</span>
-            </button>
-            <button
-              onClick={handleCreateClick}
-              className="flex items-center space-x-1 px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              <span>Thêm từ</span>
-            </button>
+
+          <div className="px-4 py-3">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="relative flex-1">
+                <Icon.Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Tìm theo từ vựng hoặc nghĩa..."
+                  className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+              </div>
+
+              {searchTerm ? (
+                <button
+                  onClick={() => setSearchTerm("")}
+                  className="px-3 py-2 text-sm rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50"
+                >
+                  Xóa lọc
+                </button>
+              ) : null}
+            </div>
+
+            {error ? (
+              <div className="mt-3">
+                <ErrorMessage message={error} />
+              </div>
+            ) : null}
           </div>
         </div>
 
-        {error && <ErrorMessage message={error} />}
-
-        {/* Search */}
-        <div className="bg-white rounded-lg shadow-sm border border-indigo-100 p-4">
-          <label className="block text-sm font-medium text-indigo-700 mb-2">
-            Tìm kiếm
-          </label>
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Tìm theo từ vựng hoặc nghĩa..."
-            className="w-full px-3 py-2 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
-          />
-        </div>
-
-        {/* Vocabularies List - Responsive Design */}
-        <div className="bg-white rounded-lg shadow-sm border border-indigo-100 overflow-hidden">
-          
-          {/* Desktop Table View */}
+        {/* Content */}
+        <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+          {/* Desktop table */}
           <div className="hidden lg:block">
-            <div className="overflow-visible">
-              <table className="w-full table-fixed">
-                <thead className="bg-indigo-50 border-b border-indigo-100">
-                  <tr>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-indigo-600 uppercase tracking-wider w-1/6">
-                      Từ vựng
-                    </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-indigo-600 uppercase tracking-wider w-1/6">
-                      Nghĩa
-                    </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-indigo-600 uppercase tracking-wider w-1/4">
-                      Ví dụ
-                    </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-indigo-600 uppercase tracking-wider w-1/6">
-                      Bài kiểm tra
-                    </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-indigo-600 uppercase tracking-wider w-1/8">
-                      Chủ đề
-                    </th>
-                    <th className="px-3 py-2 text-right text-xs font-medium text-indigo-600 uppercase tracking-wider w-1/12">
-                      Thao tác
-                    </th>
+            <div className="overflow-x-auto">
+              <table className="min-w-full">
+                <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
+                  <tr className="text-xs uppercase tracking-wide text-slate-500">
+                    <th className="px-4 py-3 text-left">Từ vựng</th>
+                    <th className="px-4 py-3 text-left">Nghĩa</th>
+                    <th className="px-4 py-3 text-left">Ví dụ</th>
+                    <th className="px-4 py-3 text-left">Bài kiểm tra</th>
+                    <th className="px-4 py-3 text-left">Chủ đề</th>
+                    <th className="px-4 py-3 text-right">Thao tác</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-indigo-100">
+
+                <tbody className="divide-y divide-slate-100">
                   {filteredVocabs.length === 0 ? (
                     <tr>
-                      <td colSpan="6" className="px-4 py-8 text-center text-indigo-600 text-sm">
-                        {searchTerm ? 'Không tìm thấy từ vựng nào phù hợp' : 'Chưa có từ vựng nào'}
+                      <td colSpan={6} className="px-4 py-10 text-center">
+                        <div className="text-sm font-medium text-slate-700">
+                          {searchTerm ? "Không tìm thấy từ vựng phù hợp" : "Chưa có từ vựng nào"}
+                        </div>
+                        <div className="text-xs text-slate-500 mt-1">
+                          {searchTerm ? "Thử từ khóa khác hoặc xóa lọc." : "Bấm “Thêm từ” để tạo từ vựng mới."}
+                        </div>
                       </td>
                     </tr>
                   ) : (
-                    filteredVocabs.map((vocab) => {
-                      const test = tests[vocab.test_id];
+                    filteredVocabs.map((v) => {
+                      const t = testsById[v.test_id];
                       return (
-                        <tr key={vocab._id} className="hover:bg-indigo-50">
-                          <td className="px-3 py-2">
-                            <div className="min-w-0">
-                              <div className="font-medium text-indigo-900 text-sm">
-                                {vocab.word}
+                        <tr key={v._id} className="hover:bg-slate-50">
+                          <td className="px-4 py-3">
+                            <div className="text-sm font-medium text-slate-900">{v.word}</div>
+                            {v.phonetic ? <div className="text-xs text-slate-500 mt-0.5">/{v.phonetic}/</div> : null}
+                          </td>
+
+                          <td className="px-4 py-3">
+                            <div className="text-sm text-slate-800">
+                              {v.meaning?.length > 40 ? `${v.meaning.slice(0, 40)}...` : v.meaning || "—"}
+                            </div>
+                          </td>
+
+                          <td className="px-4 py-3">
+                            <div className="text-xs text-slate-700">
+                              {v.example_sentence ? (
+                                <>
+                                  <div className="truncate max-w-[360px]" title={v.example_sentence}>
+                                    “{v.example_sentence}”
+                                  </div>
+                                  {v.example_meaning ? (
+                                    <div className="text-slate-500 mt-1 truncate max-w-[360px]" title={v.example_meaning}>
+                                      → {v.example_meaning}
+                                    </div>
+                                  ) : null}
+                                </>
+                              ) : (
+                                <span className="text-slate-400">—</span>
+                              )}
+                            </div>
+                          </td>
+
+                          <td className="px-4 py-3">
+                            <div className="text-sm text-slate-800 truncate max-w-[220px]" title={t?.test_title}>
+                              {t?.test_title || "—"}
+                            </div>
+                          </td>
+
+                          <td className="px-4 py-3">
+                            <div className="text-sm text-slate-800 truncate max-w-[200px]" title={t?.main_topic}>
+                              {t?.main_topic || "—"}
+                            </div>
+                            {t?.sub_topic ? (
+                              <div className="text-xs text-slate-500 truncate max-w-[200px]" title={t.sub_topic}>
+                                {t.sub_topic}
                               </div>
-                              {vocab.phonetic && (
-                                <div className="text-xs text-indigo-600">
-                                  /{vocab.phonetic}/
-                                </div>
-                              )}
-                            </div>
+                            ) : null}
                           </td>
-                          <td className="px-3 py-2">
-                            <div className="text-sm text-indigo-900">
-                              {vocab.meaning.length > 30 ? vocab.meaning.substring(0, 30) + '...' : vocab.meaning}
-                            </div>
-                          </td>
-                          <td className="px-3 py-2">
-                            <div className="min-w-0">
-                              {vocab.example_sentence && (
-                                <div className="text-xs text-indigo-700" title={vocab.example_sentence}>
-                                  {vocab.example_sentence.length > 40 ? vocab.example_sentence.substring(0, 40) + '...' : vocab.example_sentence}
-                                </div>
-                              )}
-                              {vocab.example_meaning && (
-                                <div className="text-xs text-indigo-600 mt-1" title={vocab.example_meaning}>
-                                  {vocab.example_meaning.length > 40 ? vocab.example_meaning.substring(0, 40) + '...' : vocab.example_meaning}
-                                </div>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-3 py-2">
-                            <div className="text-sm text-indigo-900" title={test?.test_title}>
-                              {test?.test_title ? (test.test_title.length > 20 ? test.test_title.substring(0, 20) + '...' : test.test_title) : '—'}
-                            </div>
-                          </td>
-                          <td className="px-3 py-2">
-                            <div className="min-w-0">
-                              <div className="text-sm text-indigo-900" title={test?.main_topic}>
-                                {test?.main_topic ? (test.main_topic.length > 15 ? test.main_topic.substring(0, 15) + '...' : test.main_topic) : '—'}
-                              </div>
-                              {test?.sub_topic && (
-                                <div className="text-xs text-indigo-600" title={test.sub_topic}>
-                                  {test.sub_topic.length > 15 ? test.sub_topic.substring(0, 15) + '...' : test.sub_topic}
-                                </div>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-3 py-2 text-right text-sm font-medium">
-                            <div className="flex justify-end space-x-1">
+
+                          <td className="px-4 py-3">
+                            <div className="flex justify-end gap-1">
                               <button
-                                onClick={() => handleEditClick(vocab)}
-                                className="px-2 py-1 text-xs text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50 rounded"
+                                onClick={() => openEdit(v)}
+                                className="px-2.5 py-1.5 text-xs rounded-lg text-indigo-700 hover:bg-indigo-50"
                               >
                                 Sửa
                               </button>
                               <button
-                                onClick={() => handleDeleteClick(vocab)}
-                                className="px-2 py-1 text-xs text-red-600 hover:text-red-900 hover:bg-red-50 rounded"
+                                onClick={() => openDelete(v)}
+                                className="px-2.5 py-1.5 text-xs rounded-lg text-rose-700 hover:bg-rose-50"
                               >
                                 Xóa
                               </button>
@@ -529,113 +546,150 @@ const AdminVocabularies = () => {
             </div>
           </div>
 
-          {/* Mobile Card View */}
-          <div className="block lg:hidden">
-            <div className="space-y-3 p-4">
-              {filteredVocabs.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-indigo-600 text-sm">
-                    {searchTerm ? 'Không tìm thấy từ vựng nào phù hợp' : 'Chưa có từ vựng nào'}
-                  </p>
+          {/* Mobile cards */}
+          <div className="lg:hidden p-3 space-y-3">
+            {filteredVocabs.length === 0 ? (
+              <div className="text-center py-10">
+                <div className="text-sm font-medium text-slate-700">
+                  {searchTerm ? "Không tìm thấy từ vựng phù hợp" : "Chưa có từ vựng nào"}
                 </div>
-              ) : (
-                filteredVocabs.map((vocab) => {
-                  const test = tests[vocab.test_id];
-                  return (
-                    <div key={vocab._id} className="bg-indigo-50 rounded-lg p-4 space-y-3">
-                      {/* Word and Meaning */}
-                      <div>
-                        <h3 className="font-medium text-indigo-900 text-sm">{vocab.word}</h3>
-                        {vocab.phonetic && (
-                          <p className="text-xs text-indigo-600">/{vocab.phonetic}/</p>
-                        )}
-                        <p className="text-sm text-indigo-800 mt-1">{vocab.meaning}</p>
+                <div className="text-xs text-slate-500 mt-1">
+                  {searchTerm ? "Thử từ khóa khác hoặc xóa lọc." : "Bấm “Thêm từ” để tạo từ vựng mới."}
+                </div>
+              </div>
+            ) : (
+              filteredVocabs.map((v) => {
+                const t = testsById[v.test_id];
+                return (
+                  <div key={v._id} className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold text-slate-900">{v.word}</div>
+                        <div className="text-xs text-slate-500 mt-0.5">
+                          {v.phonetic ? `/${v.phonetic}/ • ` : ""}
+                          {v.meaning || "—"}
+                        </div>
                       </div>
 
-                      {/* Example */}
-                      {vocab.example_sentence && (
-                        <div className="text-xs text-indigo-700">
-                          <p className="italic">"{vocab.example_sentence}"</p>
-                          {vocab.example_meaning && (
-                            <p className="mt-1">→ {vocab.example_meaning}</p>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Test Info */}
-                      {test && (
-                        <div className="flex flex-wrap gap-2">
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                            {test.test_title}
-                          </span>
-                          {test.main_topic && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
-                              {test.main_topic}
-                            </span>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Actions */}
-                      <div className="flex justify-end space-x-3 pt-2">
+                      <div className="flex gap-1">
                         <button
-                          onClick={() => handleEditClick(vocab)}
-                          className="text-sm text-indigo-600 hover:text-indigo-900 font-medium"
+                          onClick={() => openEdit(v)}
+                          className="px-2.5 py-1.5 text-xs rounded-lg text-indigo-700 hover:bg-indigo-50"
                         >
                           Sửa
                         </button>
                         <button
-                          onClick={() => handleDeleteClick(vocab)}
-                          className="text-sm text-red-600 hover:text-red-900 font-medium"
+                          onClick={() => openDelete(v)}
+                          className="px-2.5 py-1.5 text-xs rounded-lg text-rose-700 hover:bg-rose-50"
                         >
                           Xóa
                         </button>
                       </div>
                     </div>
-                  );
-                })
-              )}
-            </div>
+
+                    {v.example_sentence ? (
+                      <div className="mt-2 text-xs text-slate-700">
+                        <div className="italic">“{v.example_sentence}”</div>
+                        {v.example_meaning ? <div className="text-slate-500 mt-1">→ {v.example_meaning}</div> : null}
+                      </div>
+                    ) : null}
+
+                    {t ? (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {t.test_title ? (
+                          <span className="px-2 py-1 text-[11px] rounded-full bg-slate-100 text-slate-700">
+                            {t.test_title}
+                          </span>
+                        ) : null}
+                        {t.main_topic ? (
+                          <span className="px-2 py-1 text-[11px] rounded-full bg-indigo-50 text-indigo-700">
+                            {t.main_topic}
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       </div>
 
       {/* Create Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-xl font-semibold text-indigo-900 mb-4">Thêm từ vựng mới</h3>
-            <VocabForm 
-              onSubmit={handleCreateSubmit} 
-              buttonText="Tạo mới" 
-              formData={formData}
-              setFormData={setFormData}
-              allTests={allTests}
-              onCancel={() => setShowCreateModal(false)}
-            />
-          </div>
-        </div>
+        <ModalShell
+          title="Thêm từ vựng"
+          subtitle="Tạo một từ vựng mới cho bài kiểm tra"
+          onClose={() => setShowCreateModal(false)}
+          maxWidth="max-w-2xl"
+        >
+          <VocabForm
+            onSubmit={handleCreateSubmit}
+            buttonText="Tạo mới"
+            formData={formData}
+            setFormData={setFormData}
+            allTests={allTests}
+            onCancel={() => setShowCreateModal(false)}
+          />
+        </ModalShell>
       )}
 
       {/* Edit Modal */}
       {showEditModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-xl font-semibold text-indigo-900 mb-4">Chỉnh sửa từ vựng</h3>
-            <VocabForm 
-              onSubmit={handleEditSubmit} 
-              buttonText="Cập nhật" 
-              formData={formData}
-              setFormData={setFormData}
-              allTests={allTests}
-              onCancel={() => setShowEditModal(false)}
-            />
-          </div>
-        </div>
+        <ModalShell
+          title="Chỉnh sửa từ vựng"
+          subtitle={selectedVocab?.word ? `Đang sửa: ${selectedVocab.word}` : ""}
+          onClose={() => setShowEditModal(false)}
+          maxWidth="max-w-2xl"
+        >
+          <VocabForm
+            onSubmit={handleEditSubmit}
+            buttonText="Cập nhật"
+            formData={formData}
+            setFormData={setFormData}
+            allTests={allTests}
+            onCancel={() => setShowEditModal(false)}
+          />
+        </ModalShell>
       )}
 
       {/* Delete Modal */}
-      {showDeleteModal && <DeleteModal />}
+      {showDeleteModal && (
+        <ModalShell
+          title="Xác nhận xóa"
+          subtitle="Hành động này không thể hoàn tác"
+          onClose={() => setShowDeleteModal(false)}
+          maxWidth="max-w-md"
+        >
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-lg bg-rose-50 flex items-center justify-center">
+              <Icon.Warning className="w-5 h-5 text-rose-600" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-sm text-slate-800">
+                Bạn có chắc chắn muốn xóa từ <span className="font-semibold">“{selectedVocab?.word}”</span>?
+              </div>
+              <div className="text-xs text-slate-500 mt-1">Từ vựng sẽ bị xóa khỏi hệ thống.</div>
+            </div>
+          </div>
+
+          <div className="mt-4 flex gap-2">
+            <button
+              onClick={() => setShowDeleteModal(false)}
+              className="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50"
+            >
+              Hủy
+            </button>
+            <button
+              onClick={handleDeleteConfirm}
+              className="flex-1 px-3 py-2 text-sm rounded-lg bg-rose-600 text-white hover:bg-rose-700"
+            >
+              Xóa
+            </button>
+          </div>
+        </ModalShell>
+      )}
     </AdminLayout>
   );
 };

@@ -243,10 +243,7 @@ const ProfilePage = () => {
   }
 
   return (
-    <ProfileLayout
-      title="Hồ sơ"
-      description="Quản lý thông tin, kết quả luyện tập và bài test của bạn."
-    >
+    <ProfileLayout>
       {/* Top: tabs area (simple + modern) */}
       <div className="rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-black/5">
         <div className="p-3 sm:p-4 border-b border-slate-200">

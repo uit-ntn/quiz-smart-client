@@ -6,7 +6,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorMessage from '../components/ErrorMessage';
 import VocabularyTestCard from '../components/VocabularyTestCard';
 import EmptyState from '../components/EmptyState';
-import FilterSidebar from '../components/FilterSidebar';
+import FilterSidebar from '../components/AdminFilterSidebar';
 import Pagination from '../components/Pagination';
 import VocabularyLayout from '../layout/VocabularyLayout';
 import VocabularyPreviewModal from '../components/VocabularyPreviewModal';

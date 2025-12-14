@@ -1,7 +1,7 @@
 // src/pages/ProfileTestReview.jsx
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import VocabularyLayout from '../layout/VocabularyLayout';
+import ProfileLayout from '../layout/ProfileLayout';
 import testResultService from '../services/testResultService';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorMessage from '../components/ErrorMessage';
@@ -166,16 +166,16 @@ const ProfileTestReview = () => {
 
   if (!normalized) {
     return (
-      <VocabularyLayout>
+      <ProfileLayout>
         <ErrorMessage error="Không tìm thấy kết quả bài test." />
-      </VocabularyLayout>
+      </ProfileLayout>
     );
   }
 
   const durationSec = Math.round((normalized.durationMs || 0) / 1000);
 
   return (
-    <VocabularyLayout>
+    <ProfileLayout>
       <div className="min-h-screen bg-slate-50">
         <div className="mx-auto max-w-5xl px-3 sm:px-4 py-4 sm:py-6">
           {/* Top bar (mobile: stack, buttons full width) */}
@@ -475,7 +475,7 @@ const ProfileTestReview = () => {
           </div>
         </div>
       )}
-    </VocabularyLayout>
+    </ProfileLayout>
   );
 };
 
