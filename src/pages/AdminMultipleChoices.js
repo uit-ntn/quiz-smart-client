@@ -578,22 +578,6 @@ const AdminMultipleChoices = () => {
           </div>
         )}
 
-        {/* Question Modal */}
-        {showQuestionModal && !showDetailModal && (
-          <AdminQuestionModal
-            isOpen={showQuestionModal}
-            onClose={() => {
-              setShowQuestionModal(false);
-              setSelectedQuestion(null);
-              setIsEditMode(false);
-            }}
-            questionData={isEditMode ? selectedQuestion : null}
-            testType="multiple-choice"
-            onQuestionSaved={handleQuestionSaved}
-            allTests={allTests}
-          />
-        )}
-
         {/* Delete Modal */}
         {showDeleteModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">

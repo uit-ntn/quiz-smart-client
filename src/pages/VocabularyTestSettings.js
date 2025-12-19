@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import VocabularyLayout from '../layout/VocabularyLayout';
+import { VocabularyLayout } from '../layout/TestLayout';
 import vocabularyService from '../services/vocabularyService';
 import testService from '../services/testService';
 import LoadingSpinner from '../components/LoadingSpinner';

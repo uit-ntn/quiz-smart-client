@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import testService from '../services/testService';
-import LoadingSpinner from './LoadingSpinner';
 
 // Chuẩn hoá nhiều kiểu trả về -> mảng string
 const normalizeToSubTopicArray = (raw) => {
@@ -60,7 +59,7 @@ const getColorClasses = (color) => {
   return colorMap[color] || colorMap.blue;
 };
 
-const TopicModal = ({ isOpen, onClose, mainTopic }) => {
+const TopicModal = ({ isOpen, onClose, mainTopic, type = 'vocabulary' }) => {
   const [subTopics, setSubTopics] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -72,7 +71,7 @@ const TopicModal = ({ isOpen, onClose, mainTopic }) => {
       // Reset search when modal opens
       setSearchTerm('');
     }
-  }, [isOpen, mainTopic]);
+  }, [isOpen, mainTopic, type]);
 
   // Handle ESC key to close modal
   useEffect(() => {
@@ -97,11 +96,18 @@ const TopicModal = ({ isOpen, onClose, mainTopic }) => {
     try {
       setLoading(true);
       setError(null);
-      const res = await testService.getMultipleChoiceSubTopicsByMainTopic(mainTopic);
+      console.log('TopicModal: Fetching sub topics for:', mainTopic, 'type:', type);
+      
+      const res = type === 'vocabulary' 
+        ? await testService.getVocabularySubTopicsByMainTopic(mainTopic)
+        : await testService.getMultipleChoiceSubTopicsByMainTopic(mainTopic);
+      
+      console.log('TopicModal: Sub topics response:', res);
       const normalized = normalizeToSubTopicArray(res);
+      console.log('TopicModal: Normalized sub topics:', normalized);
       setSubTopics(normalized);
     } catch (e) {
-      console.error(e);
+      console.error('TopicModal: Error fetching sub topics:', e);
       setError('Không thể tải danh sách chủ đề con.');
     } finally {
       setLoading(false);
@@ -112,6 +118,45 @@ const TopicModal = ({ isOpen, onClose, mainTopic }) => {
   const filteredSubTopics = subTopics.filter(subTopic => 
     subTopic.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Config for different types
+  const getTypeConfig = (type) => {
+    const configs = {
+      vocabulary: {
+        gradient: 'from-slate-600 to-slate-700',
+        icon: (
+          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          </svg>
+        ),
+        baseRoute: '/vocabulary/tests',
+        focusColor: 'focus:ring-slate-500 focus:border-slate-500',
+        itemIcon: (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          </svg>
+        )
+      },
+      'multiple-choice': {
+        gradient: 'from-blue-500 to-indigo-600',
+        icon: (
+          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+          </svg>
+        ),
+        baseRoute: '/multiple-choice/tests',
+        focusColor: 'focus:ring-blue-500 focus:border-blue-500',
+        itemIcon: (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+          </svg>
+        )
+      }
+    };
+    return configs[type] || configs.vocabulary;
+  };
+
+  const typeConfig = getTypeConfig(type);
 
   if (!isOpen) return null;
 
@@ -129,10 +174,8 @@ const TopicModal = ({ isOpen, onClose, mainTopic }) => {
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <div className="flex items-center">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center mr-3">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                </svg>
+              <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${typeConfig.gradient} flex items-center justify-center mr-3`}>
+                {typeConfig.icon}
               </div>
               <div>
                 <h2 className="text-xl font-bold text-gray-900">{mainTopic}</h2>
@@ -165,7 +208,7 @@ const TopicModal = ({ isOpen, onClose, mainTopic }) => {
                     placeholder="Tìm kiếm chủ đề con..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="block w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                    className={`block w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50 placeholder-gray-500 focus:outline-none focus:ring-2 ${typeConfig.focusColor} transition-all duration-200`}
                   />
                 </div>
               </div>
@@ -173,7 +216,7 @@ const TopicModal = ({ isOpen, onClose, mainTopic }) => {
 
             {loading ? (
               <div className="flex items-center justify-center py-12">
-                <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin"></div>
                 <span className="ml-3 text-gray-600">Đang tải...</span>
               </div>
             ) : error ? (
@@ -186,7 +229,7 @@ const TopicModal = ({ isOpen, onClose, mainTopic }) => {
                 <p className="text-gray-600 mb-4">{error}</p>
                 <button
                   onClick={fetchSubTopics}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className={`px-4 py-2 ${type === 'vocabulary' ? 'bg-slate-600 hover:bg-slate-700' : 'bg-blue-600 hover:bg-blue-700'} text-white rounded-lg transition-colors`}
                 >
                   Thử lại
                 </button>
@@ -195,7 +238,7 @@ const TopicModal = ({ isOpen, onClose, mainTopic }) => {
               <div className="text-center py-12">
                 <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
                   <svg className="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                   </svg>
                 </div>
                 <p className="text-gray-600">
@@ -204,7 +247,7 @@ const TopicModal = ({ isOpen, onClose, mainTopic }) => {
                 {searchTerm && (
                   <button
                     onClick={() => setSearchTerm('')}
-                    className="mt-2 text-blue-600 hover:text-blue-700 text-sm"
+                    className={`mt-2 ${type === 'vocabulary' ? 'text-slate-600 hover:text-slate-700' : 'text-blue-600 hover:text-blue-700'} text-sm`}
                   >
                     Xóa tìm kiếm
                   </button>
@@ -219,7 +262,7 @@ const TopicModal = ({ isOpen, onClose, mainTopic }) => {
                   return (
                     <Link
                       key={subTopic}
-                      to={`/multiple-choice/tests/${encodeURIComponent(mainTopic)}/${encodeURIComponent(subTopic)}`}
+                      to={`${typeConfig.baseRoute}/${encodeURIComponent(mainTopic)}/${encodeURIComponent(subTopic)}`}
                       onClick={onClose}
                       className={`
                         group p-4 rounded-xl border-2 ${colorClasses.border} ${colorClasses.bg} 
@@ -228,9 +271,9 @@ const TopicModal = ({ isOpen, onClose, mainTopic }) => {
                     >
                       <div className="flex items-center">
                         <div className={`w-8 h-8 rounded-lg bg-white flex items-center justify-center mr-3 shadow-sm`}>
-                          <svg className={`w-4 h-4 ${colorClasses.icon}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                          </svg>
+                          <div className={`${colorClasses.icon}`}>
+                            {typeConfig.itemIcon}
+                          </div>
                         </div>
                         <div className="flex-1 min-w-0">
                           <h3 className={`font-semibold ${colorClasses.text} group-hover:text-gray-800 transition-colors`}>
@@ -255,3 +298,7 @@ const TopicModal = ({ isOpen, onClose, mainTopic }) => {
 };
 
 export default TopicModal;
+
+// Backward compatibility exports
+export const VocabularyTopicModal = (props) => <TopicModal {...props} type="vocabulary" />;
+export const MCPTopicModal = (props) => <TopicModal {...props} type="multiple-choice" />;

@@ -8,6 +8,7 @@ import testResultService from '../services/testResultService';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorMessage from '../components/ErrorMessage';
 import Toast from '../components/Toast';
+import { useTestSession } from '../hooks/useTestSession';
 
 const DEFAULT_TOTAL_QUESTIONS = 10;
 const DEFAULT_TIME_PER_QUESTION = 30;
@@ -53,6 +54,17 @@ const VocabularyTestTake = () => {
   const { testId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Test session tracking
+  const [testResultId, setTestResultId] = useState(null);
+  const {
+    initializeSession,
+    endSession,
+    recordBehavior,
+    updateStatus,
+    flagSession,
+    isTracking
+  } = useTestSession(testResultId);
 
   const initialSettings = useMemo(() => {
     const fromState = location.state?.settings;
@@ -136,6 +148,49 @@ const VocabularyTestTake = () => {
         setTimeLeft(settings.timePerQuestion || DEFAULT_TIME_PER_QUESTION);
 
         startTimeRef.current = Date.now();
+
+        // Create initial draft test result for session tracking
+        try {
+          const testSnapshot = {
+            test_id: testId,
+            test_title: test?.test_title || 'Vocabulary Test',
+            main_topic: test?.main_topic || 'Vocabulary',
+            sub_topic: test?.sub_topic || '',
+            test_type: test?.test_type || 'vocabulary',
+            difficulty: test?.difficulty || 'medium',
+          };
+
+          const initialPayload = {
+            test_id: testId,
+            test_snapshot: testSnapshot,
+            answers: [
+              {
+                question_id: selected[0]?._id || 'placeholder',
+                question_collection: 'vocabularies',
+                word: selected[0]?.word || '',
+                meaning: selected[0]?.meaning || '',
+                example_sentence: selected[0]?.example_sentence || '',
+                question_mode: settings.mode || 'word_to_meaning',
+                correct_answer: '',
+                user_answer: '',
+                is_correct: false,
+                time_spent_ms: 0,
+              }
+            ], // ✅ Must be non-empty array for BE validation
+            duration_ms: 0,
+            start_time: new Date(startTimeRef.current),
+            end_time: null,
+            status: 'in_progress',
+          };
+
+          const draftResult = await testResultService.createTestResult(initialPayload);
+          setTestResultId(draftResult?._id || draftResult?.id);
+
+          console.log('✅ Initial draft result created for session tracking:', draftResult?._id || draftResult?.id);
+        } catch (err) {
+          console.error('❌ Failed to create initial draft result:', err);
+          // Continue without session tracking if this fails
+        }
       } catch (e) {
         console.error('Error fetching test data:', e);
         setError(`Có lỗi xảy ra khi tải câu hỏi: ${e.message}. Vui lòng thử lại.`);
@@ -147,6 +202,22 @@ const VocabularyTestTake = () => {
     run();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [testId]);
+
+  // Initialize test session when testResultId is available
+  useEffect(() => {
+    if (testResultId && !isTracking) {
+      initializeSession();
+    }
+  }, [testResultId, isTracking, initializeSession]);
+
+  // Cleanup session on unmount
+  useEffect(() => {
+    return () => {
+      if (isTracking) {
+        endSession();
+      }
+    };
+  }, [isTracking, endSession]);
 
   const getCorrectAnswer = useCallback(
     (item) => {
@@ -205,9 +276,17 @@ const VocabularyTestTake = () => {
       u.onend = () => setIsPlaying(false);
       u.onerror = () => setIsPlaying(false);
 
+      // Record audio playback
+      recordBehavior('audio_playback', {
+        question_index: index,
+        text_length: text.length,
+        voice_id: voiceId,
+        voice_lang: v?.lang || 'en-US'
+      });
+
       speechSynthesis.speak(u);
     },
-    [isPlaying, pickVoice]
+    [isPlaying, pickVoice, index, voiceId, recordBehavior]
   );
 
   const revealAnswer = useCallback(
@@ -234,8 +313,18 @@ const VocabularyTestTake = () => {
 
       setShowAnswer(true);
       setIsPaused(true);
+
+      // Record answer submission behavior
+      recordBehavior('answer_submitted', {
+        question_index: index,
+        question_id: current?._id,
+        mode: settings.mode,
+        time_spent: (settings.timePerQuestion || DEFAULT_TIME_PER_QUESTION) - timeLeft,
+        is_correct: isCorrect,
+        answer_length: answerText?.length || 0
+      });
     },
-    [answers, checkAnswer, getCorrectAnswer, index, items, settings.mode, settings.timePerQuestion, timeLeft]
+    [answers, checkAnswer, getCorrectAnswer, index, items, settings.mode, settings.timePerQuestion, timeLeft, recordBehavior]
   );
 
   const completeTest = useCallback(
@@ -280,15 +369,30 @@ const VocabularyTestTake = () => {
         };
 
         console.log('📤 Sending payload to BE:', JSON.stringify(payload, null, 2));
-        const draftResult = await testResultService.createTestResult(payload);
-        console.log('✅ Draft result created:', draftResult);
+        
+        // ✅ Luôn tạo mới test result khi submit (không update draft tracking)
+        // Draft tracking (in_progress) chỉ dùng cho session tracking
+        console.log('📝 Creating new draft TestResult');
+        const finalResult = await testResultService.createTestResult(payload);
+        console.log('✅ TestResult created:', finalResult);
+
+        // End test session tracking BEFORE navigation
+        if (isTracking) {
+          try {
+            await endSession();
+            console.log('✅ Test session ended successfully');
+          } catch (err) {
+            console.error('❌ Failed to end test session:', err);
+            // Continue anyway
+          }
+        }
 
         navigate(`/vocabulary/test/${testId}/result`, {
           state: {
             answers: aList,
             settings,
             testInfo,
-            draftResultId: draftResult?._id || draftResult?.id,
+            draftResultId: finalResult?._id || finalResult?.id,
           },
         });
       } catch (err) {
@@ -304,13 +408,20 @@ const VocabularyTestTake = () => {
         setIsSubmitting(false);
       }
     },
-    [answers, getCorrectAnswer, navigate, settings, testId, testInfo]
+    [answers, getCorrectAnswer, navigate, settings, testId, testInfo, testResultId, endSession, isTracking]
   );
 
   const moveNextAfterReveal = useCallback(async () => {
     setShowAnswer(false);
     setLastAnswerResult(null);
     setIsPaused(false);
+
+    // Record question navigation
+    recordBehavior('question_navigation', {
+      from_question: index,
+      to_question: index < items.length - 1 ? index + 1 : 'completed',
+      action: 'next_after_reveal'
+    });
 
     if (index < items.length - 1) {
       setIndex((i) => i + 1);
@@ -319,10 +430,18 @@ const VocabularyTestTake = () => {
     } else {
       await completeTest();
     }
-  }, [completeTest, index, items.length, settings.timePerQuestion]);
+  }, [completeTest, index, items.length, settings.timePerQuestion, recordBehavior]);
 
   const submitNow = useCallback(async () => {
     if (!window.confirm('Bạn có chắc chắn muốn nộp bài? Các câu chưa trả lời sẽ được tính là sai.')) return;
+
+    // Record early submission
+    recordBehavior('test_submission', {
+      action: 'early_submit',
+      current_question: index,
+      total_questions: items.length,
+      answered_questions: answers.filter(a => a !== null).length
+    });
 
     const remain = [...answers];
     for (let i = 0; i < items.length; i++) {
@@ -334,7 +453,7 @@ const VocabularyTestTake = () => {
     // đảm bảo state cũng sync
     setAnswers(remain);
     await completeTest(remain);
-  }, [answers, completeTest, items]);
+  }, [answers, completeTest, items, index, recordBehavior]);
 
   // Timer
   useEffect(() => {

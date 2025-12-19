@@ -32,17 +32,10 @@ const HomePage = () => {
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
               <Link
-                to="/multiple-choice/topics"
+                to="/topics"
                 className="px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl text-lg shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300"
               >
-                Làm trắc nghiệm ngay
-              </Link>
-
-              <Link
-                to="/vocabulary/topics"
-                className="px-8 py-4 bg-green-600 hover:bg-green-700 text-white font-bold rounded-2xl text-lg shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300"
-              >
-                Làm bài từ vựng ngay
+                Khám phá chủ đề học tập
               </Link>
 
               <Link
@@ -212,21 +205,14 @@ const HomePage = () => {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-2 gap-8">
             {[
               {
-                icon: "📝",
-                title: "Trắc nghiệm đa dạng",
-                desc: "Hàng nghìn câu hỏi từ cơ bản đến nâng cao",
-                color: "bg-blue-500",
-                link: "/multiple-choice/topics"
-              },
-              {
-                icon: "📖",
-                title: "Từ vựng thông minh",
-                desc: "Học từ vựng với phương pháp khoa học",
-                color: "bg-purple-500",
-                link: "/vocabulary/topics"
+                icon: "📚",
+                title: "Chủ đề học tập đa dạng",
+                desc: "Khám phá hàng nghìn chủ đề từ vựng và trắc nghiệm từ cơ bản đến nâng cao",
+                color: "bg-indigo-500",
+                link: "/topics"
               },
               {
                 icon: "⚡",
@@ -269,16 +255,10 @@ const HomePage = () => {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
-              to="/multiple-choice/topics"
+              to="/topics"
               className="px-8 py-4 bg-white text-indigo-600 font-black rounded-2xl text-lg shadow-2xl hover:shadow-3xl transform hover:-translate-y-1 transition-all duration-300"
             >
-              Làm trắc nghiệm ngay
-            </Link>
-            <Link
-              to="/vocabulary/topics"
-              className="px-8 py-4 bg-white text-indigo-600 font-black rounded-2xl text-lg shadow-2xl hover:shadow-3xl transform hover:-translate-y-1 transition-all duration-300"
-            >
-              Học từ vựng ngay
+              Khám phá chủ đề học tập
             </Link>
             <Link
               to="/login"

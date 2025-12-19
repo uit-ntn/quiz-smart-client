@@ -4,18 +4,60 @@ import testService from '../services/testService';
 import vocabularyService from '../services/vocabularyService';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorMessage from '../components/ErrorMessage';
-import VocabularyTestCard from '../components/VocabularyTestCard';
+import { VocabularyTestCard, MCPTestCard } from '../components/TestCard';
 import EmptyState from '../components/EmptyState';
 import FilterSidebar from '../components/AdminFilterSidebar';
-import Pagination from '../components/Pagination';
-import VocabularyLayout from '../layout/VocabularyLayout';
+import { VocabularyLayout, MultipleChoiceLayout } from '../layout/TestLayout';
 import VocabularyPreviewModal from '../components/VocabularyPreviewModal';
 import AuthContext from '../context/AuthContext';
 
-const VocabularyTestList = () => {
+const TestListPage = ({ type = 'vocabulary' }) => {
   const { mainTopic, subTopic } = useParams();
-  const { user } = useContext(AuthContext); // Thêm auth context
+  const { user } = useContext(AuthContext); // Add auth context for vocabulary
   const [allTests, setAllTests] = useState([]);
+
+  // Config for different test types
+  const getTypeConfig = (type) => {
+    const configs = {
+      vocabulary: {
+        title: 'Bài kiểm tra từ vựng',
+        testType: 'vocabulary',
+        loadingMessage: 'Đang tải danh sách bài kiểm tra từ vựng...',
+        errorMessage: 'Không thể tải danh sách bài kiểm tra từ vựng',
+        emptyTitle: 'Chưa có bài kiểm tra nào',
+        emptyDescFilter: 'Không tìm thấy bài kiểm tra từ vựng nào phù hợp với bộ lọc hiện tại.',
+        emptyDesc: 'Hiện tại chưa có bài kiểm tra từ vựng nào cho chủ đề này.',
+        backLink: '/vocabulary/topics',
+        backText: 'Quay lại chủ đề',
+        primaryColor: 'green',
+        gradientFrom: 'from-green-500 to-green-600',
+        gradientText: 'from-green-600 to-green-700',
+        Layout: VocabularyLayout,
+        TestCard: VocabularyTestCard,
+        hasPreview: true
+      },
+      'multiple-choice': {
+        title: 'Bài kiểm tra trắc nghiệm',
+        testType: 'multiple_choice',
+        loadingMessage: 'Đang tải danh sách bài kiểm tra...',
+        errorMessage: 'Không thể tải danh sách bài kiểm tra',
+        emptyTitle: 'Chưa có bài kiểm tra nào',
+        emptyDescFilter: 'Không tìm thấy bài kiểm tra nào phù hợp với bộ lọc hiện tại.',
+        emptyDesc: 'Hiện tại chưa có bài kiểm tra trắc nghiệm nào cho chủ đề này.',
+        backLink: '/multiple-choice/topics',
+        backText: 'Quay lại chủ đề con',
+        primaryColor: 'blue',
+        gradientFrom: 'from-blue-500 to-blue-600',
+        gradientText: 'from-blue-600 to-blue-700',
+        Layout: MultipleChoiceLayout,
+        TestCard: MCPTestCard,
+        hasPreview: false
+      }
+    };
+    return configs[type] || configs.vocabulary;
+  };
+
+  const typeConfig = getTypeConfig(type);
   const [filteredTests, setFilteredTests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -48,7 +90,7 @@ const VocabularyTestList = () => {
 
   useEffect(() => {
     fetchTests();
-  }, [mainTopic, subTopic, user]); // Thêm user dependency để re-fetch khi login/logout
+  }, [mainTopic, subTopic, type === 'vocabulary' ? user : null]); // Add user dependency for vocabulary only
 
   useEffect(() => {
     applyFilters();
@@ -59,8 +101,10 @@ const VocabularyTestList = () => {
       setLoading(true);
       setError(null);
       
-      console.log('Fetching tests for:', { mainTopic, subTopic });
-      console.log('Current user:', user ? user.email : 'Not logged in'); // Debug log
+      console.log(`Fetching ${type} tests for:`, { mainTopic, subTopic });
+      if (type === 'vocabulary') {
+        console.log('Current user:', user ? user.email : 'Not logged in');
+      }
       
       if (!mainTopic || !subTopic) {
         throw new Error('Main topic hoặc sub topic không được tìm thấy');
@@ -73,16 +117,16 @@ const VocabularyTestList = () => {
         throw new Error('Không nhận được dữ liệu từ server');
       }
       
-      // Ensure response is an array and filter for vocabulary tests only
+      // Ensure response is an array and filter by test type
       const allTests = Array.isArray(response) ? response : [];
-      const vocabularyTests = allTests.filter(test => test.test_type === 'vocabulary');
-      console.log('Vocabulary tests:', vocabularyTests);
-      console.log('Total tests found:', vocabularyTests.length); // Debug log
+      const filteredTests = allTests.filter(test => test.test_type === typeConfig.testType);
+      console.log(`${type} tests:`, filteredTests);
+      console.log(`Total ${type} tests found:`, filteredTests.length);
       
-      setAllTests(vocabularyTests);
+      setAllTests(filteredTests);
     } catch (err) {
-      console.error('Error fetching vocabulary tests:', err);
-      setError(`Không thể tải danh sách bài kiểm tra từ vựng: ${err.message}`);
+      console.error(`Error fetching ${type} tests:`, err);
+      setError(`${typeConfig.errorMessage}: ${err.message}`);
       setAllTests([]);
     } finally {
       setLoading(false);
@@ -243,7 +287,7 @@ const VocabularyTestList = () => {
   };
 
   if (loading) {
-    return <LoadingSpinner message="Đang tải danh sách bài kiểm tra từ vựng..." />;
+    return <LoadingSpinner message={typeConfig.loadingMessage} />;
   }
 
   if (error) {
@@ -252,17 +296,18 @@ const VocabularyTestList = () => {
 
   const headerActions = (
     <div className="flex items-center gap-3">
-      {/* Refresh Button */}
-      <button
-        onClick={fetchTests}
-        className="flex items-center px-3 py-2 bg-white/70 backdrop-blur-sm border border-white/50 text-gray-700 rounded-lg hover:bg-white/90 transition-all duration-200 shadow-lg"
-        title="Làm mới danh sách"
-      >
-        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-        </svg>
-        Làm mới
-      </button>
+      {type === 'vocabulary' && (
+        <button
+          onClick={fetchTests}
+          className="flex items-center px-3 py-2 bg-white/70 backdrop-blur-sm border border-white/50 text-gray-700 rounded-lg hover:bg-white/90 transition-all duration-200 shadow-lg"
+          title="Làm mới danh sách"
+        >
+          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          Làm mới
+        </button>
+      )}
 
       {/* View Mode Toggle */}
       <div className="flex bg-white/70 backdrop-blur-sm rounded-xl border border-white/50 p-1 shadow-lg">
@@ -270,7 +315,7 @@ const VocabularyTestList = () => {
         onClick={() => setViewMode('card')}
         className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
           viewMode === 'card' 
-            ? 'bg-green-100 text-green-700 shadow-sm' 
+            ? `bg-${typeConfig.primaryColor}-100 text-${typeConfig.primaryColor}-700 shadow-sm` 
             : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'
         }`}
       >
@@ -283,7 +328,7 @@ const VocabularyTestList = () => {
         onClick={() => setViewMode('list')}
         className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
           viewMode === 'list' 
-            ? 'bg-green-100 text-green-700 shadow-sm' 
+            ? `bg-${typeConfig.primaryColor}-100 text-${typeConfig.primaryColor}-700 shadow-sm` 
             : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'
         }`}
       >
@@ -296,11 +341,15 @@ const VocabularyTestList = () => {
     </div>
   );
 
+  const Layout = typeConfig.Layout;
+  const TestCard = typeConfig.TestCard;
+
   return (
-    <VocabularyLayout
-      title="Bài kiểm tra từ vựng"
+    <Layout
+      title={typeConfig.title}
       description={`${mainTopic} - ${subTopic}`}
       actions={headerActions}
+      type={type}
     >
       {/* Enhanced Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-6">
@@ -308,14 +357,20 @@ const VocabularyTestList = () => {
           <div className="absolute inset-0 bg-white/70 backdrop-blur-sm border border-white/50" />
           <div className="relative p-2">
             <div className="flex items-center">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center mr-3">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                </svg>
+              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${typeConfig.gradientFrom} flex items-center justify-center mr-3`}>
+                {type === 'vocabulary' ? (
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                  </svg>
+                )}
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-600">Tổng</p>
-                <p className="text-xl font-bold bg-gradient-to-r from-green-600 to-green-700 bg-clip-text text-transparent">{stats.total}</p>
+                <p className={`text-xl font-bold bg-gradient-to-r ${typeConfig.gradientText} bg-clip-text text-transparent`}>{stats.total}</p>
               </div>
             </div>
           </div>
@@ -393,17 +448,17 @@ const VocabularyTestList = () => {
       {filteredTests.length === 0 ? (
         <EmptyState
           icon="inbox"
-          title={filters.searchTerm || filters.difficulty || filters.status ? "Không tìm thấy kết quả" : "Chưa có bài kiểm tra nào"}
+          title={filters.searchTerm || filters.difficulty || filters.status ? "Không tìm thấy kết quả" : typeConfig.emptyTitle}
           description={filters.searchTerm || filters.difficulty || filters.status ? 
-            "Không tìm thấy bài kiểm tra từ vựng nào phù hợp với bộ lọc hiện tại." : 
-            "Hiện tại chưa có bài kiểm tra từ vựng nào cho chủ đề này."
+            typeConfig.emptyDescFilter : 
+            typeConfig.emptyDesc
           }
           action={
             <div className="flex flex-col sm:flex-row gap-3">
               {(filters.searchTerm || filters.difficulty || filters.status) && (
                 <button
                   onClick={handleClearFilters}
-                  className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                  className={`inline-flex items-center px-4 py-2 bg-${typeConfig.primaryColor}-600 text-white rounded-lg hover:bg-${typeConfig.primaryColor}-700 transition-colors`}
                 >
                   <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -412,7 +467,7 @@ const VocabularyTestList = () => {
                 </button>
               )}
               <Link
-                to={`/vocabulary/topics`}
+                to={typeConfig.backLink}
                 className="inline-flex items-center px-4 py-2 border border-gray-300 text-gray-700 bg-white rounded-lg hover:bg-gray-50 transition-colors"
               >
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -432,56 +487,50 @@ const VocabularyTestList = () => {
           }>
             {currentTests.map((test) => (
               <div key={test._id || test.id || test.test_id} className="h-full transform hover:scale-105 transition-all duration-200">
-                <VocabularyTestCard 
+                <TestCard 
                   test={test} 
                   viewMode={viewMode} 
                   className="h-full"
-                  onPreviewVocabulary={handlePreviewVocabulary}
+                  onPreviewVocabulary={typeConfig.hasPreview ? handlePreviewVocabulary : undefined}
                 />
               </div>
             ))}
           </div>
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              itemsPerPage={itemsPerPage}
-              totalItems={filteredTests.length}
-              onPageChange={handlePageChange}
-              onItemsPerPageChange={handleItemsPerPageChange}
-            />
-          )}
-
           {/* Enhanced Back Button */}
           <div className="flex justify-center mt-8">
             <Link
-              to={`/vocabulary/topics`}
+              to={typeConfig.backLink}
               className="flex items-center px-6 py-3 bg-white/70 backdrop-blur-sm border border-white/50 text-gray-700 rounded-xl hover:bg-white/90 transition-all duration-200 shadow-lg"
             >
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
-              Quay lại chủ đề
+              {typeConfig.backText}
             </Link>
           </div>
         </>
       )}
 
-      {/* Vocabulary Preview Modal */}
-      <VocabularyPreviewModal
-        isOpen={previewModal.isOpen}
-        onClose={handleClosePreviewModal}
-        items={previewModal.vocabularies}
-        isPlaying={previewModal.isPlaying}
-        onPlayAudio={handlePlayAudio}
-        onStartTest={handleStartTestFromPreview}
-        testTitle={previewModal.test?.test_title}
-        loading={previewModal.loading}
-      />
-    </VocabularyLayout>
+      {/* Vocabulary Preview Modal - only show for vocabulary tests */}
+      {typeConfig.hasPreview && (
+        <VocabularyPreviewModal
+          isOpen={previewModal.isOpen}
+          onClose={handleClosePreviewModal}
+          items={previewModal.vocabularies}
+          isPlaying={previewModal.isPlaying}
+          onPlayAudio={handlePlayAudio}
+          onStartTest={handleStartTestFromPreview}
+          testTitle={previewModal.test?.test_title}
+          loading={previewModal.loading}
+        />
+      )}
+    </Layout>
   );
 };
 
-export default VocabularyTestList;
+export default TestListPage;
+
+// Backward compatibility exports
+export const VocabularyTestList = (props) => <TestListPage {...props} type="vocabulary" />;
+export const MultipleChoiceTestList = (props) => <TestListPage {...props} type="multiple-choice" />;

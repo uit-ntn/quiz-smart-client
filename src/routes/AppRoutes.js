@@ -10,14 +10,11 @@ import AuthCallbackPage from '../pages/AuthCallbackPage';
 import ProtectedRoute from '../components/ProtectedRoute';
 import ProfilePage from '../pages/ProfilePage';
 // import HelpPage from '../pages/HelpPage';
-import MultipleChoiceListTopic from '../pages/MultipleChoiceListTopic';
-import MultipleChoiceTestList from '../pages/MultipleChoiceTestList';
+import TopicListPage from '../pages/TopicListPage';
 import MultipleChoiceTestSettings from '../pages/MultipleChoiceTestSettings';
 import MultipleChoiceTestTake from '../pages/MultipleChoiceTestTake';
 import MultipleChoiceTestReview from '../pages/MultipleChoiceTestReview';
-import VocabularyListTopic from '../pages/VocabularyListTopic';
-import VocabularyDebugPage from '../pages/VocabularyDebugPage';
-import VocabularyTestList from '../pages/VocabularyTestList';
+import { MultipleChoiceTestList, VocabularyTestList } from '../pages/TestListPage';
 import VocabularyTestSettings from '../pages/VocabularyTestSettings';
 import VocabularyTestTake from '../pages/VocabularyTestTake';
 import ProfileTestReview from '../pages/ProfileTestReview';
@@ -30,6 +27,7 @@ import AdminMultipleChoices from '../pages/AdminMultipleChoices';
 import AdminVocabularyTests from '../pages/AdminVocabularyTests';
 import AdminMultipleChoiceTests from '../pages/AdminMultipleChoiceTests';
 import AdminGrammarTests from '../pages/AdminGrammarTests';
+import AdminTestSession from '../pages/AdminTestSession';
 
 
 const AppRoutes = () => {
@@ -111,9 +109,16 @@ const AppRoutes = () => {
           <AdminGrammarTests />
         </ProtectedRoute>
       } />
+      <Route path="/admin/test-sessions" element={
+        <ProtectedRoute requireAdmin={true}>
+          <AdminTestSession />
+        </ProtectedRoute>
+      } />
+      
+      {/* Unified Topics Route */}
+      <Route path="/topics" element={<TopicListPage />} />
       
       {/* Multiple Choice Routes */}
-      <Route path="/multiple-choice/topics" element={<MultipleChoiceListTopic />} />
       <Route path="/multiple-choice/tests/:mainTopic/:subTopic" element={<MultipleChoiceTestList />} />
       <Route path="/multiple-choice/test/:testId/settings" element={
         <ProtectedRoute>
@@ -132,9 +137,6 @@ const AppRoutes = () => {
       } />
       
       {/* Vocabulary Routes */}
-      <Route path="/vocabulary" element={<VocabularyListTopic />} />
-      <Route path="/vocabulary/topics" element={<VocabularyListTopic />} />
-      <Route path="/vocabulary/debug" element={<VocabularyDebugPage />} />
       <Route path="/vocabulary/tests/:mainTopic/:subTopic" element={<VocabularyTestList />} />
       <Route path="/vocabulary/test/:testId/settings" element={
         <ProtectedRoute>

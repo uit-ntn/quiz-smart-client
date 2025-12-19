@@ -4,9 +4,8 @@ import { useAuth } from "../context/AuthContext";
 
 const NAV_ITEMS = [
   { path: "/", label: "Trang chủ" },
-  { path: "/multiple-choice/topics", label: "Trắc nghiệm" },
+  { path: "/topics", label: "Chủ đề học tập" },
   // { path: "/grammar/topics", label: "Ngữ pháp" },
-  { path: "/vocabulary/topics", label: "Từ vựng" },
   { path: "/about", label: "Giới thiệu" },
   { path: "/help", label: "Hướng dẫn" },
 ];

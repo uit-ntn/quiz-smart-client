@@ -1,102 +1,136 @@
-import React from 'react';
+import React from "react";
+import { Link } from "react-router-dom";
+import Footer from "../components/Footer";
+import Header from "../components/Header";
+import CreateVocabularyTestButton from "../components/CreateVocabularyTestButton";
+import CreateVocabularyWithAIButton from "../components/CreateVocabularyWithAIButton";
+import CreateMultipleChoiceTestButton from "../components/CreateMultipleChoiceTestButton";
+
+const MAX_WIDTH_CLASS = {
+  sm: "max-w-screen-sm",
+  md: "max-w-screen-md",
+  lg: "max-w-screen-lg",
+  xl: "max-w-screen-xl",
+  "2xl": "max-w-screen-2xl",
+  "7xl": "max-w-7xl",
+  full: "max-w-full",
+  none: "max-w-none",
+};
 
 const TestLayout = ({
   children,
-  testTitle,
-  currentQuestion,
-  totalQuestions,
-  timeLeft,
-  timePerQuestion,
-  onExit
+  title,
+  description,
+  icon,
+  actions,
+  breadcrumbItems,
+  showBackground = true,
+  maxWidth = "7xl",
+  containerClassName = "",
+  type = "vocabulary",
 }) => {
-  const progress = ((currentQuestion + 1) / totalQuestions) * 100;
-  const timeProgress = (timeLeft / timePerQuestion) * 100;
-
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  const getTypeConfig = (t) => {
+    const configs = {
+      vocabulary: {
+        bgClass: "bg-gradient-to-br from-slate-50 via-white to-emerald-50",
+        gradientFrom: "from-emerald-400/10 to-blue-400/10",
+        gradientTo: "from-blue-400/10 to-emerald-400/10",
+        iconGradient: "from-emerald-500 to-blue-600",
+        createButtons: (
+          <>
+            <CreateVocabularyWithAIButton className="h-11 px-5 rounded-xl text-sm font-semibold whitespace-nowrap" />
+            <CreateVocabularyTestButton className="h-11 px-5 rounded-xl text-sm font-semibold whitespace-nowrap" />
+            <CreateMultipleChoiceTestButton className="h-11 px-5 rounded-xl text-sm font-semibold whitespace-nowrap" />
+          </>
+        ),
+      },
+      "multiple-choice": {
+        bgClass: "bg-gradient-to-br from-slate-50 via-white to-blue-50",
+        gradientFrom: "from-blue-400/10 to-indigo-400/10",
+        gradientTo: "from-indigo-400/10 to-blue-400/10",
+        iconGradient: "from-blue-500 to-indigo-600",
+        createButtons: (
+          <CreateMultipleChoiceTestButton className="h-11 px-5 rounded-xl text-sm font-semibold whitespace-nowrap" />
+        ),
+      },
+    };
+    return configs[t] || configs.vocabulary;
   };
 
+  const typeConfig = getTypeConfig(type);
+  const maxW = MAX_WIDTH_CLASS[maxWidth] || "max-w-7xl";
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
-          <div className="flex items-center justify-between h-14">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={onExit}
-                className="flex items-center px-3 py-1.5 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                </svg>
-                Thoát
-              </button>
-              <div className="h-5 w-px bg-gray-300" />
-              <div>
-                <h1 className="text-base font-semibold text-gray-900">{testTitle}</h1>
-                <div className="text-sm text-gray-600">
-                  Câu {currentQuestion + 1}/{totalQuestions}
+    <>
+      <Header />
+      <div className={`min-h-screen relative ${typeConfig.bgClass}`}>
+        {showBackground && (
+          <>
+            <div className="pointer-events-none absolute inset-0 bg-grid-pattern opacity-[0.02]" />
+            <div
+              className={`pointer-events-none absolute top-0 right-0 w-96 h-96 bg-gradient-to-br ${typeConfig.gradientFrom} rounded-full blur-3xl`}
+            />
+            <div
+              className={`pointer-events-none absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr ${typeConfig.gradientTo} rounded-full blur-3xl`}
+            />
+          </>
+        )}
+
+        <div className={`relative z-10 w-full ${maxW} mx-auto px-3 sm:px-4 lg:px-6 py-6 ${containerClassName}`}>
+          {/* Header */}
+          {(breadcrumbItems?.length > 0 || title || description) && (
+            <div className="mb-6">
+              {/* Breadcrumb */}
+              {breadcrumbItems?.length > 0 && (
+                <nav className="mb-3 text-sm text-gray-500 flex flex-wrap items-center gap-2">
+                  {breadcrumbItems.map((item, idx) => (
+                    <React.Fragment key={item.path || item.label || idx}>
+                      {idx > 0 && <span className="text-gray-300">/</span>}
+                      {item.path ? (
+                        <Link to={item.path} className="hover:text-gray-700 transition">
+                          {item.label}
+                        </Link>
+                      ) : (
+                        <span className="text-gray-700 font-medium">{item.label}</span>
+                      )}
+                    </React.Fragment>
+                  ))}
+                </nav>
+              )}
+
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-4">
+                  {icon && (
+                    <div
+                      className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${typeConfig.iconGradient} flex items-center justify-center shadow-lg flex-shrink-0`}
+                    >
+                      {icon}
+                    </div>
+                  )}
+                  <div>
+                    {title && <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900">{title}</h1>}
+                    {description && <p className="mt-1 text-gray-600 leading-relaxed">{description}</p>}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  {actions}
+                  {typeConfig.createButtons}
                 </div>
               </div>
             </div>
+          )}
 
-            {/* Timer */}
-            <div className="flex items-center gap-4">
-              <div className="text-right">
-                <div className="text-xl font-bold text-gray-900">{formatTime(timeLeft)}</div>
-                <div className="text-xs text-gray-500">Thời gian còn lại</div>
-              </div>
-              <div className="w-14 h-14 relative">
-                <svg className="w-14 h-14 transform -rotate-90" viewBox="0 0 100 100">
-                  <circle cx="50" cy="50" r="45" fill="none" stroke="#e5e7eb" strokeWidth="8" />
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="45"
-                    fill="none"
-                    stroke={timeLeft <= 10 ? "#ef4444" : timeLeft <= 30 ? "#f59e0b" : "#10b981"}
-                    strokeWidth="8"
-                    strokeDasharray={`${2 * Math.PI * 45}`}
-                    strokeDashoffset={`${2 * Math.PI * 45 * (1 - timeProgress / 100)}`}
-                    className="transition-all duration-1000 ease-linear"
-                  />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span
-                    className={`text-xs font-bold ${
-                      timeLeft <= 10 ? "text-red-600" : timeLeft <= 30 ? "text-yellow-600" : "text-green-600"
-                    }`}
-                  >
-                    {timeLeft}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Progress Bar */}
-          <div className="py-2">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-sm font-medium text-gray-700">Tiến độ bài test</span>
-              <span className="text-sm text-gray-600">{Math.round(progress)}%</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2.5">
-              <div
-                className="bg-blue-600 h-2.5 rounded-full transition-all duration-300 ease-out"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          </div>
+          <div>{children}</div>
         </div>
       </div>
-
-      {/* Main */}
-      <div className="flex-1">{children}</div>
-    </div>
+      <Footer />
+    </>
   );
 };
 
 export default TestLayout;
+
+// Backward compatibility
+export const VocabularyLayout = (props) => <TestLayout {...props} type="vocabulary" />;
+export const MultipleChoiceLayout = (props) => <TestLayout {...props} type="multiple-choice" />;
