@@ -1,7 +1,7 @@
 // src/pages/VocabularyTestResult.jsx
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import VocabularyLayout from '../layout/VocabularyLayout';
+import { VocabularyLayout } from '../layout/TestLayout';
 import testResultService from '../services/testResultService';
 import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from '../components/LoadingSpinner';

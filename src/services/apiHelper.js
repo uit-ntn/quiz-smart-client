@@ -51,20 +51,57 @@ export const handleApiResponse = async (response) => {
 };
 
 // Generic API call function
-export const apiCall = async (url, options = {}) => {
+export const apiCall = async (methodOrUrl, endpointOrOptions = {}, dataOrUndefined = null) => {
     try {
-        console.log('API Call:', url, options);
+        let method, endpoint, data, options;
         
-        const defaultOptions = {
-            method: 'GET',
-            headers: options.requireAuth !== false ? getAuthHeaders() : { 'Content-Type': 'application/json' },
+        // Support both old format: apiCall(url, options) and new format: apiCall(method, endpoint, data)
+        if (typeof methodOrUrl === 'string' && (methodOrUrl.startsWith('http') || methodOrUrl.startsWith('/'))) {
+            // Old format: apiCall(url, options)
+            const url = methodOrUrl;
+            options = endpointOrOptions || {};
+            method = options.method || 'GET';
+            endpoint = url;
+            data = options.body ? JSON.parse(options.body) : null;
+        } else {
+            // New format: apiCall(method, endpoint, data)
+            method = methodOrUrl;
+            endpoint = endpointOrOptions;
+            data = dataOrUndefined;
+            options = {};
+        }
+        
+        const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint}`;
+        
+        console.log('API Call:', method, url, data);
+        
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+        
+        const config = {
+            method,
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token && { 'Authorization': `Bearer ${token}` }),
+                ...options.headers
+            },
         };
         
-        const response = await fetch(url, { ...defaultOptions, ...options });
-        const data = await handleApiResponse(response);
+        if (data && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
+            config.body = JSON.stringify(data);
+        }
         
-        console.log('API Response:', data);
-        return data;
+        const response = await fetch(url, config);
+        
+        // ✅ Check if response is HTML
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('text/html')) {
+            throw new Error('Server returned HTML instead of JSON - authentication may have failed');
+        }
+        
+        const result = await handleApiResponse(response);
+        
+        console.log('API Response:', result);
+        return result;
     } catch (error) {
         console.error('API Call Error:', error);
         throw error;

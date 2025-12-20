@@ -2,74 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ===== Base (dark mặc định) ===== */
-@layer base {
-  :root {
-    /* Màu line của grid pattern ở chế độ sáng */
-    --grid-line-color: rgba(0, 0, 0, 0.15);
-    color-scheme: light; /* bật hệ màu sáng cho form control */
-  }
 
-  /* Nếu bạn dùng toggle .dark thì biến này sẽ áp dụng ở dark */
-  .dark {
-    --grid-line-color: rgba(255, 255, 255, 0.06);
-    color-scheme: dark;
-  }
-
-  html, body, #root {
-    @apply min-h-full;
-  }
-
-  /* Background sáng mặc định */
-  body {
-    @apply bg-white text-gray-900 font-sans antialiased;
-  }
-
-  ::selection {
-    @apply bg-indigo-500/60 text-white;
-  }
-}
-
-/* ===== Utilities ===== */
-@layer utilities {
-  .bg-grid-pattern {
-    background-image:
-      linear-gradient(to right, var(--grid-line-color) 1px, transparent 1px),
-      linear-gradient(to bottom, var(--grid-line-color) 1px, transparent 1px);
-    background-size: 20px 20px;
-  }
-
-  .text-shadow {
-    /* đậm hơn chút để thấy rõ trên nền tối */
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
-  }
-
-  .backdrop-blur-xs {
-    backdrop-filter: blur(2px);
-    -webkit-backdrop-filter: blur(2px); /* Safari */
-  }
-
-  /* Tuỳ chọn: Scrollbar mảnh cho nền tối */
-  .scrollbar-thin {
-    scrollbar-width: thin;
-  }
-  .scrollbar-thin::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-  .scrollbar-thin::-webkit-scrollbar-thumb {
-    background-color: rgba(0, 0, 0, 0.5);
-    border-radius: 9999px;
-  }
-  .scrollbar-thin::-webkit-scrollbar-track {
-    background-color: rgba(0, 0, 0, 0.05);
-  }
-  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(0, 0, 0, 0.7);
-  }
-}
-
-/* Monospace stack gọn hơn */
+/* Monospace stack gọn */
 code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
 }

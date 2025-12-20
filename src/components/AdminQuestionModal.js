@@ -97,12 +97,14 @@ const AdminQuestionModal = ({
           }));
         }
 
+        // Ensure correct_answers is array
         if (question.correct_answers) {
           mergedData.correct_answers = Array.isArray(question.correct_answers)
             ? question.correct_answers
             : [question.correct_answers];
         }
 
+        // Ensure explanation format
         if (question.explanation) {
           mergedData.explanation = {
             correct: question.explanation.correct || "",
@@ -143,21 +145,15 @@ const AdminQuestionModal = ({
   };
 
   const setIncorrectExplanation = (label, text) => {
-    const currentExplanation = formData.explanation || {
-      correct: "",
-      incorrect_choices: {},
-    };
+    const currentExplanation = formData.explanation || { correct: "", incorrect_choices: {} };
     const incorrectChoices = currentExplanation.incorrect_choices || {};
-
     setField("explanation", {
       ...currentExplanation,
-      incorrect_choices: {
-        ...incorrectChoices,
-        [label]: text,
-      },
+      incorrect_choices: { ...incorrectChoices, [label]: text },
     });
   };
 
+  // validate
   const validate = () => {
     const v = {};
     if (lockedType === "multiple_choice") {
@@ -240,12 +236,28 @@ const AdminQuestionModal = ({
 
   if (!isOpen) return null;
 
-  // ====== Compact UI helpers ======
-  const labelCls = "block text-xs font-semibold text-gray-900 mb-1.5";
+  // ====== Neutral + đậm hơn (không nhạt) ======
+  const labelCls = "block text-xs font-semibold text-slate-800 mb-1.5";
   const inputBase =
-    "w-full text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-0 transition-colors";
-  const inputBox = "px-3 py-2 rounded-lg border";
-  const textareaBox = "px-3 py-2 rounded-lg border";
+    "w-full text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0 transition-colors";
+  const inputBox =
+    "px-3 py-2 rounded-lg border border-slate-300 bg-white focus:border-slate-500";
+  const textareaBox =
+    "px-3 py-2 rounded-lg border border-slate-300 bg-white focus:border-slate-500";
+
+  const optionWrapClass = (isCorrect) =>
+    [
+      "p-3 rounded-lg border ring-1 ring-inset transition",
+      isCorrect
+        ? "bg-emerald-100 border-emerald-500 ring-emerald-200"
+        : "bg-white border-slate-300 ring-slate-100 hover:border-slate-400",
+    ].join(" ");
+
+  const optionLabelClass = (isCorrect) =>
+    [
+      "w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold",
+      isCorrect ? "bg-emerald-600 text-white" : "bg-slate-800 text-white",
+    ].join(" ");
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -254,19 +266,19 @@ const AdminQuestionModal = ({
 
       <div className="flex min-h-full items-center justify-center p-3 sm:p-4">
         <div className="relative bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[88vh] flex flex-col">
-          {/* Header (compact) */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-sky-100">
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-600 to-indigo-700 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center">
                 <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
               </div>
               <div className="leading-tight">
-                <h2 className="text-base font-semibold text-gray-900">
+                <h2 className="text-base font-semibold text-slate-900">
                   {isEditMode ? "Sửa" : "Thêm"} câu hỏi {TYPE_LABELS[lockedType]}
                 </h2>
-                <p className="text-[11px] text-indigo-900/70">
+                <p className="text-[11px] text-slate-500">
                   {isEditMode ? "Chỉnh sửa thông tin câu hỏi" : "Tạo câu hỏi mới cho bài kiểm tra"}
                 </p>
               </div>
@@ -274,18 +286,18 @@ const AdminQuestionModal = ({
 
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-lg bg-indigo-50 hover:bg-indigo-100 flex items-center justify-center transition-colors"
+              className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors"
               aria-label="Đóng"
             >
-              <svg className="w-4 h-4 text-indigo-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
 
-          {/* Banner type locked (compact) */}
+          {/* Banner type locked */}
           {isEditMode && (
-            <div className="mx-4 mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            <div className="mx-4 mt-3 rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-700">
               Loại câu hỏi: <span className="font-semibold">{TYPE_LABELS[lockedType]}</span> (đã khóa khi cập nhật)
             </div>
           )}
@@ -294,7 +306,7 @@ const AdminQuestionModal = ({
           <div className="flex-1 overflow-y-auto">
             <form onSubmit={handleSubmit} className="p-4 space-y-4">
               {errorBanner && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-2.5 text-xs text-red-700">
+                <div className="bg-rose-100 border border-rose-300 rounded-lg p-2.5 text-xs text-rose-800">
                   {errorBanner}
                 </div>
               )}
@@ -302,10 +314,10 @@ const AdminQuestionModal = ({
               {/* MULTIPLE CHOICE */}
               {lockedType === "multiple_choice" && (
                 <>
-                  {/* Question Text */}
+                  {/* Question */}
                   <div>
                     <label className={labelCls}>
-                      Câu hỏi <span className="text-red-500">*</span>
+                      Câu hỏi <span className="text-rose-600">*</span>
                     </label>
                     <textarea
                       rows={2}
@@ -315,73 +327,42 @@ const AdminQuestionModal = ({
                       className={[
                         inputBase,
                         textareaBox,
-                        errors.question_text
-                          ? "border-red-300 bg-red-50 focus:border-red-400"
-                          : "border-blue-200 bg-blue-50 focus:border-blue-400 hover:border-blue-300",
-                        "placeholder:text-blue-400",
+                        errors.question_text ? "border-rose-400 bg-rose-50 focus:border-rose-500" : "",
                       ].join(" ")}
                     />
                     {errors.question_text && (
-                      <p className="mt-1 text-[11px] text-red-600">{errors.question_text}</p>
+                      <p className="mt-1 text-[11px] text-rose-800">{errors.question_text}</p>
                     )}
                   </div>
 
-                  {/* Options List (compact) */}
+                  {/* Options */}
                   <div>
                     <label className={labelCls}>
-                      Các lựa chọn <span className="text-red-500">*</span>
+                      Các lựa chọn <span className="text-rose-600">*</span>
                     </label>
 
                     <div className="space-y-2">
                       {(formData.options || []).map((opt, idx) => {
                         const isCorrect = (formData.correct_answers || []).includes(opt?.label);
 
-                        const optionColors = {
-                          A: isCorrect ? "border-emerald-300 bg-emerald-50" : "border-blue-200 bg-blue-50",
-                          B: isCorrect ? "border-emerald-300 bg-emerald-50" : "border-purple-200 bg-purple-50",
-                          C: isCorrect ? "border-emerald-300 bg-emerald-50" : "border-orange-200 bg-orange-50",
-                          D: isCorrect ? "border-emerald-300 bg-emerald-50" : "border-pink-200 bg-pink-50",
-                          E: isCorrect ? "border-emerald-300 bg-emerald-50" : "border-teal-200 bg-teal-50",
-                        };
-
-                        const labelColors = {
-                          A: isCorrect ? "bg-emerald-600 text-white" : "bg-blue-600 text-white",
-                          B: isCorrect ? "bg-emerald-600 text-white" : "bg-purple-600 text-white",
-                          C: isCorrect ? "bg-emerald-600 text-white" : "bg-orange-600 text-white",
-                          D: isCorrect ? "bg-emerald-600 text-white" : "bg-pink-600 text-white",
-                          E: isCorrect ? "bg-emerald-600 text-white" : "bg-teal-600 text-white",
-                        };
-
                         return (
-                          <div
-                            key={opt?.label || idx}
-                            className={`p-3 rounded-lg border ${optionColors[opt?.label] || "border-gray-200 bg-gray-50"}`}
-                          >
+                          <div key={opt?.label || idx} className={optionWrapClass(isCorrect)}>
                             <div className="flex items-center gap-2.5">
-                              {/* Correct */}
                               <input
                                 type="checkbox"
                                 checked={isCorrect}
                                 onChange={() => toggleCorrectAnswer(opt?.label)}
-                                className="w-4 h-4 text-emerald-600 border border-gray-300 rounded focus:ring-emerald-500 focus:ring-2"
+                                className="w-4 h-4 text-emerald-600 border border-slate-400 rounded focus:ring-emerald-500 focus:ring-2"
                               />
 
-                              {/* Label */}
-                              <div
-                                className={`w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold ${
-                                  labelColors[opt?.label] || "bg-gray-600 text-white"
-                                }`}
-                              >
-                                {opt?.label}
-                              </div>
+                              <div className={optionLabelClass(isCorrect)}>{opt?.label}</div>
 
-                              {/* Text */}
                               <input
                                 type="text"
                                 value={opt?.text || ""}
                                 onChange={(e) => handleOptionChange(idx, e.target.value)}
                                 placeholder={`Nội dung đáp án ${opt?.label}...`}
-                                className="flex-1 bg-transparent text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
+                                className="flex-1 bg-transparent text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none"
                               />
                             </div>
                           </div>
@@ -389,13 +370,13 @@ const AdminQuestionModal = ({
                       })}
                     </div>
 
-                    {errors.options && <p className="mt-1 text-[11px] text-red-600">{errors.options}</p>}
+                    {errors.options && <p className="mt-1 text-[11px] text-rose-800">{errors.options}</p>}
                     {errors.correct_answers && (
-                      <p className="mt-1 text-[11px] text-red-600">{errors.correct_answers}</p>
+                      <p className="mt-1 text-[11px] text-rose-800">{errors.correct_answers}</p>
                     )}
                   </div>
 
-                  {/* Explanations (compact) */}
+                  {/* Explanations */}
                   <div className="space-y-3">
                     <div>
                       <label className={labelCls}>Giải thích đáp án đúng</label>
@@ -409,11 +390,7 @@ const AdminQuestionModal = ({
                           })
                         }
                         placeholder="Giải thích tại sao đáp án này đúng..."
-                        className={[
-                          inputBase,
-                          textareaBox,
-                          "border-green-200 bg-green-50 focus:border-green-400 hover:border-green-300 placeholder:text-green-500",
-                        ].join(" ")}
+                        className={`${inputBase} ${textareaBox}`}
                       />
                     </div>
 
@@ -425,12 +402,15 @@ const AdminQuestionModal = ({
                           if (isCorrect) return null;
 
                           return (
-                            <div key={idx} className="bg-red-50 rounded-lg border border-red-200 p-3">
+                            <div
+                              key={idx}
+                              className="rounded-lg border border-rose-300 bg-rose-100 p-3 border-l-4 border-l-rose-600"
+                            >
                               <div className="flex items-center gap-2 mb-2">
-                                <span className="w-5 h-5 bg-red-200 rounded-full flex items-center justify-center text-[11px] font-bold text-red-800">
+                                <span className="w-5 h-5 bg-rose-200 rounded-full flex items-center justify-center text-[11px] font-bold text-rose-900">
                                   {opt?.label}
                                 </span>
-                                <span className="text-xs font-medium text-red-900 line-clamp-1">
+                                <span className="text-xs font-semibold text-rose-900 line-clamp-1">
                                   {opt?.text || "Chưa có nội dung"}
                                 </span>
                               </div>
@@ -439,11 +419,7 @@ const AdminQuestionModal = ({
                                 value={formData.explanation?.incorrect_choices?.[opt?.label] || ""}
                                 onChange={(e) => setIncorrectExplanation(opt?.label, e.target.value)}
                                 placeholder={`Vì sao đáp án ${opt?.label} sai...`}
-                                className={[
-                                  inputBase,
-                                  textareaBox,
-                                  "border-red-300 bg-white focus:border-red-400 hover:border-red-300 placeholder:text-red-400",
-                                ].join(" ")}
+                                className={`${inputBase} ${textareaBox} border-rose-300 bg-white focus:border-rose-500`}
                               />
                             </div>
                           );
@@ -452,14 +428,14 @@ const AdminQuestionModal = ({
                     </div>
                   </div>
 
-                  {/* Additional Fields (compact) */}
+                  {/* Additional fields */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className={labelCls}>Độ khó</label>
                       <select
                         value={formData.difficulty || "easy"}
                         onChange={(e) => setField("difficulty", e.target.value)}
-                        className={`${inputBase} ${inputBox} border-indigo-200 bg-indigo-50 focus:border-indigo-400`}
+                        className={`${inputBase} ${inputBox}`}
                       >
                         <option value="easy">Dễ</option>
                         <option value="medium">Trung bình</option>
@@ -481,17 +457,17 @@ const AdminQuestionModal = ({
                           )
                         }
                         placeholder="toeic, part1, photos..."
-                        className={`${inputBase} ${inputBox} border-yellow-200 bg-yellow-50 focus:border-yellow-400 placeholder:text-yellow-600`}
+                        className={`${inputBase} ${inputBox}`}
                       />
                     </div>
                   </div>
                 </>
               )}
 
-              {/* VOCABULARY - Compact table */}
+              {/* VOCABULARY */}
               {lockedType === "vocabulary" && (
-                <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-200">
-                  <h3 className="text-sm font-bold text-teal-900 mb-3 flex items-center">
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-300">
+                  <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center">
                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path
                         strokeLinecap="round"
@@ -503,12 +479,12 @@ const AdminQuestionModal = ({
                     Thông tin từ vựng
                   </h3>
 
-                  <div className="overflow-hidden rounded-lg border border-white shadow-sm">
+                  <div className="overflow-hidden rounded-lg border border-slate-300 bg-white">
                     <table className="w-full">
                       <tbody>
-                        <tr className="border-b border-teal-100">
-                          <td className="w-1/3 px-3 py-3 bg-teal-100 text-xs font-semibold text-teal-900">
-                            Từ vựng <span className="text-red-500">*</span>
+                        <tr className="border-b border-slate-300">
+                          <td className="w-1/3 px-3 py-3 bg-slate-100 text-xs font-semibold text-slate-800">
+                            Từ vựng <span className="text-rose-600">*</span>
                           </td>
                           <td className="px-3 py-3 bg-white">
                             <input
@@ -519,19 +495,16 @@ const AdminQuestionModal = ({
                               className={[
                                 inputBase,
                                 inputBox,
-                                errors.word
-                                  ? "border-red-300 bg-red-50 focus:border-red-400"
-                                  : "border-teal-200 bg-teal-50 focus:border-teal-400 hover:border-teal-300",
-                                "placeholder:text-teal-500",
+                                errors.word ? "border-rose-400 bg-rose-50 focus:border-rose-500" : "",
                               ].join(" ")}
                             />
-                            {errors.word && <p className="mt-1 text-[11px] text-red-600">{errors.word}</p>}
+                            {errors.word && <p className="mt-1 text-[11px] text-rose-800">{errors.word}</p>}
                           </td>
                         </tr>
 
-                        <tr className="border-b border-teal-100">
-                          <td className="w-1/3 px-3 py-3 bg-teal-100 text-xs font-semibold text-teal-900">
-                            Nghĩa <span className="text-red-500">*</span>
+                        <tr className="border-b border-slate-300">
+                          <td className="w-1/3 px-3 py-3 bg-slate-100 text-xs font-semibold text-slate-800">
+                            Nghĩa <span className="text-rose-600">*</span>
                           </td>
                           <td className="px-3 py-3 bg-white">
                             <input
@@ -542,18 +515,15 @@ const AdminQuestionModal = ({
                               className={[
                                 inputBase,
                                 inputBox,
-                                errors.meaning
-                                  ? "border-red-300 bg-red-50 focus:border-red-400"
-                                  : "border-teal-200 bg-teal-50 focus:border-teal-400 hover:border-teal-300",
-                                "placeholder:text-teal-500",
+                                errors.meaning ? "border-rose-400 bg-rose-50 focus:border-rose-500" : "",
                               ].join(" ")}
                             />
-                            {errors.meaning && <p className="mt-1 text-[11px] text-red-600">{errors.meaning}</p>}
+                            {errors.meaning && <p className="mt-1 text-[11px] text-rose-800">{errors.meaning}</p>}
                           </td>
                         </tr>
 
                         <tr>
-                          <td className="w-1/3 px-3 py-3 bg-teal-100 text-xs font-semibold text-teal-900">
+                          <td className="w-1/3 px-3 py-3 bg-slate-100 text-xs font-semibold text-slate-800">
                             Câu ví dụ
                           </td>
                           <td className="px-3 py-3 bg-white">
@@ -562,7 +532,7 @@ const AdminQuestionModal = ({
                               value={formData.example_sentence || ""}
                               onChange={(e) => setField("example_sentence", e.target.value)}
                               placeholder="Nhập câu ví dụ..."
-                              className={`${inputBase} ${textareaBox} border-teal-200 bg-teal-50 focus:border-teal-400 hover:border-teal-300 placeholder:text-teal-500`}
+                              className={`${inputBase} ${textareaBox}`}
                             />
                           </td>
                         </tr>
@@ -572,11 +542,11 @@ const AdminQuestionModal = ({
 
                   <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-semibold text-teal-900 mb-1.5">Loại từ</label>
+                      <label className={labelCls}>Loại từ</label>
                       <select
                         value={formData.word_type || ""}
                         onChange={(e) => setField("word_type", e.target.value)}
-                        className={`${inputBase} ${inputBox} border-cyan-200 bg-cyan-50 focus:border-cyan-400`}
+                        className={`${inputBase} ${inputBox}`}
                       >
                         <option value="">Chọn loại từ</option>
                         <option value="noun">Danh từ (noun)</option>
@@ -588,11 +558,11 @@ const AdminQuestionModal = ({
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-teal-900 mb-1.5">Độ khó</label>
+                      <label className={labelCls}>Độ khó</label>
                       <select
                         value={formData.difficulty || "easy"}
                         onChange={(e) => setField("difficulty", e.target.value)}
-                        className={`${inputBase} ${inputBox} border-cyan-200 bg-cyan-50 focus:border-cyan-400`}
+                        className={`${inputBase} ${inputBox}`}
                       >
                         <option value="easy">Dễ</option>
                         <option value="medium">Trung bình</option>
@@ -603,42 +573,46 @@ const AdminQuestionModal = ({
                 </div>
               )}
 
-              {/* GRAMMAR (compact) */}
+              {/* GRAMMAR */}
               {lockedType === "grammar" && (
                 <>
                   <div>
                     <label className={labelCls}>
-                      Câu hỏi <span className="text-red-600">*</span>
+                      Câu hỏi <span className="text-rose-600">*</span>
                     </label>
                     <textarea
                       rows={2}
                       value={formData.question_text || ""}
                       onChange={(e) => setField("question_text", e.target.value)}
                       placeholder="Nhập câu hỏi ngữ pháp…"
-                      className={`${inputBase} ${textareaBox} ${
-                        errors.question_text ? "border-red-300 bg-red-50" : "border-sky-100 bg-indigo-50"
-                      } focus:border-indigo-400 placeholder:text-indigo-400`}
+                      className={[
+                        inputBase,
+                        textareaBox,
+                        errors.question_text ? "border-rose-400 bg-rose-50 focus:border-rose-500" : "",
+                      ].join(" ")}
                     />
                     {errors.question_text && (
-                      <p className="mt-1 text-[11px] text-red-600">{errors.question_text}</p>
+                      <p className="mt-1 text-[11px] text-rose-800">{errors.question_text}</p>
                     )}
                   </div>
 
                   <div>
                     <label className={labelCls}>
-                      Đáp án đúng <span className="text-red-600">*</span>
+                      Đáp án đúng <span className="text-rose-600">*</span>
                     </label>
                     <input
                       type="text"
                       value={formData.correct_answer || ""}
                       onChange={(e) => setField("correct_answer", e.target.value)}
                       placeholder="Nhập đáp án đúng…"
-                      className={`${inputBase} ${inputBox} ${
-                        errors.correct_answer ? "border-red-300 bg-red-50" : "border-sky-100 bg-indigo-50"
-                      } focus:border-indigo-400 placeholder:text-indigo-400`}
+                      className={[
+                        inputBase,
+                        inputBox,
+                        errors.correct_answer ? "border-rose-400 bg-rose-50 focus:border-rose-500" : "",
+                      ].join(" ")}
                     />
                     {errors.correct_answer && (
-                      <p className="mt-1 text-[11px] text-red-600">{errors.correct_answer}</p>
+                      <p className="mt-1 text-[11px] text-rose-800">{errors.correct_answer}</p>
                     )}
                   </div>
 
@@ -652,7 +626,7 @@ const AdminQuestionModal = ({
                           value={opt || ""}
                           onChange={(e) => handleOptionChange(idx, e.target.value)}
                           placeholder={`Đáp án ${idx + 1}…`}
-                          className={`${inputBase} ${inputBox} border-sky-100 bg-indigo-50 focus:border-indigo-400 placeholder:text-indigo-400`}
+                          className={`${inputBase} ${inputBox}`}
                         />
                       ))}
                     </div>
@@ -665,25 +639,25 @@ const AdminQuestionModal = ({
                       value={formData.explanation || ""}
                       onChange={(e) => setField("explanation", e.target.value)}
                       placeholder="Giải thích đáp án (tùy chọn)…"
-                      className={`${inputBase} ${textareaBox} border-sky-100 bg-indigo-50 focus:border-indigo-400 placeholder:text-indigo-400`}
+                      className={`${inputBase} ${textareaBox}`}
                     />
                   </div>
                 </>
               )}
 
-              {/* Actions (compact) */}
-              <div className="flex justify-end gap-2 pt-3 border-t border-sky-100">
+              {/* Actions */}
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 rounded-lg bg-sky-50 text-indigo-900 hover:bg-sky-100 border border-sky-100 text-sm"
+                  className="px-4 py-2 rounded-lg bg-slate-100 text-slate-900 hover:bg-slate-200 border border-slate-300 text-sm"
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 flex items-center text-sm"
+                  className="px-4 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50 flex items-center text-sm"
                 >
                   {loading && (
                     <span className="mr-2 inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />

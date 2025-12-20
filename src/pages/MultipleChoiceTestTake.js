@@ -9,6 +9,9 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import testService from "../services/testService";
 import MultipleChoiceService from "../services/multipleChoiceService";
 import testResultService from "../services/testResultService";
+import { useTestSession } from "../hooks/useTestSession";
+import QuestionResultModal from "../components/MCPQuestionResultModal";
+import SubmitConfirmModal from "../components/MCPSubmitConfirmModal";
 
 // ===================== utils =====================
 const shuffleArray = (arr) => {
@@ -79,9 +82,7 @@ function renderTextWithHighlights(text, highlights = []) {
   let idx = 0;
   merged.forEach((h, i) => {
     if (idx < h.start)
-      parts.push(
-        <span key={`n-${i}-${idx}`}>{t.slice(idx, h.start)}</span>
-      );
+      parts.push(<span key={`n-${i}-${idx}`}>{t.slice(idx, h.start)}</span>);
     parts.push(
       <mark key={`m-${i}-${h.start}`} className="rounded px-0.5 bg-yellow-200/80">
         {t.slice(h.start, h.end)}
@@ -89,8 +90,7 @@ function renderTextWithHighlights(text, highlights = []) {
     );
     idx = h.end;
   });
-  if (idx < t.length)
-    parts.push(<span key={`tail-${idx}`}>{t.slice(idx)}</span>);
+  if (idx < t.length) parts.push(<span key={`tail-${idx}`}>{t.slice(idx)}</span>);
   return parts;
 }
 
@@ -99,6 +99,14 @@ const MultipleChoiceTestTake = () => {
   const { testId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Test session tracking
+  const [testResultId, setTestResultId] = useState(null);
+  const { initializeSession, endSession, recordBehavior, isTracking } =
+    useTestSession(testResultId);
+
+  // ✅ tránh React 18 StrictMode gọi effect 2 lần gây tạo draft 2 lần
+  const didCreateInitialDraftRef = useRef(false);
 
   // -------- data ----------
   const [test, setTest] = useState(null);
@@ -133,6 +141,12 @@ const MultipleChoiceTestTake = () => {
   const [resultModalData, setResultModalData] = useState(null);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [submitMeta, setSubmitMeta] = useState(null);
+  
+  // Autosave indicator
+  const [lastSaved, setLastSaved] = useState(null);
+  useEffect(() => {
+    setLastSaved(new Date());
+  }, [userAnswers, markedQuestions, highlights, currentQuestionIndex]);
 
   // -------- settings ----------
   const [settings, setSettings] = useState({
@@ -162,15 +176,33 @@ const MultipleChoiceTestTake = () => {
   const totalTimeRef = useRef(totalTime);
   const isSubmittedRef = useRef(isSubmitted);
 
-  useEffect(() => { questionsRef.current = questions; }, [questions]);
-  useEffect(() => { testRef.current = test; }, [test]);
-  useEffect(() => { settingsRef.current = settings; }, [settings]);
-  useEffect(() => { userAnswersRef.current = userAnswers; }, [userAnswers]);
-  useEffect(() => { markedRef.current = markedQuestions; }, [markedQuestions]);
-  useEffect(() => { highlightsRef.current = highlights; }, [highlights]);
-  useEffect(() => { timeRemainingRef.current = timeRemaining; }, [timeRemaining]);
-  useEffect(() => { totalTimeRef.current = totalTime; }, [totalTime]);
-  useEffect(() => { isSubmittedRef.current = isSubmitted; }, [isSubmitted]);
+  useEffect(() => {
+    questionsRef.current = questions;
+  }, [questions]);
+  useEffect(() => {
+    testRef.current = test;
+  }, [test]);
+  useEffect(() => {
+    settingsRef.current = settings;
+  }, [settings]);
+  useEffect(() => {
+    userAnswersRef.current = userAnswers;
+  }, [userAnswers]);
+  useEffect(() => {
+    markedRef.current = markedQuestions;
+  }, [markedQuestions]);
+  useEffect(() => {
+    highlightsRef.current = highlights;
+  }, [highlights]);
+  useEffect(() => {
+    timeRemainingRef.current = timeRemaining;
+  }, [timeRemaining]);
+  useEffect(() => {
+    totalTimeRef.current = totalTime;
+  }, [totalTime]);
+  useEffect(() => {
+    isSubmittedRef.current = isSubmitted;
+  }, [isSubmitted]);
 
   // ===================== UNDO/REDO =====================
   const undoStackRef = useRef([]);
@@ -203,7 +235,8 @@ const MultipleChoiceTestTake = () => {
     setUserAnswers(prev.userAnswers || {});
     setMarkedQuestions(prev.markedQuestions || {});
     setHighlights(prev.highlights || {});
-    if (typeof prev.currentQuestionIndex === "number") setCurrentQuestionIndex(prev.currentQuestionIndex);
+    if (typeof prev.currentQuestionIndex === "number")
+      setCurrentQuestionIndex(prev.currentQuestionIndex);
   }, [currentQuestionIndex]);
 
   const redo = useCallback(() => {
@@ -221,7 +254,8 @@ const MultipleChoiceTestTake = () => {
     setUserAnswers(next.userAnswers || {});
     setMarkedQuestions(next.markedQuestions || {});
     setHighlights(next.highlights || {});
-    if (typeof next.currentQuestionIndex === "number") setCurrentQuestionIndex(next.currentQuestionIndex);
+    if (typeof next.currentQuestionIndex === "number")
+      setCurrentQuestionIndex(next.currentQuestionIndex);
   }, [currentQuestionIndex]);
 
   // ===================== derived =====================
@@ -230,7 +264,9 @@ const MultipleChoiceTestTake = () => {
   }, [questions, currentQuestionIndex]);
 
   const answeredCount = useMemo(() => {
-    return Object.values(userAnswers).filter((a) => Array.isArray(a) && a.length > 0).length;
+    return Object.values(userAnswers).filter(
+      (a) => Array.isArray(a) && a.length > 0
+    ).length;
   }, [userAnswers]);
 
   const isLocked = useCallback((qid) => !!lockedQuestions[qid], [lockedQuestions]);
@@ -274,9 +310,53 @@ const MultipleChoiceTestTake = () => {
       markedQuestions,
       highlights,
       currentQuestionIndex,
+      timestamp: Date.now(),
     };
-    localStorage.setItem(STORE_KEY, JSON.stringify(payload));
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify(payload));
+      // Show subtle autosave indicator (uncomment if needed)
+      // console.log('📝 Autosaved progress');
+    } catch (e) {
+      console.warn('Cannot save state to localStorage:', e);
+    }
   }, [STORE_KEY, userAnswers, markedQuestions, highlights, currentQuestionIndex]);
+
+  // Resume from autosave
+  useEffect(() => {
+    if (questions.length === 0 || Object.keys(userAnswers).length > 0) return;
+    
+    try {
+      const saved = localStorage.getItem(STORE_KEY);
+      if (saved) {
+        const state = JSON.parse(saved);
+        const timeDiff = Date.now() - (state.timestamp || 0);
+        
+        // Only resume if saved within last 4 hours
+        if (timeDiff < 4 * 60 * 60 * 1000) {
+          const answeredCount = Object.values(state.userAnswers || {}).filter(a => a && a.length > 0).length;
+          if (answeredCount > 0) {
+            if (state.userAnswers) setUserAnswers(state.userAnswers);
+            if (state.markedQuestions) setMarkedQuestions(state.markedQuestions);
+            if (state.highlights) setHighlights(state.highlights);
+            if (typeof state.currentQuestionIndex === 'number') {
+              setCurrentQuestionIndex(Math.max(0, Math.min(state.currentQuestionIndex, questions.length - 1)));
+            }
+            
+            const timeAgo = Math.round(timeDiff / 60000); // minutes
+            // Toast notification would need to be added to MultipleChoiceTestTake
+            console.log(`🔄 Resumed progress: ${answeredCount} answers, ${timeAgo} minutes ago`);
+          }
+        } else {
+          // Clear old save data
+          localStorage.removeItem(STORE_KEY);
+        }
+      }
+    } catch (e) {
+      console.warn('Cannot restore state from localStorage:', e);
+      // Clear corrupted data
+      localStorage.removeItem(STORE_KEY);
+    }
+  }, [STORE_KEY, questions.length, userAnswers]);
 
   // ===================== load settings + fetch =====================
   useEffect(() => {
@@ -347,7 +427,6 @@ const MultipleChoiceTestTake = () => {
             };
           });
         } else {
-          // nếu không shuffle, vẫn nên check số options
           processed.forEach((q) => {
             if ((q.options || []).length > 5) {
               throw new Error(
@@ -401,6 +480,65 @@ const MultipleChoiceTestTake = () => {
         setShowSubmitModal(false);
         setSubmitMeta(null);
 
+        // ✅ Create initial draft result for session tracking (VALID STATUS)
+        if (!didCreateInitialDraftRef.current) {
+          didCreateInitialDraftRef.current = true;
+
+          try {
+            const firstQuestion = processed?.[0];
+            const opts = Array.isArray(firstQuestion?.options) ? firstQuestion.options : [];
+            const fallbackCorrect =
+              opts?.[0]?.label ? [opts[0].label] : [];
+
+            const correctAnswers =
+              Array.isArray(firstQuestion?.correct_answers) && firstQuestion.correct_answers.length > 0
+                ? firstQuestion.correct_answers
+                : fallbackCorrect;
+
+            // chỉ tạo nếu đủ điều kiện validate BE (options >=2, correct_answers non-empty)
+            if (opts.length >= 2 && correctAnswers.length > 0) {
+              const initialPayload = {
+                test_id: testId,
+                // test_snapshot optional (BE tự build nếu không gửi)
+                test_snapshot: {
+                  test_title: testData?.test_title || "Multiple Choice Test",
+                  main_topic: testData?.main_topic || "Multiple Choice",
+                  sub_topic: testData?.sub_topic || "",
+                  test_type: testData?.test_type || "multiple_choice",
+                  difficulty: testData?.difficulty || "medium",
+                },
+                answers: [
+                  {
+                    question_id: firstQuestion?._id,
+                    question_collection: "multiple_choices",
+                    question_text: firstQuestion?.question_text || "Placeholder question",
+                    options: opts.map((o) => ({
+                      label: o.label,
+                      text: o.text,
+                    })),
+                    correct_answers: correctAnswers,
+                    user_answers: [],
+                    is_correct: false,
+                  },
+                ],
+                duration_ms: 0,
+                start_time: new Date(),
+                end_time: new Date(),
+                status: "draft", // ✅ FIX: KHÔNG DÙNG "in_progress"
+              };
+
+              const draftResult = await testResultService.createTestResult(initialPayload);
+              setTestResultId(draftResult?._id || draftResult?.id);
+
+              console.log("✅ Initial draft created:", draftResult?._id || draftResult?.id);
+            } else {
+              console.warn("⚠️ Skip initial draft: invalid first question snapshot for BE validation");
+            }
+          } catch (err) {
+            console.error("❌ Failed to create initial draft result:", err);
+          }
+        }
+
         setLoading(false);
       } catch (e) {
         console.error(e);
@@ -412,6 +550,22 @@ const MultipleChoiceTestTake = () => {
     loadSettingsAndData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [testId]);
+
+  // Initialize test session when testResultId is available
+  useEffect(() => {
+    if (testResultId && !isTracking) {
+      initializeSession();
+    }
+  }, [testResultId, isTracking, initializeSession]);
+
+  // Cleanup session on unmount
+  useEffect(() => {
+    return () => {
+      if (isTracking) {
+        endSession();
+      }
+    };
+  }, [isTracking, endSession]);
 
   // ===================== submit =====================
   const doSubmitTest = useCallback(
@@ -445,7 +599,7 @@ const MultipleChoiceTestTake = () => {
       const timeTakenMs = tt > 0 ? (tt - tr) * 1000 : 0;
 
       try {
-        // ✅ Payload khớp BE mới: tạo draft tự động
+        // ✅ FIX: LUÔN POST createTestResult để lưu full answers (không dùng PUT /:id)
         const payload = {
           test_id: testId,
           duration_ms: timeTakenMs,
@@ -471,13 +625,30 @@ const MultipleChoiceTestTake = () => {
           }),
         };
 
-        const draftResult = await testResultService.createTestResult(payload);
-        const draftId = draftResult?._id || draftResult?.id;
+        const finalResult = await testResultService.createTestResult(payload);
+        const draftId = finalResult?._id || finalResult?.id;
 
-        // ✅ lưu draftId để review page có thể fetch lại khi refresh
         if (draftId) localStorage.setItem(DRAFT_KEY, String(draftId));
-
         localStorage.removeItem(STORE_KEY);
+
+        // End test session tracking BEFORE navigation
+        if (isTracking) {
+          try {
+            await endSession();
+            console.log("✅ Test session ended successfully");
+          } catch (err) {
+            console.error("❌ Failed to end test session:", err);
+          }
+        }
+
+        // (Optional) dọn rác: xoá mềm bản placeholder draft ban đầu
+        if (testResultId && draftId && String(testResultId) !== String(draftId)) {
+          try {
+            await testResultService.softDeleteTestResult(testResultId);
+          } catch (e) {
+            // ignore
+          }
+        }
 
         navigate(`/multiple-choice/test/${testId}/review?draft=${draftId || ""}`, {
           state: {
@@ -497,7 +668,6 @@ const MultipleChoiceTestTake = () => {
       } catch (err) {
         console.error("Error creating draft result:", err);
 
-        // fallback: vẫn cho review từ dữ liệu local, nhưng không có draftId
         navigate(`/multiple-choice/test/${testId}/review`, {
           state: {
             test: t,
@@ -515,7 +685,7 @@ const MultipleChoiceTestTake = () => {
         });
       }
     },
-    [DRAFT_KEY, STORE_KEY, computeResult, navigate, testId]
+    [DRAFT_KEY, STORE_KEY, computeResult, navigate, testId, endSession, isTracking, testResultId]
   );
 
   // total timer
@@ -576,16 +746,24 @@ const MultipleChoiceTestTake = () => {
 
       setUserAnswers((prev) => {
         const current = prev[qid] || [];
+        const wasSelected = current.includes(label);
+        const action = multi ? (wasSelected ? "deselect" : "select") : "choose";
+
+        recordBehavior("answer_selection", {
+          question_id: qid,
+          question_index: currentQuestionIndex,
+          selected_option: label,
+          is_multi_choice: multi,
+          action,
+        });
+
         if (!multi) return { ...prev, [qid]: [label] };
 
-        const next = current.includes(label)
-          ? current.filter((x) => x !== label)
-          : [...current, label];
-
+        const next = wasSelected ? current.filter((x) => x !== label) : [...current, label];
         return { ...prev, [qid]: next };
       });
     },
-    [isLocked, isMultiChoice, pushHistory]
+    [isLocked, isMultiChoice, pushHistory, currentQuestionIndex, recordBehavior]
   );
 
   const toggleMarkCurrent = useCallback(() => {
@@ -597,11 +775,19 @@ const MultipleChoiceTestTake = () => {
     const qid = currentQuestion._id;
     setMarkedQuestions((prev) => {
       const next = { ...prev };
+      const wasMarked = next[qid];
       if (next[qid]) delete next[qid];
       else next[qid] = true;
+
+      recordBehavior("mark_for_review", {
+        question_id: qid,
+        question_index: currentQuestionIndex,
+        action: wasMarked ? "unmark" : "mark",
+      });
+
       return next;
     });
-  }, [currentQuestion, pushHistory]);
+  }, [currentQuestion, pushHistory, currentQuestionIndex, recordBehavior]);
 
   const handleCheckAnswer = useCallback(() => {
     if (!currentQuestion) return;
@@ -616,8 +802,26 @@ const MultipleChoiceTestTake = () => {
     setResultModalData(result);
     setShowResultModal(true);
 
+    recordBehavior("check_answer", {
+      question_id: qid,
+      question_index: currentQuestionIndex,
+      selected_options: selected,
+      is_correct: result.isCorrect,
+      time_spent:
+        questionTimeRemaining > 0
+          ? settings.questionTimeLimit - questionTimeRemaining
+          : 0,
+    });
+
     if (settingsRef.current.testMode === "question_timer") setIsQuestionTimerPaused(true);
-  }, [computeResult, currentQuestion]);
+  }, [
+    computeResult,
+    currentQuestion,
+    currentQuestionIndex,
+    questionTimeRemaining,
+    settings.questionTimeLimit,
+    recordBehavior,
+  ]);
 
   const handleCloseResultModal = useCallback(() => {
     setShowResultModal(false);
@@ -627,6 +831,12 @@ const MultipleChoiceTestTake = () => {
   const handleNext = useCallback(() => {
     const qs = questionsRef.current || [];
     if (currentQuestionIndex < qs.length - 1) {
+      recordBehavior("question_navigation", {
+        from_question: currentQuestionIndex,
+        to_question: currentQuestionIndex + 1,
+        action: "next",
+      });
+
       setCurrentQuestionIndex((i) => i + 1);
       if (settingsRef.current.testMode === "question_timer") {
         setQuestionTimeRemaining(settingsRef.current.questionTimeLimit || 30);
@@ -634,26 +844,34 @@ const MultipleChoiceTestTake = () => {
       }
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
-  }, [currentQuestionIndex]);
+  }, [currentQuestionIndex, recordBehavior]);
 
   const handlePrev = useCallback(() => {
     if (settingsRef.current.testMode !== "flexible") return;
     if (currentQuestionIndex > 0) {
+      recordBehavior("question_navigation", {
+        from_question: currentQuestionIndex,
+        to_question: currentQuestionIndex - 1,
+        action: "prev",
+      });
+
       setCurrentQuestionIndex((i) => i - 1);
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
-  }, [currentQuestionIndex]);
+  }, [currentQuestionIndex, recordBehavior]);
 
   const handleSubmitClick = useCallback(() => {
     if (isSubmittedRef.current) return;
-    const total = (questionsRef.current || []).length;
-    const answered = Object.values(userAnswersRef.current || {}).filter(
-      (a) => Array.isArray(a) && a.length > 0
-    ).length;
-    const unanswered = Math.max(total - answered, 0);
-    setSubmitMeta({ total, answered, unanswered });
+
+    recordBehavior("submit_attempt", {
+      total_questions: questions.length,
+      answered_questions: answeredCount,
+      unanswered_questions: questions.length - answeredCount,
+      current_question: currentQuestionIndex,
+    });
+
     setShowSubmitModal(true);
-  }, []);
+  }, [questions.length, answeredCount, currentQuestionIndex, recordBehavior]);
 
   // ===================== highlight handlers =====================
   const addHighlightFromSelection = useCallback(
@@ -663,7 +881,8 @@ const MultipleChoiceTestTake = () => {
 
       let container;
       if (type === "question") container = questionTextRef.current;
-      else if (type === "option" && optionLabel) container = optionTextRefs.current[optionLabel];
+      else if (type === "option" && optionLabel)
+        container = optionTextRefs.current[optionLabel];
       if (!container) return;
 
       const off = getSelectionOffsets(container);
@@ -713,7 +932,9 @@ const MultipleChoiceTestTake = () => {
 
     const questionData = highlightsRef.current?.[qid];
     const hasQuestionHighlights = (questionData?.question || []).length > 0;
-    const hasOptionHighlights = Object.values(questionData?.options || {}).some((arr) => arr.length > 0);
+    const hasOptionHighlights = Object.values(questionData?.options || {}).some(
+      (arr) => arr.length > 0
+    );
     const has = hasQuestionHighlights || hasOptionHighlights;
     if (!has) return;
 
@@ -881,7 +1102,10 @@ const MultipleChoiceTestTake = () => {
                           onMouseUp={() => addHighlightFromSelection("question")}
                           className={isHighlightMode ? "cursor-text select-text" : ""}
                         >
-                          {renderTextWithHighlights(currentQuestion.question_text, currentHighlights.question || [])}
+                          {renderTextWithHighlights(
+                            currentQuestion.question_text,
+                            currentHighlights.question || []
+                          )}
                         </span>
                       </h2>
 
@@ -915,7 +1139,9 @@ const MultipleChoiceTestTake = () => {
                     <span className="font-semibold">H</span> để bật/tắt highlight.{" "}
                     <span className="font-semibold">Ctrl+Z</span> để hoàn tác.
                   </div>
-                  {isHighlightMode && <div className="text-amber-700">✍️ Chọn text để đánh dấu!</div>}
+                  {isHighlightMode && (
+                    <div className="text-amber-700">✍️ Chọn text để đánh dấu!</div>
+                  )}
                 </div>
               </div>
 
@@ -976,7 +1202,10 @@ const MultipleChoiceTestTake = () => {
                               isSelected ? "text-gray-900 font-medium" : "text-gray-800"
                             } ${isHighlightMode ? "cursor-text select-text" : ""}`}
                           >
-                            {renderTextWithHighlights(op.text, currentHighlights.options?.[op.label] || [])}
+                            {renderTextWithHighlights(
+                              op.text,
+                              currentHighlights.options?.[op.label] || []
+                            )}
                           </p>
                         </div>
                       </div>
@@ -1037,9 +1266,17 @@ const MultipleChoiceTestTake = () => {
                     {test?.main_topic} {test?.sub_topic && "·"} {test?.sub_topic}
                   </h4>
                   {settings.showQuestionNumber && (
-                    <p className="text-xs text-gray-600 mt-0.5">
-                      Câu {currentQuestionIndex + 1} / {questions.length}
-                    </p>
+                    <div className="text-xs text-gray-600 mt-0.5 flex items-center gap-2">
+                      <span>Câu {currentQuestionIndex + 1} / {questions.length}</span>
+                      {lastSaved && (
+                        <span className="text-green-600 flex items-center gap-1" title="Tiến trình được tự động lưu">
+                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                          Đã lưu
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
 
@@ -1081,6 +1318,13 @@ const MultipleChoiceTestTake = () => {
                     className="h-full bg-blue-500 rounded-full"
                     style={{ width: `${(answeredCount / Math.max(questions.length || 1, 1)) * 100}%` }}
                   />
+                </div>
+              </div>
+
+              {/* Auto-save indicator */}
+              <div className="px-2 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-center" title="Tiến trình tự động được lưu. Bạn có thể load lại trang mà không lo mất tiến trình.">
+                <div className="text-[10px] text-emerald-700 font-medium flex items-center justify-center gap-1">
+                  💾 Tự động lưu tiến trình
                 </div>
               </div>
 
@@ -1215,134 +1459,24 @@ const MultipleChoiceTestTake = () => {
         </div>
       </div>
 
-      {/* RESULT MODAL */}
-      {showResultModal && resultModalData && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg border border-slate-300 w-full max-w-xl">
-            <div className="p-4 border-b border-slate-300 flex items-center justify-between">
-              <div>
-                <p className={`text-sm font-semibold ${resultModalData.isCorrect ? "text-green-700" : "text-red-700"}`}>
-                  {resultModalData.isCorrect ? "Trả lời chính xác" : "Trả lời chưa chính xác"}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  Câu {currentQuestionIndex + 1} / {questions.length}
-                </p>
-              </div>
-              <button onClick={handleCloseResultModal} className="text-xs text-gray-500 hover:text-gray-800">
-                Đóng
-              </button>
-            </div>
+      {/* MODALS */}
+      <QuestionResultModal
+        isOpen={showResultModal}
+        onClose={handleCloseResultModal}
+        resultData={resultModalData}
+        currentQuestionIndex={currentQuestionIndex}
+        totalQuestions={questions.length}
+        onNextQuestion={handleNext}
+        canGoNext={questions && currentQuestionIndex < questions.length - 1}
+      />
 
-            <div className="p-4 space-y-4 text-sm">
-              <div>
-                <p className="text-gray-900 font-medium mb-1">Câu hỏi</p>
-                <p className="text-gray-800 text-sm">{resultModalData.questionText}</p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="border border-slate-300 rounded p-3">
-                  <p className="font-semibold text-gray-900 text-xs mb-2">Đáp án đúng</p>
-                  <div className="flex flex-wrap gap-2">
-                    {resultModalData.correctAnswer.map((lbl) => (
-                      <span key={lbl} className="inline-flex items-center px-2 py-1 rounded border border-gray-300 text-xs text-gray-800">
-                        {lbl}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="border border-slate-300 rounded p-3">
-                  <p className="font-semibold text-gray-900 text-xs mb-2">Bạn đã chọn</p>
-                  <div className="flex flex-wrap gap-2">
-                    {resultModalData.selectedAnswers.length > 0 ? (
-                      resultModalData.selectedAnswers.map((lbl) => (
-                        <span
-                          key={lbl}
-                          className={`inline-flex items-center px-2 py-1 rounded border text-xs ${
-                            resultModalData.correctAnswer.includes(lbl)
-                              ? "border-green-500 text-green-700"
-                              : "border-red-500 text-red-700"
-                          }`}
-                        >
-                          {lbl}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="inline-flex items-center px-2 py-1 rounded border border-gray-300 text-xs text-gray-500">
-                        Chưa chọn đáp án
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-4 border-t border-slate-300 flex items-center justify-end gap-2 text-xs">
-              <button
-                onClick={handleCloseResultModal}
-                className="px-3 py-1.5 rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-              >
-                Đóng
-              </button>
-              {questions && currentQuestionIndex < questions.length - 1 && (
-                <button
-                  onClick={() => {
-                    handleCloseResultModal();
-                    handleNext();
-                  }}
-                  className="px-3 py-1.5 rounded bg-gray-900 text-white hover:bg-black"
-                >
-                  Câu tiếp theo
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* SUBMIT CONFIRM MODAL */}
-      {showSubmitModal && submitMeta && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg border border-slate-300 w-full max-w-md">
-            <div className="p-4 border-b border-slate-300">
-              <p className="text-sm font-semibold text-gray-900">Xác nhận nộp bài</p>
-              <p className="text-xs text-gray-600 mt-1">
-                Bạn đã trả lời <span className="font-semibold">{submitMeta.answered}</span>/{submitMeta.total} câu.
-              </p>
-            </div>
-
-            <div className="p-4 text-sm">
-              {submitMeta.unanswered > 0 ? (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900 text-xs">
-                  Bạn còn <span className="font-semibold">{submitMeta.unanswered}</span> câu chưa trả lời. Bạn vẫn muốn nộp bài chứ?
-                </div>
-              ) : (
-                <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-emerald-900 text-xs">
-                  Bạn đã trả lời tất cả câu hỏi. Nộp bài ngay?
-                </div>
-              )}
-            </div>
-
-            <div className="p-4 border-t border-slate-300 flex items-center justify-end gap-2">
-              <button
-                onClick={() => setShowSubmitModal(false)}
-                className="px-3 py-2 rounded border border-gray-300 bg-white text-gray-700 text-xs hover:bg-gray-50"
-              >
-                Quay lại
-              </button>
-              <button
-                onClick={() => {
-                  setShowSubmitModal(false);
-                  doSubmitTest({ reason: "manual_confirm" });
-                }}
-                className="px-3 py-2 rounded bg-red-600 text-white text-xs font-semibold hover:bg-red-700"
-              >
-                Nộp bài
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <SubmitConfirmModal
+        isOpen={showSubmitModal}
+        onClose={() => setShowSubmitModal(false)}
+        onConfirm={() => doSubmitTest({ reason: "manual_confirm" })}
+        answeredCount={answeredCount}
+        totalQuestions={questions.length}
+      />
     </div>
   );
 };

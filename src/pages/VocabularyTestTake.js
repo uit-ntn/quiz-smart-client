@@ -9,6 +9,8 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorMessage from '../components/ErrorMessage';
 import Toast from '../components/Toast';
 
+import { useTestSession } from '../hooks/useTestSession';
+
 const DEFAULT_TOTAL_QUESTIONS = 10;
 const DEFAULT_TIME_PER_QUESTION = 30;
 
@@ -54,6 +56,15 @@ const VocabularyTestTake = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
+  // Test session tracking
+  const [testResultId, setTestResultId] = useState(null);
+  const {
+    initializeSession,
+    endSession,
+    recordBehavior,
+    isTracking
+  } = useTestSession(testResultId);
+
   const initialSettings = useMemo(() => {
     const fromState = location.state?.settings;
     const fromLS = JSON.parse(localStorage.getItem(`vocab_settings_${testId}`) || '{}');
@@ -72,6 +83,9 @@ const VocabularyTestTake = () => {
   const [answers, setAnswers] = useState([]);
   const [currentAnswer, setCurrentAnswer] = useState('');
 
+  // Mark for review
+  const [markedQuestions, setMarkedQuestions] = useState({}); // idx -> true
+
   const [timeLeft, setTimeLeft] = useState(settings.timePerQuestion || DEFAULT_TIME_PER_QUESTION);
   const [isPaused, setIsPaused] = useState(false);
 
@@ -83,12 +97,111 @@ const VocabularyTestTake = () => {
 
   const [voiceId, setVoiceId] = useState(() => localStorage.getItem(`vocab_voice_${testId}`) || '');
 
+  // Modals
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
+  const [showResultModal, setShowResultModal] = useState(false);
+  const [resultModalData, setResultModalData] = useState(null);
+  
   const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const timerRef = useRef(null);
   const startTimeRef = useRef(Date.now());
+
+  // Storage keys
+  const STORE_KEY = `vocab_take_state_${testId}`;
+  const DRAFT_KEY = `vocab_draft_${testId}`;
+
+  // Refs to avoid stale closures
+  const itemsRef = useRef(items);
+  const settingsRef = useRef(settings);
+  const answersRef = useRef(answers);
+  const markedRef = useRef(markedQuestions);
+  const indexRef = useRef(index);
+  const timeLeftRef = useRef(timeLeft);
+  
+  useEffect(() => { itemsRef.current = items; }, [items]);
+  useEffect(() => { settingsRef.current = settings; }, [settings]);
+  useEffect(() => { answersRef.current = answers; }, [answers]);
+  useEffect(() => { markedRef.current = markedQuestions; }, [markedQuestions]);
+  useEffect(() => { indexRef.current = index; }, [index]);
+  useEffect(() => { timeLeftRef.current = timeLeft; }, [timeLeft]);
+
+  // ===================== UNDO/REDO =====================
+  const undoStackRef = useRef([]);
+  const redoStackRef = useRef([]);
+  const MAX_STACK = 30;
+
+  const pushHistory = useCallback(() => {
+    const state = {
+      index,
+      currentAnswer,
+      answers: [...answers],
+      markedQuestions: { ...markedQuestions },
+      timestamp: Date.now(),
+    };
+    
+    undoStackRef.current.push(state);
+    if (undoStackRef.current.length > MAX_STACK) {
+      undoStackRef.current.shift();
+    }
+    redoStackRef.current = []; // clear redo when new action
+  }, [index, currentAnswer, answers, markedQuestions]);
+
+  const undo = useCallback(() => {
+    if (undoStackRef.current.length === 0) return;
+    
+    const currentState = {
+      index,
+      currentAnswer, 
+      answers: [...answers],
+      markedQuestions: { ...markedQuestions },
+      timestamp: Date.now(),
+    };
+    
+    redoStackRef.current.push(currentState);
+    
+    const prevState = undoStackRef.current.pop();
+    setIndex(prevState.index);
+    setCurrentAnswer(prevState.currentAnswer);
+    setAnswers(prevState.answers);
+    setMarkedQuestions(prevState.markedQuestions);
+    
+    setShowAnswer(false);
+    setLastAnswerResult(null);
+    setIsPaused(false);
+    setTimeLeft(settings.timePerQuestion || DEFAULT_TIME_PER_QUESTION);
+    
+    showToastMsg('Đã hoàn tác', 'info');
+  }, [index, currentAnswer, answers, markedQuestions, settings.timePerQuestion]);
+
+  const redo = useCallback(() => {
+    if (redoStackRef.current.length === 0) return;
+    
+    const currentState = {
+      index,
+      currentAnswer,
+      answers: [...answers], 
+      markedQuestions: { ...markedQuestions },
+      timestamp: Date.now(),
+    };
+    
+    undoStackRef.current.push(currentState);
+    
+    const nextState = redoStackRef.current.pop();
+    setIndex(nextState.index);
+    setCurrentAnswer(nextState.currentAnswer);
+    setAnswers(nextState.answers);
+    setMarkedQuestions(nextState.markedQuestions);
+    
+    setShowAnswer(false);
+    setLastAnswerResult(null);
+    setIsPaused(false);
+    setTimeLeft(settings.timePerQuestion || DEFAULT_TIME_PER_QUESTION);
+    
+    showToastMsg('Đã làm lại', 'info');
+  }, [index, currentAnswer, answers, markedQuestions, settings.timePerQuestion]);
 
   // Load voices
   useEffect(() => {
@@ -136,6 +249,49 @@ const VocabularyTestTake = () => {
         setTimeLeft(settings.timePerQuestion || DEFAULT_TIME_PER_QUESTION);
 
         startTimeRef.current = Date.now();
+
+        // Create initial draft test result for session tracking
+        try {
+          const testSnapshot = {
+            test_id: testId,
+            test_title: test?.test_title || 'Vocabulary Test',
+            main_topic: test?.main_topic || 'Vocabulary',
+            sub_topic: test?.sub_topic || '',
+            test_type: test?.test_type || 'vocabulary',
+            difficulty: test?.difficulty || 'medium',
+          };
+
+          const initialPayload = {
+            test_id: testId,
+            test_snapshot: testSnapshot,
+            answers: [
+              {
+                question_id: selected[0]?._id || 'placeholder',
+                question_collection: 'vocabularies',
+                word: selected[0]?.word || '',
+                meaning: selected[0]?.meaning || '',
+                example_sentence: selected[0]?.example_sentence || '',
+                question_mode: settings.mode || 'word_to_meaning',
+                correct_answer: '',
+                user_answer: '',
+                is_correct: false,
+                time_spent_ms: 0,
+              }
+            ], // ✅ Must be non-empty array for BE validation
+            duration_ms: 0,
+            start_time: new Date(startTimeRef.current),
+            end_time: null,
+            status: 'in_progress',
+          };
+
+          const draftResult = await testResultService.createTestResult(initialPayload);
+          setTestResultId(draftResult?._id || draftResult?.id);
+
+          console.log('✅ Initial draft result created for session tracking:', draftResult?._id || draftResult?.id);
+        } catch (err) {
+          console.error('❌ Failed to create initial draft result:', err);
+          // Continue without session tracking if this fails
+        }
       } catch (e) {
         console.error('Error fetching test data:', e);
         setError(`Có lỗi xảy ra khi tải câu hỏi: ${e.message}. Vui lòng thử lại.`);
@@ -147,6 +303,77 @@ const VocabularyTestTake = () => {
     run();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [testId]);
+
+  // ===================== autosave/resume =====================
+  useEffect(() => {
+    if (!items.length) return;
+    
+    const state = {
+      answers,
+      markedQuestions,
+      index,
+      currentAnswer,
+      timeLeft,
+      timestamp: Date.now(),
+    };
+    
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify(state));
+    } catch (e) {
+      console.warn('Cannot save state to localStorage:', e);
+    }
+  }, [STORE_KEY, answers, markedQuestions, index, currentAnswer, timeLeft]);
+
+  // Resume from autosave
+  useEffect(() => {
+    if (!items.length || answers.length > 0) return;
+    
+    try {
+      const saved = localStorage.getItem(STORE_KEY);
+      if (saved) {
+        const state = JSON.parse(saved);
+        const timeDiff = Date.now() - (state.timestamp || 0);
+        
+        // Only resume if saved within last 4 hours
+        if (timeDiff < 4 * 60 * 60 * 1000) {
+          const answeredCount = (state.answers || []).filter(Boolean).length;
+          if (answeredCount > 0) {
+            if (Array.isArray(state.answers)) setAnswers(state.answers);
+            if (state.markedQuestions) setMarkedQuestions(state.markedQuestions);
+            if (typeof state.index === 'number') setIndex(state.index);
+            if (typeof state.currentAnswer === 'string') setCurrentAnswer(state.currentAnswer);
+            if (typeof state.timeLeft === 'number') setTimeLeft(state.timeLeft);
+            
+            const timeAgo = Math.round(timeDiff / 60000); // minutes
+            showToastMsg(`🔄 Đã khôi phục tiến trình (${answeredCount} câu, ${timeAgo} phút trước)`, 'success');
+          }
+        } else {
+          // Clear old save data
+          localStorage.removeItem(STORE_KEY);
+        }
+      }
+    } catch (e) {
+      console.warn('Cannot restore state from localStorage:', e);
+      // Clear corrupted data
+      localStorage.removeItem(STORE_KEY);
+    }
+  }, [STORE_KEY, items.length, answers.length]);
+
+  // Initialize test session when testResultId is available
+  useEffect(() => {
+    if (testResultId && !isTracking) {
+      initializeSession();
+    }
+  }, [testResultId, isTracking, initializeSession]);
+
+  // Cleanup session on unmount
+  useEffect(() => {
+    return () => {
+      if (isTracking) {
+        endSession();
+      }
+    };
+  }, [isTracking, endSession]);
 
   const getCorrectAnswer = useCallback(
     (item) => {
@@ -205,10 +432,43 @@ const VocabularyTestTake = () => {
       u.onend = () => setIsPlaying(false);
       u.onerror = () => setIsPlaying(false);
 
+      // Record audio playback
+      recordBehavior('audio_playback', {
+        question_index: index,
+        text_length: text.length,
+        voice_id: voiceId,
+        voice_lang: v?.lang || 'en-US'
+      });
+
       speechSynthesis.speak(u);
     },
-    [isPlaying, pickVoice]
+    [isPlaying, pickVoice, index, voiceId, recordBehavior]
   );
+
+  const toggleMarkCurrent = useCallback(() => {
+    if (!items[index]) return;
+    
+    pushHistory();
+    
+    setMarkedQuestions(prev => {
+      const next = { ...prev };
+      if (next[index]) {
+        delete next[index];
+        showToastMsg('Đã bỏ đánh dấu câu hỏi', 'info');
+      } else {
+        next[index] = true;
+        showToastMsg('Đã đánh dấu câu hỏi để xem lại', 'info');
+      }
+      return next;
+    });
+    
+    // Record behavior
+    recordBehavior('question_marked', {
+      question_index: index,
+      question_id: items[index]?._id,
+      marked: !markedQuestions[index]
+    });
+  }, [index, items, markedQuestions, pushHistory, recordBehavior]);
 
   const revealAnswer = useCallback(
     (answerText) => {
@@ -226,16 +486,33 @@ const VocabularyTestTake = () => {
       };
       setAnswers(next);
 
-      setLastAnswerResult({
+      const resultData = {
         isCorrect,
         correctAnswer: getCorrectAnswer(current),
         userAnswer: answerText,
-      });
-
+        question: current,
+        timeSpent: (settings.timePerQuestion || DEFAULT_TIME_PER_QUESTION) - timeLeft,
+        questionIndex: index + 1,
+        totalQuestions: items.length,
+      };
+      
+      setLastAnswerResult(resultData);
+      setResultModalData(resultData);
       setShowAnswer(true);
+      setShowResultModal(true);
       setIsPaused(true);
+
+      // Record answer submission behavior
+      recordBehavior('answer_submitted', {
+        question_index: index,
+        question_id: current?._id,
+        mode: settings.mode,
+        time_spent: (settings.timePerQuestion || DEFAULT_TIME_PER_QUESTION) - timeLeft,
+        is_correct: isCorrect,
+        answer_length: answerText?.length || 0
+      });
     },
-    [answers, checkAnswer, getCorrectAnswer, index, items, settings.mode, settings.timePerQuestion, timeLeft]
+    [answers, checkAnswer, getCorrectAnswer, index, items, settings.mode, settings.timePerQuestion, timeLeft, recordBehavior]
   );
 
   const completeTest = useCallback(
@@ -280,15 +557,38 @@ const VocabularyTestTake = () => {
         };
 
         console.log('📤 Sending payload to BE:', JSON.stringify(payload, null, 2));
-        const draftResult = await testResultService.createTestResult(payload);
-        console.log('✅ Draft result created:', draftResult);
+        
+        // ✅ Luôn tạo mới test result khi submit (không update draft tracking)
+        // Draft tracking (in_progress) chỉ dùng cho session tracking
+        console.log('📝 Creating new draft TestResult');
+        const finalResult = await testResultService.createTestResult(payload);
+        console.log('✅ TestResult created:', finalResult);
 
+        // End test session tracking BEFORE navigation
+        if (isTracking) {
+          try {
+            await endSession();
+            console.log('✅ Test session ended successfully');
+          } catch (err) {
+            console.error('❌ Failed to end test session:', err);
+            // Continue anyway
+          }
+        }
+
+        // Clean up localStorage
+        try {
+          localStorage.removeItem(STORE_KEY);
+          localStorage.removeItem(DRAFT_KEY);
+        } catch (e) {
+          console.warn('Cannot clean localStorage:', e);
+        }
+        
         navigate(`/vocabulary/test/${testId}/result`, {
           state: {
             answers: aList,
             settings,
             testInfo,
-            draftResultId: draftResult?._id || draftResult?.id,
+            draftResultId: finalResult?._id || finalResult?.id,
           },
         });
       } catch (err) {
@@ -304,13 +604,22 @@ const VocabularyTestTake = () => {
         setIsSubmitting(false);
       }
     },
-    [answers, getCorrectAnswer, navigate, settings, testId, testInfo]
+    [answers, getCorrectAnswer, navigate, settings, testId, testInfo, endSession, isTracking, STORE_KEY, DRAFT_KEY]
   );
 
   const moveNextAfterReveal = useCallback(async () => {
     setShowAnswer(false);
     setLastAnswerResult(null);
+    setShowResultModal(false);
+    setResultModalData(null);
     setIsPaused(false);
+
+    // Record question navigation
+    recordBehavior('question_navigation', {
+      from_question: index,
+      to_question: index < items.length - 1 ? index + 1 : 'completed',
+      action: 'next_after_reveal'
+    });
 
     if (index < items.length - 1) {
       setIndex((i) => i + 1);
@@ -319,10 +628,138 @@ const VocabularyTestTake = () => {
     } else {
       await completeTest();
     }
-  }, [completeTest, index, items.length, settings.timePerQuestion]);
+  }, [completeTest, index, items.length, settings.timePerQuestion, recordBehavior]);
 
-  const submitNow = useCallback(async () => {
-    if (!window.confirm('Bạn có chắc chắn muốn nộp bài? Các câu chưa trả lời sẽ được tính là sai.')) return;
+  const handleNext = useCallback(() => {
+    if (index >= items.length - 1) return;
+    
+    pushHistory();
+    setIndex(i => i + 1);
+    setCurrentAnswer('');
+    setShowAnswer(false);
+    setLastAnswerResult(null);
+    setShowResultModal(false);
+    setResultModalData(null);
+    setIsPaused(false);
+    setTimeLeft(settings.timePerQuestion || DEFAULT_TIME_PER_QUESTION);
+    
+    recordBehavior('question_navigation', {
+      from_question: index,
+      to_question: index + 1,
+      action: 'manual_next'
+    });
+  }, [index, items.length, pushHistory, recordBehavior, settings.timePerQuestion]);
+
+  const handlePrev = useCallback(() => {
+    if (index <= 0) return;
+    
+    pushHistory();
+    setIndex(i => i - 1);
+    setCurrentAnswer('');
+    setShowAnswer(false);
+    setLastAnswerResult(null);
+    setShowResultModal(false);
+    setResultModalData(null);
+    setIsPaused(false);
+    setTimeLeft(settings.timePerQuestion || DEFAULT_TIME_PER_QUESTION);
+    
+    recordBehavior('question_navigation', {
+      from_question: index,
+      to_question: index - 1,
+      action: 'manual_prev'
+    });
+  }, [index, pushHistory, recordBehavior, settings.timePerQuestion]);
+
+  // Define current question early for use in callbacks
+  const current = useMemo(() => items[index], [items, index]);
+
+  // ===================== keyboard shortcuts =====================
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Don't trigger shortcuts when typing in input or modal is open
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || 
+          showResultModal || showSubmitConfirm || showExitConfirm) {
+        return;
+      }
+      
+      switch (e.key) {
+        case 'ArrowLeft':
+        case 'a':
+        case 'A':
+          e.preventDefault();
+          handlePrev();
+          break;
+        case 'ArrowRight':
+        case 'd':
+        case 'D':
+          e.preventDefault();
+          handleNext();
+          break;
+        case 'Enter':
+          e.preventDefault();
+          if (showAnswer) {
+            moveNextAfterReveal();
+          } else if (currentAnswer.trim()) {
+            revealAnswer(currentAnswer);
+          }
+          break;
+        case ' ':
+          if (showAnswer) {
+            e.preventDefault();
+            moveNextAfterReveal();
+          }
+          break;
+        case 'm':
+        case 'M':
+          e.preventDefault();
+          toggleMarkCurrent();
+          break;
+        case 'z':
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            if (e.shiftKey) {
+              redo();
+            } else {
+              undo();
+            }
+          }
+          break;
+        case 'y':
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            redo();
+          }
+          break;
+        case 'p':
+        case 'P':
+          e.preventDefault();
+          if (current?.word) {
+            playAudio(current.word);
+          }
+          break;
+        default:
+          break;
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleNext, handlePrev, moveNextAfterReveal, toggleMarkCurrent, undo, redo, showAnswer, showResultModal, showSubmitConfirm, showExitConfirm, playAudio, current]);
+
+  const submitNow = useCallback(() => {
+    setShowSubmitConfirm(true);
+  }, []);
+
+  const confirmSubmit = useCallback(async () => {
+    setShowSubmitConfirm(false);
+    
+    // Record early submission
+    recordBehavior('test_submission', {
+      action: 'early_submit',
+      current_question: index,
+      total_questions: items.length,
+      answered_questions: answers.filter(a => a !== null).length
+    });
 
     const remain = [...answers];
     for (let i = 0; i < items.length; i++) {
@@ -334,7 +771,7 @@ const VocabularyTestTake = () => {
     // đảm bảo state cũng sync
     setAnswers(remain);
     await completeTest(remain);
-  }, [answers, completeTest, items]);
+  }, [answers, completeTest, items, index, recordBehavior]);
 
   // Timer
   useEffect(() => {
@@ -354,10 +791,19 @@ const VocabularyTestTake = () => {
   }, [loading, showAnswer, isPaused, items.length, revealAnswer, settings.timePerQuestion]);
 
   const handleExit = () => setShowExitConfirm(true);
-  const confirmExit = () => {
+  const confirmExit = useCallback(() => {
     setShowExitConfirm(false);
+    
+    // Clean up localStorage on exit
+    try {
+      localStorage.removeItem(STORE_KEY);
+      localStorage.removeItem(DRAFT_KEY);
+    } catch (e) {
+      console.warn('Cannot clean localStorage:', e);
+    }
+    
     navigate(-1);
-  };
+  }, [navigate, STORE_KEY, DRAFT_KEY]);
   const cancelExit = () => setShowExitConfirm(false);
 
   const answeredState = (idx) => {
@@ -366,11 +812,21 @@ const VocabularyTestTake = () => {
     return a.isCorrect ? 'correct' : 'wrong';
   };
 
+  const isMarked = useCallback((idx) => !!markedQuestions[idx], [markedQuestions]);
+  
+  const handleResultModalNext = useCallback(() => {
+    moveNextAfterReveal();
+  }, [moveNextAfterReveal]);
+
+  // Show autosave status - must be before early returns
+  const [lastSaved, setLastSaved] = useState(null);
+  useEffect(() => {
+    setLastSaved(new Date());
+  }, [answers, markedQuestions, index]);
+
   if (loading) return <LoadingSpinner message="Đang tải câu hỏi..." />;
   if (error) return <ErrorMessage error={error} onRetry={() => window.location.reload()} />;
   if (!items.length) return <ErrorMessage error="Không có câu hỏi nào." />;
-
-  const current = items[index];
   const progressDone = answers.filter(Boolean).length;
   const progressPct = items.length ? Math.round((progressDone / items.length) * 100) : 0;
 
@@ -414,10 +870,21 @@ const VocabularyTestTake = () => {
               <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-semibold text-zinc-700 shadow-sm">
                 ✅ {correctSoFar} • ❌ {wrongSoFar}
               </span>
+
+              <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 shadow-sm" title="Tiến trình tự động được lưu. Bạn có thể load lại trang mà không lo mất tiến trình.">
+                💾 Tự động lưu
+              </span>
+              
+              {isMarked(index) && (
+                <span className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 shadow-sm">
+                  🏷️ Đã đánh dấu
+                </span>
+              )}
             </div>
 
             <div className="flex items-center gap-2">
               <div className="hidden md:block text-xs text-zinc-600 font-medium">{topHint}</div>
+              <span className="hidden sm:inline text-xs text-zinc-500 font-medium">(Enter: kiểm tra/tiếp tục, Shift+Enter: bỏ qua, M: đánh dấu, ←→: điều hướng, P: phát âm)</span>
             </div>
           </div>
 
@@ -517,7 +984,9 @@ const VocabularyTestTake = () => {
                         value={currentAnswer}
                         onChange={(e) => setCurrentAnswer(e.target.value)}
                         onKeyDown={(e) => {
-                          if (e.key === 'Enter' && !showAnswer) revealAnswer(currentAnswer);
+                          if (e.key === 'Enter') {
+                            e.preventDefault(); // Prevent default, let global handler manage it
+                          }
                         }}
                         placeholder={
                           settings.mode === 'word_to_meaning'
@@ -554,7 +1023,7 @@ const VocabularyTestTake = () => {
                           ⏱️ {timeLeft}s còn lại
                         </span>
 
-                        <span className="hidden sm:inline text-[11px] text-zinc-500 font-medium">(Enter để kiểm tra)</span>
+                        <span className="hidden sm:inline text-[11px] text-zinc-500 font-medium">(Enter: kiểm tra • Shift+Enter: bỏ qua)</span>
                       </div>
                     </div>
 
@@ -612,8 +1081,9 @@ const VocabularyTestTake = () => {
                 </div>
               </div>
 
-              {/* ✅ 3 NÚT NẰM DƯỚI KHUNG BÊN TRÁI */}
+              {/* ✅ BUTTONS SECTION */}
               <div className="mt-3">
+                {/* Main action buttons */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <button
                     type="button"
@@ -643,8 +1113,55 @@ const VocabularyTestTake = () => {
                     Nộp bài
                   </button>
                 </div>
+                
+                {/* Navigation and utility buttons */}
+                <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <button
+                    type="button"
+                    onClick={handlePrev}
+                    disabled={index <= 0 || isSubmitting}
+                    className="inline-flex items-center justify-center gap-1 rounded-lg border border-zinc-200 bg-white px-2 py-2 text-xs font-semibold text-zinc-700 shadow-sm hover:bg-zinc-50 disabled:opacity-50"
+                    title="Câu trước (←)"
+                  >
+                    ← Trước
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={handleNext}
+                    disabled={index >= items.length - 1 || isSubmitting}
+                    className="inline-flex items-center justify-center gap-1 rounded-lg border border-zinc-200 bg-white px-2 py-2 text-xs font-semibold text-zinc-700 shadow-sm hover:bg-zinc-50 disabled:opacity-50"
+                    title="Câu sau (→)"
+                  >
+                    Sau →
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={toggleMarkCurrent}
+                    disabled={isSubmitting}
+                    className={`inline-flex items-center justify-center gap-1 rounded-lg border px-2 py-2 text-xs font-semibold shadow-sm hover:opacity-90 disabled:opacity-50 ${
+                      isMarked(index) 
+                        ? 'border-amber-200 bg-amber-50 text-amber-700'
+                        : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50'
+                    }`}
+                    title="Đánh dấu để xem lại (M)"
+                  >
+                    🏷️ {isMarked(index) ? 'Bỏ dấu' : 'Đánh dấu'}
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={undo}
+                    disabled={undoStackRef.current.length === 0 || isSubmitting}
+                    className="inline-flex items-center justify-center gap-1 rounded-lg border border-zinc-200 bg-white px-2 py-2 text-xs font-semibold text-zinc-700 shadow-sm hover:bg-zinc-50 disabled:opacity-50"
+                    title="Hoàn tác (Ctrl+Z)"
+                  >
+                    ↶ Hoàn tác
+                  </button>
+                </div>
 
-                <p className="mt-2 text-center text-[11px] text-zinc-600">Bạn có thể nộp bài bất cứ lúc nào</p>
+                <p className="mt-2 text-center text-[11px] text-zinc-600">Enter: kiểm tra đáp án hoặc chuyển câu tiếp • Shift+Enter: bỏ qua câu hiện tại • Nộp bài bất cứ lúc nào</p>
               </div>
             </div>
 
@@ -704,10 +1221,15 @@ const VocabularyTestTake = () => {
                   <div className="mt-3 grid grid-cols-10 gap-1.5">
                     {items.map((_, idx) => {
                       const st = answeredState(idx);
+                      const marked = isMarked(idx);
 
                       let cls = 'bg-zinc-100 text-zinc-700 border-zinc-200';
                       if (st === 'correct') cls = 'bg-emerald-100 text-emerald-800 border-emerald-200';
                       if (st === 'wrong') cls = 'bg-rose-100 text-rose-800 border-rose-200';
+                      
+                      if (marked && st === 'idle') {
+                        cls = 'bg-amber-100 text-amber-800 border-amber-200';
+                      }
 
                       const isCurrent = idx === index;
 
@@ -716,20 +1238,26 @@ const VocabularyTestTake = () => {
                           key={idx}
                           type="button"
                           onClick={() => {
+                            pushHistory();
                             setIndex(idx);
                             setCurrentAnswer('');
                             setShowAnswer(false);
                             setLastAnswerResult(null);
+                            setShowResultModal(false);
+                            setResultModalData(null);
                             setIsPaused(false);
                             setTimeLeft(settings.timePerQuestion || DEFAULT_TIME_PER_QUESTION);
                           }}
-                          className={`w-7 h-7 rounded-lg border ${cls} flex items-center justify-center text-[10px] font-semibold transition ${
+                          className={`w-7 h-7 rounded-lg border ${cls} flex items-center justify-center text-[10px] font-semibold transition relative ${
                             isCurrent ? 'ring-2 ring-blue-400 ring-offset-1' : 'hover:opacity-90'
                           }`}
-                          title={`Câu ${idx + 1}`}
+                          title={`Câu ${idx + 1}${marked ? ' (Đã đánh dấu)' : ''}${st === 'correct' ? ' ✓' : st === 'wrong' ? ' ✗' : ''}`}
                           disabled={isSubmitting}
                         >
                           {idx + 1}
+                          {marked && (
+                            <span className="absolute -top-1 -right-1 w-2 h-2 bg-amber-500 rounded-full" />
+                          )}
                         </button>
                       );
                     })}
@@ -751,6 +1279,11 @@ const VocabularyTestTake = () => {
                       <span className="inline-flex items-center gap-1">
                         <span className="h-2 w-2 rounded-full bg-rose-500" /> Sai: {wrongSoFar}
                       </span>
+                      {Object.keys(markedQuestions).length > 0 && (
+                        <span className="inline-flex items-center gap-1">
+                          <span className="h-2 w-2 rounded-full bg-amber-500" /> Đánh dấu: {Object.keys(markedQuestions).length}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -781,6 +1314,109 @@ const VocabularyTestTake = () => {
                   </button>
                   <button onClick={confirmExit} className="px-4 py-2 rounded-xl bg-rose-600 text-white font-semibold hover:bg-rose-700">
                     Thoát
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Submit Confirmation Modal */}
+          {showSubmitConfirm && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-2xl shadow-xl p-6 max-w-md w-full mx-4 border border-zinc-200">
+                <div className="flex items-start gap-3">
+                  <div className="h-12 w-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center font-extrabold">
+                    ?
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-extrabold text-zinc-900">Xác nhận nộp bài</h3>
+                    <p className="text-sm text-zinc-600 mt-1">Bạn có chắc chắn muốn nộp bài? Các câu chưa trả lời sẽ được tính là sai.</p>
+                  </div>
+                </div>
+
+                <div className="mt-5 flex justify-end gap-2">
+                  <button
+                    onClick={() => setShowSubmitConfirm(false)}
+                    disabled={isSubmitting}
+                    className="px-4 py-2 rounded-xl border border-zinc-200 bg-white text-zinc-700 font-semibold hover:bg-zinc-50 disabled:opacity-50"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    onClick={confirmSubmit}
+                    disabled={isSubmitting}
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 text-white font-semibold hover:opacity-95 disabled:opacity-60"
+                  >
+                    {isSubmitting ? 'Đang nộp...' : 'Nộp bài'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Result Modal - Will be implemented later */}
+          {showResultModal && resultModalData && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-2xl shadow-xl p-6 max-w-md w-full mx-4 border border-zinc-200">
+                <div className="text-center">
+                  <div className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl mb-4 ${
+                    resultModalData.isCorrect ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'
+                  }`}>
+                    {resultModalData.isCorrect ? '✓' : '✗'}
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-900 mb-2">
+                    {resultModalData.isCorrect ? 'Chính xác!' : 'Chưa đúng'}
+                  </h3>
+                  {!resultModalData.isCorrect && (
+                    <p className="text-sm text-slate-600 mb-4">
+                      Đáp án đúng: <span className="font-bold">{resultModalData.correctAnswer}</span>
+                    </p>
+                  )}
+                  <button
+                    onClick={handleResultModalNext}
+                    className="w-full bg-blue-600 text-white py-2 px-4 rounded-xl font-semibold hover:bg-blue-700"
+                  >
+                    {index === items.length - 1 ? 'Hoàn thành' : 'Tiếp tục'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Submit Confirmation Modal */}
+          {showSubmitConfirm && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-2xl shadow-xl p-6 max-w-md w-full mx-4 border border-zinc-200">
+                <div className="flex items-start gap-3">
+                  <div className="h-12 w-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center font-extrabold">
+                    ?
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-extrabold text-zinc-900">Xác nhận nộp bài</h3>
+                    <p className="text-sm text-zinc-600 mt-1">Bạn có chắc chắn muốn nộp bài? Các câu chưa trả lời sẽ được tính là sai.</p>
+                    <div className="mt-3 text-xs text-zinc-500">
+                      <p>Đã trả lời: {answers.filter(a => a !== null).length}/{items.length}</p>
+                      <p>Đúng: {correctSoFar} • Sai: {wrongSoFar}</p>
+                      {Object.keys(markedQuestions).length > 0 && (
+                        <p>Đã đánh dấu: {Object.keys(markedQuestions).length}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-5 flex justify-end gap-2">
+                  <button
+                    onClick={() => setShowSubmitConfirm(false)}
+                    disabled={isSubmitting}
+                    className="px-4 py-2 rounded-xl border border-zinc-200 bg-white text-zinc-700 font-semibold hover:bg-zinc-50 disabled:opacity-50"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    onClick={confirmSubmit}
+                    disabled={isSubmitting}
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 text-white font-semibold hover:opacity-95 disabled:opacity-60"
+                  >
+                    {isSubmitting ? 'Đang nộp...' : 'Nộp bài'}
                   </button>
                 </div>
               </div>

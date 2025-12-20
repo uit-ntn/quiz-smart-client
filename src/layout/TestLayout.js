@@ -1,102 +1,135 @@
-import React from 'react';
+import React from "react";
+import { Link } from "react-router-dom";
+import Header from "../components/Header";
+import Footer from "../components/Footer";
+
+const MAX_WIDTH_CLASS = {
+  sm: "max-w-screen-sm",
+  md: "max-w-screen-md",
+  lg: "max-w-screen-lg",
+  xl: "max-w-screen-xl",
+  "2xl": "max-w-screen-2xl",
+  "7xl": "max-w-7xl",
+  full: "max-w-full",
+  none: "max-w-none",
+};
 
 const TestLayout = ({
   children,
-  testTitle,
-  currentQuestion,
-  totalQuestions,
-  timeLeft,
-  timePerQuestion,
-  onExit
+  title,
+  description,
+  icon,
+  actions,
+  breadcrumbItems,
+  maxWidth = "full",
+  containerClassName = "",
+  type = "vocabulary",
+  hideHeader = false,
 }) => {
-  const progress = ((currentQuestion + 1) / totalQuestions) * 100;
-  const timeProgress = (timeLeft / timePerQuestion) * 100;
+  const maxW = MAX_WIDTH_CLASS[maxWidth] || "max-w-full";
 
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  const getIconBg = (t) => {
+    if (t === "multiple-choice") return "bg-violet-600";
+    if (t === "topics") return "bg-indigo-600";
+    return "bg-emerald-600";
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
-          <div className="flex items-center justify-between h-14">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={onExit}
-                className="flex items-center px-3 py-1.5 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                </svg>
-                Thoát
-              </button>
-              <div className="h-5 w-px bg-gray-300" />
-              <div>
-                <h1 className="text-base font-semibold text-gray-900">{testTitle}</h1>
-                <div className="text-sm text-gray-600">
-                  Câu {currentQuestion + 1}/{totalQuestions}
-                </div>
-              </div>
-            </div>
+    <>
+      <Header />
 
-            {/* Timer */}
-            <div className="flex items-center gap-4">
-              <div className="text-right">
-                <div className="text-xl font-bold text-gray-900">{formatTime(timeLeft)}</div>
-                <div className="text-xs text-gray-500">Thời gian còn lại</div>
-              </div>
-              <div className="w-14 h-14 relative">
-                <svg className="w-14 h-14 transform -rotate-90" viewBox="0 0 100 100">
-                  <circle cx="50" cy="50" r="45" fill="none" stroke="#e5e7eb" strokeWidth="8" />
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="45"
-                    fill="none"
-                    stroke={timeLeft <= 10 ? "#ef4444" : timeLeft <= 30 ? "#f59e0b" : "#10b981"}
-                    strokeWidth="8"
-                    strokeDasharray={`${2 * Math.PI * 45}`}
-                    strokeDashoffset={`${2 * Math.PI * 45 * (1 - timeProgress / 100)}`}
-                    className="transition-all duration-1000 ease-linear"
-                  />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span
-                    className={`text-xs font-bold ${
-                      timeLeft <= 10 ? "text-red-600" : timeLeft <= 30 ? "text-yellow-600" : "text-green-600"
-                    }`}
-                  >
-                    {timeLeft}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
+      {/* ===== Page background (NO GRADIENT) ===== */}
+      <div className="min-h-screen bg-slate-100">
+        {/* ===== Container ===== */}
+        <div
+          className={[
+            "w-full mx-auto",
+            maxW,
+            "px-4 sm:px-6 lg:px-8",
+            "py-6",
+            containerClassName,
+          ].join(" ")}
+        >
+          {/* ===== Page header ===== */}
+          {!hideHeader && (breadcrumbItems?.length > 0 || title || description) && (
+            <div className="mb-6">
+              {/* Breadcrumb */}
+              {breadcrumbItems?.length > 0 && (
+                <nav className="mb-3 text-sm font-medium text-slate-500 flex flex-wrap items-center gap-2">
+                  {breadcrumbItems.map((item, idx) => (
+                    <React.Fragment key={item.path || item.label || idx}>
+                      {idx > 0 && <span className="text-slate-300">/</span>}
+                      {item.path ? (
+                        <Link
+                          to={item.path}
+                          className="hover:text-indigo-600 transition-colors"
+                        >
+                          {item.label}
+                        </Link>
+                      ) : (
+                        <span className="text-slate-900">{item.label}</span>
+                      )}
+                    </React.Fragment>
+                  ))}
+                </nav>
+              )}
 
-          {/* Progress Bar */}
-          <div className="py-2">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-sm font-medium text-gray-700">Tiến độ bài test</span>
-              <span className="text-sm text-gray-600">{Math.round(progress)}%</span>
+              {/* Title + actions */}
+              <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+                <div className="flex items-start gap-4">
+                  {icon && (
+                    <div
+                      className={[
+                        "w-12 h-12 rounded-2xl",
+                        getIconBg(type),
+                        "flex items-center justify-center",
+                        "text-white shadow-sm shrink-0",
+                      ].join(" ")}
+                    >
+                      {icon}
+                    </div>
+                  )}
+
+                  <div>
+                    {title && (
+                      <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+                        {title}
+                      </h1>
+                    )}
+                    {description && (
+                      <p className="mt-1.5 max-w-2xl text-slate-600 leading-relaxed">
+                        {description}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {actions && (
+                  <div className="flex items-center gap-2 shrink-0">
+                    {actions}
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2.5">
-              <div
-                className="bg-blue-600 h-2.5 rounded-full transition-all duration-300 ease-out"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          </div>
+          )}
+
+          {/* ===== Page content ===== */}
+          {children}
         </div>
       </div>
 
-      {/* Main */}
-      <div className="flex-1">{children}</div>
-    </div>
+      <Footer />
+    </>
   );
 };
 
 export default TestLayout;
+
+/* ===== Shortcut layouts ===== */
+export const VocabularyLayout = (props) => (
+  <TestLayout {...props} type="vocabulary" />
+);
+
+export const MultipleChoiceLayout = (props) => (
+  <TestLayout {...props} type="multiple-choice" />
+);

@@ -4,7 +4,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import testService from "../services/testService";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
-import MultipleChoiceLayout from "../layout/MultipleChoiceLayout";
+import { MultipleChoiceLayout } from "../layout/TestLayout";
 
 const MultipleChoiceTestSettings = () => {
   const { testId } = useParams();
