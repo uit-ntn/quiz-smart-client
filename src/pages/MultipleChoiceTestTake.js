@@ -1120,7 +1120,7 @@ const MultipleChoiceTestTake = () => {
                   <button
                     type="button"
                     onClick={toggleMarkCurrent}
-                    className={`px-3 py-2 rounded-lg text-xs font-semibold border transition ${
+                    className={`hidden sm:inline-block px-3 py-2 rounded-lg text-xs font-semibold border transition ${
                       isMarked(qid)
                         ? "bg-amber-50 border-amber-200 text-amber-800"
                         : "bg-white border-slate-300 text-gray-700 hover:bg-gray-50"
@@ -1132,7 +1132,7 @@ const MultipleChoiceTestTake = () => {
                 </div>
 
                 {/* hint */}
-                <div className="mt-3 text-xs text-gray-500 space-y-1">
+                <div className="hidden sm:block mt-3 text-xs text-gray-500 space-y-1">
                   <div>
                     Mẹo: dùng phím <span className="font-semibold">←</span> /{" "}
                     <span className="font-semibold">→</span> để chuyển câu.{" "}
@@ -1215,7 +1215,7 @@ const MultipleChoiceTestTake = () => {
               </div>
 
               {/* Highlight toolbar */}
-              <div className="mt-6 flex flex-wrap items-center gap-2">
+              <div className="mt-6 flex flex-wrap items-center gap-2 hidden sm:flex">
                 <button
                   type="button"
                   onClick={() => setIsHighlightMode((v) => !v)}
@@ -1253,11 +1253,12 @@ const MultipleChoiceTestTake = () => {
                   ↪️ Làm lại
                 </button>
               </div>
+
             </div>
           </div>
 
           {/* SIDEBAR */}
-          <div className="col-span-12 lg:col-span-3 flex flex-col">
+          <div className="hidden lg:col-span-3 lg:flex lg:flex-col">
             <div className="flex-1 rounded-2xl border border-slate-300 shadow-sm bg-white p-4 flex flex-col gap-4">
               {/* Header */}
               <div className="flex items-start justify-between gap-2">
@@ -1280,7 +1281,7 @@ const MultipleChoiceTestTake = () => {
                   )}
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 hidden sm:flex">
                   {settings.showTimer && (
                     <div className={`px-2 py-1 rounded-md border flex flex-col items-center ${timerBoxClass}`}>
                       <span className="text-[10px] opacity-90">Toàn bài</span>
@@ -1346,7 +1347,7 @@ const MultipleChoiceTestTake = () => {
 
               {/* Grid */}
               <div className="flex-1 min-h-0 overflow-auto">
-                <div className="grid grid-cols-6 sm:grid-cols-5 gap-2">
+                <div className="grid grid-cols-6 sm:grid-cols-5 gap-2 hidden sm:grid">
                   {questions.map((q, idx) => {
                     const answered = (userAnswers[q._id] || []).length > 0;
                     const current = idx === currentQuestionIndex;
@@ -1382,12 +1383,12 @@ const MultipleChoiceTestTake = () => {
                 </div>
               </div>
 
-              {/* SUBMIT */}
+              {/* SUBMIT - Desktop only */}
               <button
                 type="button"
                 onClick={handleSubmitClick}
                 disabled={answeredCount === 0}
-                className={`mt-auto w-full px-4 py-3 rounded-lg text-sm font-semibold ${
+                className={`mt-auto w-full px-4 py-3 rounded-lg text-sm font-semibold hidden md:block ${
                   answeredCount === 0
                     ? "bg-gray-200 text-gray-400 cursor-not-allowed"
                     : "bg-red-600 text-white hover:bg-red-700"
@@ -1409,7 +1410,7 @@ const MultipleChoiceTestTake = () => {
                 type="button"
                 onClick={handlePrev}
                 disabled={!canGoPrev}
-                className={`w-full sm:w-auto px-3 py-2 rounded-lg text-sm border ${
+                className={`hidden sm:block w-full sm:w-auto px-3 py-2 rounded-lg text-sm border ${
                   !canGoPrev
                     ? "bg-gray-100 text-gray-400 border-slate-300 cursor-not-allowed"
                     : "bg-white text-gray-800 border-gray-300 hover:bg-gray-50"
@@ -1430,11 +1431,25 @@ const MultipleChoiceTestTake = () => {
                 </button>
               )}
 
+              {/* Mobile Submit Button */}
+              <button
+                type="button"
+                onClick={handleSubmitClick}
+                disabled={answeredCount === 0}
+                className={`block md:hidden flex-1 px-3 py-2 rounded-lg text-sm font-semibold ${
+                  answeredCount === 0
+                    ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                    : "bg-red-600 text-white hover:bg-red-700"
+                }`}
+              >
+                Nộp bài ({answeredCount}/{questions.length})
+              </button>
+
               {canGoNext && (
                 <button
                   type="button"
                   onClick={handleNext}
-                  className="flex-1 px-3 py-2 rounded-lg bg-purple-600 text-white text-sm font-semibold hover:bg-purple-700"
+                  className="hidden sm:block flex-1 px-3 py-2 rounded-lg bg-purple-600 text-white text-sm font-semibold hover:bg-purple-700"
                 >
                   Câu tiếp theo
                 </button>

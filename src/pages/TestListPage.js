@@ -287,7 +287,7 @@ const TestListPage = ({ type = 'vocabulary' }) => {
       }
     >
       {/* 1. COMPACT STATS BAR */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-3">
+      <div className="hidden sm:grid grid-cols-2 md:grid-cols-5 gap-3 mb-3">
         <StatBox label="Tổng số" value={stats.total} colorClass="bg-blue-500" iconPath="M4 6h16M4 10h16M4 14h16M4 18h16" />
         <StatBox label="Dễ" value={stats.easy} colorClass="bg-emerald-500" iconPath="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
         <StatBox label="Trung bình" value={stats.medium} colorClass="bg-amber-500" iconPath="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -303,7 +303,7 @@ const TestListPage = ({ type = 'vocabulary' }) => {
         <EmptyState title="Không tìm thấy bài kiểm tra" description="Thử thay đổi bộ lọc hoặc quay lại sau." />
       ) : (
         <>
-          <div className={viewMode === 'card' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6" : "space-y-3 mb-6"}>
+          <div className={viewMode === 'card' ? "grid grid-cols-2 sm:grid-cols-4 gap-2 mb-6" : "space-y-3 mb-6"}>
             {currentTests.map((test) => (
               <div key={test._id || test.id} className="h-full">
                 <TestCard 

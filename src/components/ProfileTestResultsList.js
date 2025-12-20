@@ -99,10 +99,10 @@ const ProfileTestResultsList = ({ results, loading, error, onRetry, onViewDetail
               <p className="text-gray-600 mb-4 text-center max-w-xl">
                 Bạn chưa hoàn thành bài test nào. Dưới đây là một vài gợi ý để bắt đầu luyện tập — làm một bài test hoặc khám phá các chủ đề phù hợp với bạn.
               </p>
-              <div className="flex gap-3 mt-3">
-                <Link to="/multiple-choice/topics" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Làm bài trắc nghiệm</Link>
-                <Link to="/vocabulary/topics" className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">Luyện từ vựng</Link>
-                <Link to="/grammar/topics" className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700">Học ngữ pháp</Link>
+              <div className="flex flex-col sm:flex-row gap-3 mt-3">
+                <Link to="/multiple-choice/topics" className="px-3 py-2 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-center">Làm bài trắc nghiệm</Link>
+                <Link to="/vocabulary/topics" className="px-3 py-2 sm:px-4 sm:py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-center">Luyện từ vựng</Link>
+                <Link to="/grammar/topics" className="px-3 py-2 sm:px-4 sm:py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 text-center">Học ngữ pháp</Link>
               </div>
             </div>
 
@@ -138,45 +138,45 @@ const ProfileTestResultsList = ({ results, loading, error, onRetry, onViewDetail
         <div className="divide-y divide-gray-200">
           {results.map((result) => (
             <div key={result._id} className="p-4 hover:bg-gray-50 transition-colors">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex-1">
-                  <div className="flex items-center space-x-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
                     {/* Score Badge */}
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center ${getScoreBg(result.percentage)}`}>
-                      <span className={`text-lg font-bold ${getScoreColor(result.percentage)}`}>
+                    <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center ${getScoreBg(result.percentage)}`}>
+                      <span className={`text-sm sm:text-lg font-bold ${getScoreColor(result.percentage)}`}>
                         {result.percentage}%
                       </span>
                     </div>
                     
                     {/* Test Info */}
                     <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600">
+                      <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-3 mb-2">
+                        <div className="w-6 h-6 sm:w-8 sm:h-8 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600">
                           {getTestTypeIcon(result.test_id?.test_type)}
                         </div>
-                        <h3 className="text-lg font-semibold text-gray-900">
+                        <h3 className="text-sm sm:text-lg font-semibold text-gray-900">
                           {result.test_id?.test_title || 'Bài test'}
                         </h3>
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        <span className="inline-flex items-center px-2 py-0.5 sm:px-2.5 sm:py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                           {getTestTypeName(result.test_id?.test_type)}
                         </span>
                       </div>
                       
-                      <div className="flex items-center space-x-4 text-sm text-gray-600">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-600">
                         <span className="flex items-center">
-                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                           </svg>
                           {result.correct_count}/{result.total_questions} câu đúng
                         </span>
                         <span className="flex items-center">
-                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
                           {Math.round(result.duration_ms / 1000)}s
                         </span>
                         <span className="flex items-center">
-                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m4 4a2 2 0 00-2-2h-2a2 2 0 00-2 2m0 0a2 2 0 002 2h2a2 2 0 002-2m0 0v6a2 2 0 01-2 2H6a2 2 0 01-2-2v-6m0 0V9a2 2 0 012-2h8a2 2 0 012 2v6z" />
                           </svg>
                           {new Date(result.created_at).toLocaleDateString('vi-VN')}
@@ -185,7 +185,7 @@ const ProfileTestResultsList = ({ results, loading, error, onRetry, onViewDetail
                       
                       {result.test_id?.main_topic && (
                         <div className="mt-2">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                          <span className="inline-flex items-center px-2 py-0.5 sm:px-2.5 sm:py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
                             {result.test_id.main_topic}
                             {result.test_id?.sub_topic && ` › ${result.test_id.sub_topic}`}
                           </span>
@@ -196,17 +196,17 @@ const ProfileTestResultsList = ({ results, loading, error, onRetry, onViewDetail
                 </div>
                 
                 {/* Actions */}
-                <div className="flex items-center space-x-3 ml-6">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 sm:ml-6">
                   <button
                     onClick={() => onViewDetail(result)}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                    className="px-3 py-2 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs sm:text-sm"
                   >
                     Xem chi tiết
                   </button>
                   
                   <button
                     onClick={() => onRetakeTest(result)}
-                    className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm"
+                    className="px-3 py-2 sm:px-4 sm:py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-xs sm:text-sm"
                   >
                     Làm lại
                   </button>
@@ -214,10 +214,10 @@ const ProfileTestResultsList = ({ results, loading, error, onRetry, onViewDetail
                   {onDelete && (
                     <button
                       onClick={() => onDelete(result)}
-                      className="px-4 py-2 bg-rose-600 text-white rounded-lg hover:bg-rose-700 transition-colors text-sm flex items-center gap-1"
+                      className="px-3 py-2 sm:px-4 sm:py-2 bg-rose-600 text-white rounded-lg hover:bg-rose-700 transition-colors text-xs sm:text-sm flex items-center justify-center gap-1"
                       title="Xóa kết quả"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                       </svg>
                       Xóa

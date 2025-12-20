@@ -709,7 +709,7 @@ const VocabularyTestTake = () => {
       <div className="min-h-[calc(100svh-136px)] bg-zinc-50">
         <div className="mx-auto w-full max-w-7xl px-3 md:px-4 py-3">
           {/* TOP BAR */}
-          <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div className="mb-3 hidden sm:flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-semibold text-zinc-700 shadow-sm">
                 <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
@@ -957,7 +957,7 @@ const VocabularyTestTake = () => {
                   </button>
                 </div>
 
-                <div className="mt-2 grid grid-cols-2 gap-2">
+                <div className="mt-2 hidden sm:grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={handlePrev}
@@ -982,7 +982,7 @@ const VocabularyTestTake = () => {
             </div>
 
             {/* RIGHT */}
-            <div className="lg:col-span-1">
+            <div className="lg:col-span-1 hidden lg:block">
               <div className="space-y-3">
                 {/* Voice */}
                 <div className="rounded-2xl border border-zinc-200 bg-white shadow-sm p-4">

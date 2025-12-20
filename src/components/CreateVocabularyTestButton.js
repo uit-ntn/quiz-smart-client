@@ -388,7 +388,7 @@ const CreateVocabularyTestButton = ({ className = '' }) => {
                     className="bg-white border border-neutral-200 rounded-lg overflow-hidden flex flex-col"
                     style={{ height: PANEL_HEIGHT }}
                   >
-                    <div className="px-6 py-4 bg-neutral-900">
+                    <div className="px-6 py-4 bg-indigo-600">
                       <h3 className="text-base font-semibold text-white">Review từ vựng (cập nhật trực tiếp)</h3>
                       <p className="text-xs text-neutral-300">Định dạng: <span className="font-mono">từ:nghĩa:câu ví dụ</span></p>
                     </div>
@@ -579,7 +579,7 @@ const CreateVocabularyTestButton = ({ className = '' }) => {
                 </div>
 
                 <div className="bg-white border border-neutral-200 rounded-lg overflow-hidden">
-                  <div className="px-6 py-4 bg-neutral-900">
+                  <div className="px-6 py-4 bg-indigo-600">
                     <h3 className="text-base font-semibold text-white">Danh sách từ vựng ({parsedVocabularies.length} từ)</h3>
                   </div>
                   <div className="overflow-x-auto" style={{ maxHeight: 420 }}>
