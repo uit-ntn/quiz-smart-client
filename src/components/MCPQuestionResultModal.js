@@ -17,9 +17,9 @@ const QuestionResultModal = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-3 sm:p-4">
       <div className="bg-white rounded-lg border border-slate-300 w-full max-w-xl">
-        <div className="p-4 border-b border-slate-300 flex items-center justify-between">
+        <div className="p-3 sm:p-4 border-b border-slate-300 flex items-center justify-between">
           <div>
             <p className={`text-sm font-semibold ${resultData.isCorrect ? "text-green-700" : "text-red-700"}`}>
               {resultData.isCorrect ? "Trả lời chính xác" : "Trả lời chưa chính xác"}
@@ -33,13 +33,13 @@ const QuestionResultModal = ({
           </button>
         </div>
 
-        <div className="p-4 space-y-4 text-sm">
+        <div className="p-3 sm:p-4 space-y-3 sm:space-y-4 text-xs sm:text-sm">
           <div>
             <p className="text-gray-900 font-medium mb-1">Câu hỏi</p>
             <p className="text-gray-800 text-sm">{resultData.questionText}</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <div className="border border-slate-300 rounded p-3">
               <p className="font-semibold text-gray-900 text-xs mb-2">Đáp án đúng</p>
               <div className="flex flex-wrap gap-2">
@@ -110,7 +110,7 @@ const QuestionResultModal = ({
           )}
         </div>
 
-        <div className="p-4 border-t border-slate-300 flex items-center justify-end gap-2 text-xs">
+        <div className="sticky bottom-0 bg-white p-3 sm:p-4 border-t border-slate-300 flex items-center justify-end gap-2 text-xs">
           <button
             onClick={onClose}
             className="px-3 py-1.5 rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"

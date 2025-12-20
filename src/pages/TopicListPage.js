@@ -190,7 +190,7 @@ const TopicListPage = () => {
         <div className="fixed inset-0 bg-black/50 z-10 transition-opacity duration-500" />
       )}
       {/* Top row (compact) */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-6">
+      <div className="hidden sm:flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-6">
         <div>
           <nav className="text-sm font-semibold text-slate-500">
             <Link to="/" className="hover:text-slate-900">Trang chủ</Link>

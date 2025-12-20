@@ -18,8 +18,8 @@ const Footer = () => {
       {/* Top border gradient */}
       <div className="h-px w-full bg-gradient-to-r from-transparent via-white/15 to-transparent" />
 
-      <div className="relative max-w-7xl mx-auto px-6 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 sm:gap-10">
           {/* Brand */}
           <div>
             <div className="flex items-center mb-4">
@@ -39,7 +39,7 @@ const Footer = () => {
                 </svg>
               </div>
               <div>
-                <h5 className="text-lg font-black tracking-tight">QuizSmart</h5>
+                <h5 className="text-base sm:text-lg font-black tracking-tight">QuizSmart</h5>
                 <p className="text-xs text-white/60 font-semibold">Học thông minh mỗi ngày</p>
               </div>
             </div>
@@ -50,7 +50,7 @@ const Footer = () => {
             </p>
 
             {/* Social */}
-            <div className="mt-5 flex items-center gap-3">
+            <div className="mt-5 flex flex-col sm:flex-row items-center gap-3">
               <a
                 href="https://github.com/uit-ntn"
                 target="_blank"
@@ -91,7 +91,7 @@ const Footer = () => {
 
           {/* Quick links */}
           <div>
-            <h6 className="text-sm font-black text-white mb-3">Liên kết nhanh</h6>
+            <h6 className="text-xs sm:text-sm font-black text-white mb-3">Liên kết nhanh</h6>
             <ul className="space-y-2 text-white/70">
               <li>
                 <Link className="hover:text-white transition" to="/">
@@ -117,8 +117,8 @@ const Footer = () => {
           </div>
 
           {/* Resources */}
-          <div>
-            <h6 className="text-sm font-black text-white mb-3">Tài nguyên</h6>
+          <div className="hidden sm:block">
+            <h6 className="text-xs sm:text-sm font-black text-white mb-3">Tài nguyên</h6>
             <ul className="space-y-2 text-white/70">
               <li>
                 <Link className="hover:text-white transition" to="/help">
@@ -145,7 +145,7 @@ const Footer = () => {
 
           {/* Contact */}
           <div>
-            <h6 className="text-sm font-black text-white mb-3">Liên hệ</h6>
+            <h6 className="text-xs sm:text-sm font-black text-white mb-3">Liên hệ</h6>
             <ul className="space-y-2 text-white/70">
               <li>
                 <a className="hover:text-white transition" href="mailto:npthanhnhan2003@gmail.com">
@@ -166,7 +166,7 @@ const Footer = () => {
 
       {/* Bottom bar */}
       <div className="relative border-t border-white/10 bg-white/[0.03]">
-        <div className="max-w-7xl mx-auto px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6 flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-sm text-white/60 font-semibold">
             © {year} QuizSmart. All rights reserved.
           </p>

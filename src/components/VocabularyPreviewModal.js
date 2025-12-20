@@ -31,7 +31,7 @@ const VocabularyPreviewModal = ({
             <table className="w-full">
               <thead className="bg-gray-50 sticky top-0">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16 hidden">
                     STT
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">
@@ -40,7 +40,7 @@ const VocabularyPreviewModal = ({
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">
                     Nghĩa
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden">
                     Câu mẫu
                   </th>
                 </tr>
@@ -48,39 +48,39 @@ const VocabularyPreviewModal = ({
               <tbody className="bg-white divide-y divide-gray-200">
                 {items.map((item, idx) => (
                   <tr key={idx} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900 hidden">
                       {idx + 1}
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex items-center space-x-3">
                         <div className="flex-1">
-                          <div className="text-base font-semibold text-gray-900">{item.word}</div>
+                          <div className="text-sm font-semibold text-gray-900">{item.word}</div>
                         </div>
                         <button
                           onClick={() => onPlayAudio(item.word)}
                           disabled={isPlaying}
-                          className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors disabled:opacity-50 flex-shrink-0"
+                          className="p-1.5 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors disabled:opacity-50 flex-shrink-0"
                           title="Nghe phát âm"
                         >
-                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.617.797l-4.146-3.32a1 1 0 00-.632-.227H2a1 1 0 01-1-1V7a1 1 0 011-1h1.605a1 1 0 00.632-.227l4.146-3.32a1 1 0 011.6.623zM14 7a3 3 0 013 3v0a3 3 0 01-3 3" clipRule="evenodd" />
                           </svg>
                         </button>
                       </div>
                     </td>
                     <td className="px-4 py-4">
-                      <div className="text-sm text-gray-900">{item.meaning}</div>
+                      <div className="text-xs text-gray-900">{item.meaning}</div>
                     </td>
-                    <td className="px-4 py-4">
+                    <td className="px-4 py-4 hidden">
                       {item.example_sentence ? (
                         <div className="flex items-start space-x-3">
                           <div className="flex-1">
-                            <p className="text-sm text-gray-700 italic">"{item.example_sentence}"</p>
+                            <p className="text-xs text-gray-700 italic">"{item.example_sentence}"</p>
                           </div>
                           <button
                             onClick={() => onPlayAudio(item.example_sentence, true)}
                             disabled={isPlaying}
-                            className="p-1.5 bg-green-500 text-white rounded-full hover:bg-green-600 transition-colors disabled:opacity-50 flex-shrink-0"
+                            className="p-1 bg-green-500 text-white rounded-full hover:bg-green-600 transition-colors disabled:opacity-50 flex-shrink-0"
                             title="Nghe câu mẫu"
                           >
                             <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
@@ -89,7 +89,7 @@ const VocabularyPreviewModal = ({
                           </button>
                         </div>
                       ) : (
-                        <span className="text-sm text-gray-400 italic">Không có câu mẫu</span>
+                        <span className="text-xs text-gray-400 italic">Không có câu mẫu</span>
                       )}
                     </td>
                   </tr>
@@ -107,13 +107,13 @@ const VocabularyPreviewModal = ({
           <div className="flex space-x-3">
             <button
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors"
+              className="px-2 py-1 sm:px-3 sm:py-1.5 border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors"
             >
               Quay lại
             </button>
             <button
               onClick={onStartTest}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-lg"
+              className="px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-lg"
             >
               Sẵn sàng bắt đầu
             </button>

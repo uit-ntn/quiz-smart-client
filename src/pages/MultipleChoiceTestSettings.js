@@ -182,12 +182,12 @@ const MultipleChoiceTestSettings = () => {
         {/* Content */}
         <div className="mt-2 sm:mt-4 grid grid-cols-1 lg:grid-cols-2 gap-3">
           {/* Left: Test Info */}
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-3 sm:p-4">
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-2 sm:p-4">
             <h2 className="text-base sm:text-lg font-extrabold text-slate-900 mb-3">Thông tin bài test</h2>
             <div className="space-y-2">
               <InfoLine icon="📝" label="Tiêu đề" value={test?.test_title || "—"} />
               <InfoLine icon="📖" label="Mô tả" value={test?.description || "—"} />
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <InfoLine icon="🏷️" label="Chủ đề chính" value={test?.main_topic || "—"} />
                 <InfoLine icon="📂" label="Chủ đề phụ" value={test?.sub_topic || "—"} />
                 <InfoLine icon="🔧" label="Loại test" value={test?.test_type || "—"} />
@@ -202,7 +202,7 @@ const MultipleChoiceTestSettings = () => {
           </div>
 
           {/* Right: Settings */}
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-3 sm:p-4">
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-2 sm:p-4">
             <div className="flex items-start justify-between gap-3 mb-3">
               <div>
                 <h2 className="text-base sm:text-lg font-extrabold text-slate-900">Tùy chọn hiển thị</h2>
@@ -216,19 +216,19 @@ const MultipleChoiceTestSettings = () => {
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
+            <div className="grid grid-cols-1 gap-2 mb-4">
               {displayOptions.map((item) => (
                 <label
                   key={item.id}
                   htmlFor={item.id}
-                  className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm hover:bg-slate-50 transition cursor-pointer"
+                  className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm hover:bg-slate-50 transition cursor-pointer"
                 >
                   <input
                     id={item.id}
                     type="checkbox"
                     checked={!!settings[item.key]}
                     onChange={(e) => handleSettingChange(item.key, e.target.checked)}
-                    className="mt-1 w-3 h-3 accent-slate-900 rounded border-slate-300"
+                    className="mt-1 w-3 h-3 accent-blue-600 rounded border-slate-300"
                   />
                   <div className="min-w-0">
                     <div className="text-sm font-extrabold text-slate-900">{item.label}</div>

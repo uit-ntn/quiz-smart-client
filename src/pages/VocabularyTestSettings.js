@@ -203,7 +203,7 @@ const VocabularyTestSettings = () => {
             <div className="space-y-2">
               <InfoLine icon="📝" label="Tiêu đề" value={testInfo?.test_title || "—"} />
               <InfoLine icon="📖" label="Mô tả" value={testInfo?.description || "—"} />
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <InfoLine icon="🏷️" label="Chủ đề chính" value={testInfo?.main_topic || "—"} />
                 <InfoLine icon="📂" label="Chủ đề phụ" value={testInfo?.sub_topic || "—"} />
                 <InfoLine icon="🔧" label="Loại test" value={testInfo?.test_type || "—"} />
@@ -218,8 +218,8 @@ const VocabularyTestSettings = () => {
           </div>
 
           {/* Right: Settings */}
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-3 sm:p-4">
-            <div className="flex items-center justify-between gap-3 mb-3">
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-2 sm:p-4">
+            <div className="flex items-center justify-between gap-3 mb-2 sm:mb-3">
               <div>
                 <h2 className="text-base sm:text-lg font-extrabold text-slate-900">Chế độ bài test</h2>
                 <p className="text-sm text-slate-600 mt-1">Chọn 1 chế độ. Hệ thống sẽ lưu lại cho lần sau.</p>
@@ -232,7 +232,7 @@ const VocabularyTestSettings = () => {
             </div>
 
             {/* Mode picker */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-stretch auto-rows-fr mb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-stretch auto-rows-fr mb-3 sm:mb-4">
               {modes.map((m) => {
                 const active = mode === m.value;
 
@@ -248,7 +248,7 @@ const VocabularyTestSettings = () => {
                       );
                     }}
                     className={`
-                      h-full min-h-[160px] text-left rounded-2xl border p-3 transition
+                      h-full min-h-[120px] sm:min-h-[160px] text-left rounded-2xl border p-2 sm:p-3 transition
                       flex flex-col shadow-sm hover:shadow
                       ${active ? `border-transparent ring-2 ${m.ring} bg-white` : 'border-slate-200 bg-white hover:bg-slate-50'}
                     `}

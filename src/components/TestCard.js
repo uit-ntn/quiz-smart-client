@@ -1,5 +1,5 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 // ================= Utils =================
 const cx = (...a) => a.filter(Boolean).join(" ");
@@ -117,6 +117,12 @@ const TestCard = ({
 
   const headerColor = HEADER_COLORS[colorIndex];
 
+  const navigate = useNavigate();
+
+  const handleClick = () => {
+    navigate(toSettings);
+  };
+
   // ======================================================
   // ================= LIST VIEW ==========================
   // ======================================================
@@ -181,7 +187,7 @@ const TestCard = ({
             {safeTypeKey === "vocabulary" && (
               <button
                 onClick={() => onPreviewVocabulary?.(test)}
-                className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 hover:bg-slate-50"
+                className="hidden px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 hover:bg-slate-50"
               >
                 Xem
               </button>
@@ -206,8 +212,9 @@ const TestCard = ({
   // ======================================================
   return (
     <div
+      onClick={handleClick}
       className={cx(
-        "flex flex-col h-full rounded-2xl border border-slate-200 bg-white overflow-hidden hover:-translate-y-1 hover:shadow-lg transition",
+        "cursor-pointer flex flex-col h-full rounded-2xl border border-slate-200 bg-white overflow-hidden hover:-translate-y-1 hover:shadow-lg transition",
         className
       )}
     >
@@ -218,7 +225,7 @@ const TestCard = ({
         </h3>
 
         {(test?.main_topic || test?.sub_topic) && (
-          <div className="mt-0.5 text-[11px] text-white/80 truncate">
+          <div className="hidden sm:block mt-0.5 text-[11px] text-white/80 truncate">
             {test?.main_topic}
             {test?.sub_topic && (
               <>
@@ -241,12 +248,20 @@ const TestCard = ({
           >
             {diff.label}
           </span>
-          <span className="text-[10px] text-slate-300 font-mono">
+          <span className="text-[10px] text-slate-300 font-mono hidden sm:block">
             #{String(testId || "").slice(-4)}
+          </span>
+          <span
+            className={cx(
+              "px-1.5 py-0.5 rounded text-[10px] font-semibold sm:hidden",
+              visibilityCfg.className
+            )}
+          >
+            {visibilityCfg.label}
           </span>
         </div>
 
-        <p className="text-xs text-slate-500 line-clamp-3 mb-2">
+        <p className="hidden text-xs text-slate-500 line-clamp-3 mb-2">
           {test?.description || "Không có mô tả chi tiết."}
         </p>
 
@@ -272,14 +287,14 @@ const TestCard = ({
         </div>
 
         {/* Created by + Visibility */}
-        <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-3 truncate">
+        <div className="flex flex-col sm:flex-row items-center gap-2 text-[11px] text-slate-400 mt-3 truncate">
           <span>
             Tạo bởi{" "}
             <span className="font-medium text-slate-500">{createdBy}</span>
           </span>
           <span
             className={cx(
-              "px-1.5 py-0.5 rounded text-[10px] font-semibold",
+              "px-1.5 py-0.5 rounded text-[10px] font-semibold hidden sm:block",
               visibilityCfg.className
             )}
           >
@@ -289,7 +304,7 @@ const TestCard = ({
       </div>
 
       {/* Footer */}
-      <div className="p-3 pt-0 flex gap-2">
+      <div className="hidden sm:flex p-3 pt-0 gap-2">
         {safeTypeKey === "vocabulary" && (
           <button
             onClick={() => onPreviewVocabulary?.(test)}
