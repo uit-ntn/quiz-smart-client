@@ -65,6 +65,9 @@ export default function CreateMultipleChoiceTestButton({ label = "Tạo Multiple
     visibility: 'public',
   });
 
+  // Created test
+  const [createdTest, setCreatedTest] = useState(null);
+
   // Refs
   const cardRef = useRef(null);
   const redirectTimerRef = useRef(null);
@@ -119,6 +122,7 @@ export default function CreateMultipleChoiceTestButton({ label = "Tạo Multiple
     setLoading(false);
     setHasSeededSample(false);
     setIsSampleActive(false);
+    setCreatedTest(null);
     setOpen(false);
   };
 
@@ -284,6 +288,8 @@ export default function CreateMultipleChoiceTestButton({ label = "Tạo Multiple
       
       if (!mountedRef.current) return;
 
+      setCreatedTest(newTest);
+
       // Step 2: Create individual questions
       const questionPromises = parsedQuestions.map((q, index) => {
         const questionData = {
@@ -320,13 +326,6 @@ export default function CreateMultipleChoiceTestButton({ label = "Tạo Multiple
       if (!mountedRef.current) return;
 
       setCurrentStep('success');
-      
-      redirectTimerRef.current = setTimeout(() => {
-        if (mountedRef.current) {
-          handleClose();
-          navigate('/admin/tests');
-        }
-      }, 2000);
 
     } catch (err) {
       if (!mountedRef.current) return;
@@ -799,10 +798,35 @@ export default function CreateMultipleChoiceTestButton({ label = "Tạo Multiple
                   </svg>
                 </div>
                 <h3 className="text-base font-medium text-neutral-900 mb-2">Tạo thành công!</h3>
-                <p className="text-sm text-neutral-700 mb-2">
+                <p className="text-sm text-neutral-700 mb-6">
                   Bài test "<span className="font-semibold">{testInfo.test_title}</span>" đã được tạo với {parsedQuestions.length} câu hỏi.
                 </p>
-                <p className="text-xs text-neutral-500">Đang chuyển hướng đến trang quản lý...</p>
+                <div className="flex gap-3 justify-center">
+                  <button
+                    onClick={() => {
+                      handleClose();
+                      navigate(`/multiple-choice/test/${createdTest._id}/settings`);
+                    }}
+                    className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 border border-transparent rounded-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+                  >
+                    Làm bài test ngay
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleClose();
+                      navigate(`/multiple-choice/tests/${testInfo.main_topic}/${testInfo.sub_topic}`);
+                    }}
+                    className="px-4 py-2 text-sm font-medium text-emerald-600 bg-white border border-emerald-300 rounded-md hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+                  >
+                    Xem bài test
+                  </button>
+                  <button
+                    onClick={handleClose}
+                    className="px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-md hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500"
+                  >
+                    Đóng
+                  </button>
+                </div>
               </div>
             )}
           </div>

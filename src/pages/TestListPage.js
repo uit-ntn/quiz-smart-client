@@ -9,21 +9,94 @@ import EmptyState from '../components/EmptyState';
 import { VocabularyLayout, MultipleChoiceLayout } from '../layout/TestLayout';
 import VocabularyPreviewModal from '../components/VocabularyPreviewModal';
 import AuthContext from '../context/AuthContext';
+import Pagination from '../components/Pagination';
 
 // --- Small Component for Stats ---
 const StatBox = ({ label, value, colorClass, iconPath }) => (
-  <div className="bg-white rounded-xl p-3 shadow-sm border border-slate-100 flex items-center gap-3">
-    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${colorClass}`}>
-      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <div className="bg-white rounded-lg p-2 shadow-sm border border-slate-100 flex items-center gap-2">
+    <div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${colorClass}`}>
+      <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={iconPath} />
       </svg>
     </div>
     <div>
-      <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wide">{label}</p>
-      <p className="text-lg font-bold text-slate-800 leading-none">{value}</p>
+      <p className="text-[9px] uppercase font-bold text-slate-400 tracking-wide">{label}</p>
+      <p className="text-sm font-bold text-slate-800 leading-none">{value}</p>
     </div>
   </div>
 );
+
+// --- Filter Component ---
+const FilterSection = ({ filters, setFilters, allTests }) => {
+  const uniqueCreators = [...new Set(allTests.map(t => t.created_by_full_name).filter(Boolean))].sort();
+  
+  const handleFilterChange = (key, value) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+  };
+
+  return (
+    <div className="bg-white rounded-lg p-3 shadow-sm border border-slate-200 mb-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {/* Sort By */}
+        <div className="min-w-0">
+          <label className="block text-[10px] font-semibold text-slate-500 mb-1 uppercase tracking-wide">Sắp xếp</label>
+          <select
+            value={filters.sortBy}
+            onChange={(e) => handleFilterChange('sortBy', e.target.value)}
+            className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="name">Tên</option>
+            <option value="difficulty">Mức độ</option>
+            <option value="creator">Người tạo</option>
+          </select>
+        </div>
+
+        {/* Sort Order */}
+        <div className="min-w-0">
+          <label className="block text-[10px] font-semibold text-slate-500 mb-1 uppercase tracking-wide">Thứ tự</label>
+          <select
+            value={filters.sortOrder}
+            onChange={(e) => handleFilterChange('sortOrder', e.target.value)}
+            className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="asc">↑ Tăng</option>
+            <option value="desc">↓ Giảm</option>
+          </select>
+        </div>
+
+        {/* Difficulty Filter */}
+        <div className="min-w-0">
+          <label className="block text-[10px] font-semibold text-slate-500 mb-1 uppercase tracking-wide">Mức độ</label>
+          <select
+            value={filters.difficulty}
+            onChange={(e) => handleFilterChange('difficulty', e.target.value)}
+            className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="">Tất cả</option>
+            <option value="easy">Dễ</option>
+            <option value="medium">TB</option>
+            <option value="hard">Khó</option>
+          </select>
+        </div>
+
+        {/* Creator Filter */}
+        <div className="min-w-0">
+          <label className="block text-[10px] font-semibold text-slate-500 mb-1 uppercase tracking-wide">Người tạo</label>
+          <select
+            value={filters.creator}
+            onChange={(e) => handleFilterChange('creator', e.target.value)}
+            className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="">Tất cả</option>
+            {uniqueCreators.map(creator => (
+              <option key={creator} value={creator}>{creator}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const TestListPage = ({ type = 'vocabulary' }) => {
   const { mainTopic, subTopic } = useParams();
@@ -40,7 +113,7 @@ const TestListPage = ({ type = 'vocabulary' }) => {
         errorMessage: 'Lỗi tải dữ liệu',
         emptyTitle: 'Chưa có bài kiểm tra',
         emptyDesc: 'Chưa có dữ liệu cho chủ đề này.',
-        backLink: '/vocabulary/topics',
+        backLink: '/topics',
         backText: 'Quay lại',
         Layout: VocabularyLayout,
         TestCard: VocabularyTestCard,
@@ -53,7 +126,7 @@ const TestListPage = ({ type = 'vocabulary' }) => {
         errorMessage: 'Lỗi tải dữ liệu',
         emptyTitle: 'Chưa có bài kiểm tra',
         emptyDesc: 'Chưa có dữ liệu cho chủ đề này.',
-        backLink: '/multiple-choice/topics',
+        backLink: '/topics',
         backText: 'Quay lại',
         Layout: MultipleChoiceLayout,
         TestCard: MCPTestCard,
@@ -70,8 +143,8 @@ const TestListPage = ({ type = 'vocabulary' }) => {
   
   // Pagination & Filter State
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(8); // Tăng số lượng item vì card nhỏ hơn
-  const [filters, setFilters] = useState({ searchTerm: '', sortBy: 'name', sortOrder: 'asc', difficulty: '', status: '' });
+  const [itemsPerPage] = useState(16); // Số bài test mỗi trang
+  const [filters, setFilters] = useState({ searchTerm: '', sortBy: 'name', sortOrder: 'asc', difficulty: '', creator: '' });
   const [viewMode, setViewMode] = useState('card');
   const [previewModal, setPreviewModal] = useState({ isOpen: false, test: null, vocabularies: [], loading: false, isPlaying: false });
 
@@ -105,11 +178,32 @@ const TestListPage = ({ type = 'vocabulary' }) => {
       result = result.filter(t => t.test_title?.toLowerCase().includes(term));
     }
     if (filters.difficulty) result = result.filter(t => t.difficulty === filters.difficulty);
+    if (filters.creator) result = result.filter(t => t.created_by_full_name === filters.creator);
     
-    // Sort logic simplified
+    // Sort logic
     result.sort((a, b) => {
-      // Add detailed sort logic here if needed (same as original)
-      return 0; 
+      let aVal, bVal;
+      switch (filters.sortBy) {
+        case 'name':
+          aVal = a.test_title?.toLowerCase() || '';
+          bVal = b.test_title?.toLowerCase() || '';
+          break;
+        case 'difficulty':
+          const diffOrder = { easy: 1, medium: 2, hard: 3 };
+          aVal = diffOrder[a.difficulty] || 0;
+          bVal = diffOrder[b.difficulty] || 0;
+          break;
+        case 'creator':
+          aVal = a.created_by_full_name?.toLowerCase() || '';
+          bVal = b.created_by_full_name?.toLowerCase() || '';
+          break;
+        default:
+          return 0;
+      }
+      
+      if (aVal < bVal) return filters.sortOrder === 'asc' ? -1 : 1;
+      if (aVal > bVal) return filters.sortOrder === 'asc' ? 1 : -1;
+      return 0;
     });
 
     setFilteredTests(result);
@@ -155,6 +249,7 @@ const TestListPage = ({ type = 'vocabulary' }) => {
 
   // --- Pagination Slice ---
   const currentTests = filteredTests.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const totalPages = Math.ceil(filteredTests.length / itemsPerPage);
 
   if (loading) return <LoadingSpinner message={typeConfig.loadingMessage} />;
   if (error) return <ErrorMessage error={error} onRetry={() => window.location.reload()} />;
@@ -168,14 +263,31 @@ const TestListPage = ({ type = 'vocabulary' }) => {
       description={`${mainTopic} / ${subTopic}`}
       type={type}
       actions={
-        <div className="flex bg-slate-100 rounded-lg p-1">
-          <button onClick={() => setViewMode('card')} className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${viewMode === 'card' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Thẻ</button>
-          <button onClick={() => setViewMode('list')} className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${viewMode === 'list' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>List</button>
+        <div className="flex items-center gap-4">
+          {/* Search */}
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Tìm kiếm bài kiểm tra..."
+              value={filters.searchTerm}
+              onChange={(e) => setFilters(prev => ({ ...prev, searchTerm: e.target.value }))}
+              className="w-64 pl-8 pr-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+            <svg className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+
+          {/* View Mode Toggle */}
+          <div className="flex bg-slate-100 rounded-lg p-1">
+            <button onClick={() => setViewMode('card')} className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${viewMode === 'card' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Thẻ</button>
+            <button onClick={() => setViewMode('list')} className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${viewMode === 'list' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>List</button>
+          </div>
         </div>
       }
     >
       {/* 1. COMPACT STATS BAR */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-5">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-3">
         <StatBox label="Tổng số" value={stats.total} colorClass="bg-blue-500" iconPath="M4 6h16M4 10h16M4 14h16M4 18h16" />
         <StatBox label="Dễ" value={stats.easy} colorClass="bg-emerald-500" iconPath="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
         <StatBox label="Trung bình" value={stats.medium} colorClass="bg-amber-500" iconPath="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -183,7 +295,10 @@ const TestListPage = ({ type = 'vocabulary' }) => {
         <StatBox label="Hoạt động" value={stats.active} colorClass="bg-violet-500" iconPath="M13 10V3L4 14h7v7l9-11h-7z" />
       </div>
 
-      {/* 2. MAIN CONTENT GRID (Reduced Gap) */}
+      {/* 2. FILTERS */}
+      <FilterSection filters={filters} setFilters={setFilters} allTests={allTests} />
+
+      {/* 3. MAIN CONTENT GRID (Reduced Gap) */}
       {filteredTests.length === 0 ? (
         <EmptyState title="Không tìm thấy bài kiểm tra" description="Thử thay đổi bộ lọc hoặc quay lại sau." />
       ) : (
@@ -199,6 +314,19 @@ const TestListPage = ({ type = 'vocabulary' }) => {
               </div>
             ))}
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex justify-center mb-6">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                itemsPerPage={itemsPerPage}
+                totalItems={filteredTests.length}
+                onPageChange={setCurrentPage}
+              />
+            </div>
+          )}
 
           {/* Pagination or Back Button */}
           <div className="flex justify-center mt-6">

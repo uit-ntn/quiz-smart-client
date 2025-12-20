@@ -1,102 +1,198 @@
-import React, { useMemo } from "react";
+import React from "react";
 import { Link } from "react-router-dom";
 
-// Helper styles
+// ================= Utils =================
 const cx = (...a) => a.filter(Boolean).join(" ");
 
-// Cấu hình màu sắc (Tím/Indigo theo ảnh)
+// ================= Header Color Palette =================
+const HEADER_COLORS = [
+  "bg-gradient-to-r from-sky-600 to-sky-700",
+  "bg-gradient-to-r from-teal-600 to-teal-700",
+  "bg-gradient-to-r from-cyan-600 to-cyan-700",
+  "bg-gradient-to-r from-blue-600 to-blue-700",
+  "bg-gradient-to-r from-indigo-600 to-indigo-700",
+  "bg-gradient-to-r from-violet-600 to-violet-700",
+  "bg-gradient-to-r from-fuchsia-600 to-fuchsia-700",
+  "bg-gradient-to-r from-pink-600 to-pink-700",
+  "bg-gradient-to-r from-rose-600 to-rose-700",
+  "bg-gradient-to-r from-emerald-600 to-emerald-700",
+];
+
+// ================= Config =================
 const TYPE = {
   vocabulary: {
     route: "/vocabulary/test",
     action: "Bắt đầu học",
-    label: "Từ vựng",
-    accent: "indigo"
-  },
-  "multiple-choice": { // Key khớp với logic của trang cha
-    route: "/multiple-choice/test",
-    action: "Làm bài",
-    label: "Trắc nghiệm",
-    accent: "violet"
-  },
-  // Fallback cho key cũ nếu có
-  multiple_choice: {
-    route: "/multiple-choice/test",
-    action: "Làm bài",
-    label: "Trắc nghiệm",
-    accent: "violet"
-  }
-};
-
-const DIFFICULTY = {
-  easy: { label: "Dễ", color: "text-emerald-600 bg-emerald-50 border-emerald-100" },
-  medium: { label: "Trung bình", color: "text-amber-600 bg-amber-50 border-amber-100" },
-  hard: { label: "Khó", color: "text-rose-600 bg-rose-50 border-rose-100" },
-};
-
-const ACCENT = {
-  indigo: {
-    header: "bg-gradient-to-r from-indigo-600 to-indigo-700",
-    btn: "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200",
+    btn: "bg-indigo-600 hover:bg-indigo-700 text-white",
     btnSoft: "border-indigo-200 text-indigo-700 hover:bg-indigo-50",
     iconBox: "bg-indigo-50 text-indigo-600",
   },
-  violet: {
-    header: "bg-gradient-to-r from-violet-600 to-fuchsia-700",
-    btn: "bg-violet-600 hover:bg-violet-700 text-white shadow-violet-200",
+  "multiple-choice": {
+    route: "/multiple-choice/test",
+    action: "Làm bài",
+    btn: "bg-violet-600 hover:bg-violet-700 text-white",
+    btnSoft: "border-violet-200 text-violet-700 hover:bg-violet-50",
+    iconBox: "bg-violet-50 text-violet-600",
+  },
+  multiple_choice: {
+    route: "/multiple-choice/test",
+    action: "Làm bài",
+    btn: "bg-violet-600 hover:bg-violet-700 text-white",
     btnSoft: "border-violet-200 text-violet-700 hover:bg-violet-50",
     iconBox: "bg-violet-50 text-violet-600",
   },
 };
 
-// Icons
-const Icon = {
-  Book: (p) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M4 19.5V6a2 2 0 0 1 2-2h11a3 3 0 0 1 3 3v12.5" /><path d="M6 18h13a2 2 0 0 1 2 2v0" /></svg>,
-  Check: (p) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="m9 11 3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>,
-  Clock: (p) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>,
-  Trophy: (p) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" /><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" /><path d="M4 22h16" /><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" /><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" /><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" /></svg>
+const DIFFICULTY = {
+  easy: {
+    label: "Dễ",
+    color: "text-emerald-600 bg-emerald-50 border-emerald-100",
+  },
+  medium: {
+    label: "Trung bình",
+    color: "text-amber-600 bg-amber-50 border-amber-100",
+  },
+  hard: {
+    label: "Khó",
+    color: "text-rose-600 bg-rose-50 border-rose-100",
+  },
 };
 
-const TestCard = ({ test, type = "vocabulary", viewMode = "card", onPreviewVocabulary, className = "" }) => {
-  const testId = test?._id || test?.id || test?.test_id;
-  
-  // Xử lý key type để lấy config đúng
-  const safeTypeKey = type === 'multiple-choice' || type === 'multiple_choice' ? 'multiple-choice' : 'vocabulary';
-  const cfg = TYPE[safeTypeKey] || TYPE.vocabulary;
-  
-  const accent = ACCENT[cfg.accent] || ACCENT.indigo;
-  const diff = DIFFICULTY[test?.difficulty] || DIFFICULTY.medium;
-  const HeaderIcon = safeTypeKey === "vocabulary" ? Icon.Book : Icon.Check;
-  const toSettings = `${cfg.route}/${testId}/settings`;
+// ================= Visibility Badge =================
+const VISIBILITY = {
+  public: {
+    label: "Công khai",
+    className: "text-sky-700 bg-sky-50 border border-sky-100",
+  },
+  private: {
+    label: "Riêng tư",
+    className: "text-slate-600 bg-slate-100 border border-slate-200",
+  },
+};
 
-  // === LIST VIEW (Compact) ===
+// ================= Icons (LIST VIEW) =================
+const Icon = {
+  Book: (p) => (
+    <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M4 19.5V6a2 2 0 0 1 2-2h11a3 3 0 0 1 3 3v12.5" />
+      <path d="M6 18h13a2 2 0 0 1 2 2" />
+    </svg>
+  ),
+  Check: (p) => (
+    <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="m9 11 3 3L22 4" />
+      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+    </svg>
+  ),
+};
+
+// ================= Component =================
+const TestCard = ({
+  test,
+  type = "vocabulary",
+  viewMode = "card",
+  onPreviewVocabulary,
+  className = "",
+}) => {
+  const testId = test?._id || test?.id || test?.test_id;
+  const createdBy = test?.created_by_full_name || "Ẩn danh";
+  const visibilityKey = test?.visibility || "private";
+  const visibilityCfg = VISIBILITY[visibilityKey] || VISIBILITY.private;
+
+  const safeTypeKey =
+    type === "multiple-choice" || type === "multiple_choice"
+      ? "multiple-choice"
+      : "vocabulary";
+
+  const cfg = TYPE[safeTypeKey] || TYPE.vocabulary;
+  const diff = DIFFICULTY[test?.difficulty] || DIFFICULTY.medium;
+  const toSettings = `${cfg.route}/${testId}/settings`;
+  const HeaderIcon = safeTypeKey === "vocabulary" ? Icon.Book : Icon.Check;
+
+  const colorIndex =
+    String(testId || "")
+      .split("")
+      .reduce((s, c) => s + c.charCodeAt(0), 0) %
+    HEADER_COLORS.length;
+
+  const headerColor = HEADER_COLORS[colorIndex];
+
+  // ======================================================
+  // ================= LIST VIEW ==========================
+  // ======================================================
   if (viewMode === "list") {
     return (
-      <div className={cx("group relative rounded-xl border border-slate-200 bg-white p-3 hover:shadow-md transition-all hover:border-slate-300", className)}>
+      <div
+        className={cx(
+          "group rounded-xl border border-slate-200 bg-white p-3 hover:border-slate-300 hover:shadow-md transition",
+          className
+        )}
+      >
         <div className="flex items-center gap-3">
-          <div className={cx("shrink-0 h-10 w-10 flex items-center justify-center rounded-lg", accent.iconBox)}>
+          <div
+            className={cx(
+              "h-10 w-10 rounded-lg flex items-center justify-center shrink-0",
+              cfg.iconBox
+            )}
+          >
             <HeaderIcon className="h-5 w-5" />
           </div>
-          
+
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-0.5">
-              <h3 className="font-bold text-slate-800 text-sm truncate">{test?.test_title}</h3>
-              <span className={cx("px-1.5 py-0.5 rounded text-[10px] font-semibold border", diff.color)}>{diff.label}</span>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-bold text-slate-800 truncate">
+                {test?.test_title}
+              </h3>
+              <span
+                className={cx(
+                  "px-1.5 py-0.5 text-[10px] font-semibold rounded border",
+                  diff.color
+                )}
+              >
+                {diff.label}
+              </span>
             </div>
-            <div className="flex items-center gap-3 text-xs text-slate-500">
-               <span className="flex items-center gap-1"><Icon.Trophy className="h-3 w-3" /> {test?.total_questions || 0} câu</span>
-               {test?.time_limit_minutes && (
-                 <span className="flex items-center gap-1"><Icon.Clock className="h-3 w-3" /> {test.time_limit_minutes}p</span>
-               )}
+
+            {/* Created by + Visibility */}
+            <div className="flex items-center gap-2 text-[11px] text-slate-400 truncate">
+              <span>
+                Tạo bởi{" "}
+                <span className="font-medium text-slate-500">{createdBy}</span>
+              </span>
+              <span
+                className={cx(
+                  "px-1.5 py-0.5 rounded text-[10px] font-semibold",
+                  visibilityCfg.className
+                )}
+              >
+                {visibilityCfg.label}
+              </span>
+            </div>
+
+            <div className="flex gap-3 text-xs text-slate-500 mt-0.5">
+              <span>{test?.total_questions || 0} câu</span>
+              {test?.time_limit_minutes && (
+                <span>{test.time_limit_minutes} phút</span>
+              )}
             </div>
           </div>
 
           <div className="flex gap-2">
             {safeTypeKey === "vocabulary" && (
-              <button onClick={() => onPreviewVocabulary?.(test)} className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 transition-colors">
+              <button
+                onClick={() => onPreviewVocabulary?.(test)}
+                className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 hover:bg-slate-50"
+              >
                 Xem
               </button>
             )}
-            <Link to={toSettings} className={cx("px-3 py-1.5 text-xs font-semibold rounded-lg transition-all active:scale-95", accent.btn)}>
+            <Link
+              to={toSettings}
+              className={cx(
+                "px-3 py-1.5 text-xs font-semibold rounded-lg",
+                cfg.btn
+              )}
+            >
               {cfg.action}
             </Link>
           </div>
@@ -105,73 +201,112 @@ const TestCard = ({ test, type = "vocabulary", viewMode = "card", onPreviewVocab
     );
   }
 
-  // === CARD VIEW (Compact Grid) ===
+  // ======================================================
+  // ================= CARD VIEW ==========================
+  // ======================================================
   return (
-    <div className={cx("group flex flex-col h-full rounded-2xl border border-slate-200 bg-white overflow-hidden hover:shadow-lg transition-all hover:-translate-y-1", className)}>
-      {/* HEADER: Chiều cao giảm còn h-20 (80px) */}
-      <div className={cx("relative h-20 shrink-0 px-4 py-3 flex justify-between items-start", accent.header)}>
-        {/* Decorative Circles */}
-        <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full blur-2xl -mr-6 -mt-6 pointer-events-none" />
-        
-        <div className="relative z-10 w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-white border border-white/20">
-          <HeaderIcon className="h-5 w-5" />
-        </div>
-        
-        <div className="relative z-10">
-          <span className="inline-block px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-md border border-white/20 text-[10px] font-bold text-white uppercase tracking-wider">
-            {cfg.label}
-          </span>
-        </div>
-      </div>
-
-      {/* BODY: Padding giảm còn p-4 */}
-      <div className="flex flex-col flex-1 p-4">
-        <div className="flex justify-between items-center mb-2">
-          <span className={cx("px-2 py-0.5 rounded text-[10px] font-bold uppercase border", diff.color)}>
-            {diff.label}
-          </span>
-          <span className="text-[10px] text-slate-300 font-mono">#{String(testId || "").slice(-4)}</span>
-        </div>
-
-        <h3 className="text-[15px] font-bold text-slate-800 leading-snug mb-1 line-clamp-2 min-h-[2.5rem]">
+    <div
+      className={cx(
+        "flex flex-col h-full rounded-2xl border border-slate-200 bg-white overflow-hidden hover:-translate-y-1 hover:shadow-lg transition",
+        className
+      )}
+    >
+      {/* Header */}
+      <div className={cx("px-4 py-3", headerColor)}>
+        <h3 className="text-white font-bold text-sm leading-snug line-clamp-2">
           {test?.test_title}
         </h3>
-        
-        <p className="text-xs text-slate-500 line-clamp-2 mb-4 h-8">
+
+        {(test?.main_topic || test?.sub_topic) && (
+          <div className="mt-0.5 text-[11px] text-white/80 truncate">
+            {test?.main_topic}
+            {test?.sub_topic && (
+              <>
+                <span className="mx-1">•</span>
+                {test.sub_topic}
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Body */}
+      <div className="flex flex-col flex-1 p-4">
+        <div className="flex justify-between items-center mb-1">
+          <span
+            className={cx(
+              "px-2 py-0.5 text-[10px] font-bold uppercase border rounded",
+              diff.color
+            )}
+          >
+            {diff.label}
+          </span>
+          <span className="text-[10px] text-slate-300 font-mono">
+            #{String(testId || "").slice(-4)}
+          </span>
+        </div>
+
+        <p className="text-xs text-slate-500 line-clamp-3 mb-2">
           {test?.description || "Không có mô tả chi tiết."}
         </p>
 
         <div className="mt-auto grid grid-cols-2 gap-3 pt-3 border-t border-slate-100">
           <div>
-            <span className="text-[10px] font-semibold text-slate-400 uppercase block mb-0.5">Số lượng</span>
-            <div className="flex items-center gap-1.5 text-slate-700 font-bold text-xs">
-               <Icon.Trophy className="h-3.5 w-3.5 text-slate-400" />
-               {test?.total_questions || 0} câu
+            <span className="text-[10px] font-semibold text-slate-400 uppercase">
+              Số lượng
+            </span>
+            <div className="text-xs font-bold text-slate-700">
+                   {test?.total_questions || 0} câu
             </div>
           </div>
           <div>
-            <span className="text-[10px] font-semibold text-slate-400 uppercase block mb-0.5">Thời gian</span>
-            <div className="flex items-center gap-1.5 text-slate-700 font-bold text-xs">
-               <Icon.Clock className="h-3.5 w-3.5 text-slate-400" />
-               {test?.time_limit_minutes ? `${test.time_limit_minutes} phút` : 'Tự do'}
+            <span className="text-[10px] font-semibold text-slate-400 uppercase">
+              Thời gian
+            </span>
+            <div className="text-xs font-bold text-slate-700">
+              {test?.time_limit_minutes
+                ? `${test.time_limit_minutes} phút`
+                : "Tự do"}
             </div>
           </div>
         </div>
+
+        {/* Created by + Visibility */}
+        <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-3 truncate">
+          <span>
+            Tạo bởi{" "}
+            <span className="font-medium text-slate-500">{createdBy}</span>
+          </span>
+          <span
+            className={cx(
+              "px-1.5 py-0.5 rounded text-[10px] font-semibold",
+              visibilityCfg.className
+            )}
+          >
+            {visibilityCfg.label}
+          </span>
+        </div>
       </div>
 
-      {/* FOOTER: Padding nhỏ */}
+      {/* Footer */}
       <div className="p-3 pt-0 flex gap-2">
         {safeTypeKey === "vocabulary" && (
           <button
             onClick={() => onPreviewVocabulary?.(test)}
-            className={cx("flex-1 px-3 py-2 text-xs font-bold rounded-lg border transition-all active:scale-95", accent.btnSoft)}
+            className={cx(
+              "flex-1 px-3 py-2 text-xs font-bold rounded-lg border",
+              cfg.btnSoft
+            )}
           >
             Xem trước
           </button>
         )}
         <Link
           to={toSettings}
-          className={cx("flex-[2] px-3 py-2 text-xs font-bold rounded-lg text-center shadow-sm transition-all active:scale-95", accent.btn)}
+          className={cx(
+            "flex-[2] px-3 py-2 text-xs font-bold rounded-lg text-center",
+            cfg.btn
+          )}
         >
           {cfg.action}
         </Link>
@@ -182,5 +317,11 @@ const TestCard = ({ test, type = "vocabulary", viewMode = "card", onPreviewVocab
 
 export default TestCard;
 
-export const VocabularyTestCard = (props) => <TestCard {...props} type="vocabulary" />;
-export const MCPTestCard = (props) => <TestCard {...props} type="multiple-choice" />;
+// ================= Shortcuts =================
+export const VocabularyTestCard = (props) => (
+  <TestCard {...props} type="vocabulary" />
+);
+
+export const MCPTestCard = (props) => (
+  <TestCard {...props} type="multiple-choice" />
+);

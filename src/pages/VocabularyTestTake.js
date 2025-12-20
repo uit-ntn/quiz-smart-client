@@ -1,90 +1,91 @@
 // src/pages/VocabularyTestTake.jsx
-import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import TestLayout from '../layout/TestLayout';
-import vocabularyService from '../services/vocabularyService';
-import testService from '../services/testService';
-import testResultService from '../services/testResultService';
-import LoadingSpinner from '../components/LoadingSpinner';
-import ErrorMessage from '../components/ErrorMessage';
-import Toast from '../components/Toast';
-
-import { useTestSession } from '../hooks/useTestSession';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import TestLayout from "../layout/TestLayout";
+import vocabularyService from "../services/vocabularyService";
+import testService from "../services/testService";
+import testResultService from "../services/testResultService";
+import LoadingSpinner from "../components/LoadingSpinner";
+import ErrorMessage from "../components/ErrorMessage";
+import Toast from "../components/Toast";
+import { useTestSession } from "../hooks/useTestSession";
 
 const DEFAULT_TOTAL_QUESTIONS = 10;
 const DEFAULT_TIME_PER_QUESTION = 30;
 
 const sanitizeSettings = (raw = {}) => {
-  const mode = raw.mode || 'word_to_meaning';
-  const totalQuestions =
-    Number.isFinite(raw.totalQuestions) && raw.totalQuestions > 0 ? raw.totalQuestions : DEFAULT_TOTAL_QUESTIONS;
-  const timePerQuestion =
-    Number.isFinite(raw.timePerQuestion) && raw.timePerQuestion > 0 ? raw.timePerQuestion : DEFAULT_TIME_PER_QUESTION;
+  const modeRaw = raw?.mode || "word_to_meaning";
+  const mode =
+    modeRaw === "word_to_meaning" ||
+    modeRaw === "meaning_to_word" ||
+    modeRaw === "listen_and_type"
+      ? modeRaw
+      : "word_to_meaning";
 
-  return {
-    mode,
-    totalQuestions,
-    timePerQuestion,
-    showAnswerMode: 'after_each',
-  };
+  const totalQuestions =
+    Number.isFinite(raw?.totalQuestions) && raw.totalQuestions > 0
+      ? raw.totalQuestions
+      : DEFAULT_TOTAL_QUESTIONS;
+
+  const timePerQuestion =
+    Number.isFinite(raw?.timePerQuestion) && raw.timePerQuestion > 0
+      ? raw.timePerQuestion
+      : DEFAULT_TIME_PER_QUESTION;
+
+  return { mode, totalQuestions, timePerQuestion, showAnswerMode: "after_each" };
 };
 
 // map select id -> lang prefix
 const VOICE_PRESETS = [
-  { id: '', label: 'Giọng mặc định', flag: '🔊', prefix: '' },
-  { id: 'en-US-1', label: 'American', flag: '🇺🇸', prefix: 'en-US' },
-  { id: 'en-GB-1', label: 'British', flag: '🇬🇧', prefix: 'en-GB' },
-  { id: 'en-AU-1', label: 'Australian', flag: '🇦🇺', prefix: 'en-AU' },
-  { id: 'en-CA-1', label: 'Canadian', flag: '🇨🇦', prefix: 'en-CA' },
-  { id: 'en-IN-1', label: 'Indian', flag: '🇮🇳', prefix: 'en-IN' },
+  { id: "", label: "Giọng mặc định", flag: "🔊", prefix: "" },
+  { id: "en-US-1", label: "American", flag: "🇺🇸", prefix: "en-US" },
+  { id: "en-GB-1", label: "British", flag: "🇬🇧", prefix: "en-GB" },
+  { id: "en-AU-1", label: "Australian", flag: "🇦🇺", prefix: "en-AU" },
+  { id: "en-CA-1", label: "Canadian", flag: "🇨🇦", prefix: "en-CA" },
+  { id: "en-IN-1", label: "Indian", flag: "🇮🇳", prefix: "en-IN" },
 ];
 
 const modeLabel = (mode) => {
-  if (mode === 'word_to_meaning') return 'Từ → Nghĩa';
-  if (mode === 'meaning_to_word') return 'Nghĩa → Từ';
-  return 'Nghe & Viết';
+  if (mode === "word_to_meaning") return "Từ → Nghĩa";
+  if (mode === "meaning_to_word") return "Nghĩa → Từ";
+  return "Nghe & Viết";
 };
 
 const modeBadge = (mode) => {
-  if (mode === 'word_to_meaning') return 'Đưa từ đoán nghĩa';
-  if (mode === 'meaning_to_word') return 'Đưa nghĩa đoán từ';
-  return 'Nghe và ghi từ';
+  if (mode === "word_to_meaning") return "Đưa từ đoán nghĩa";
+  if (mode === "meaning_to_word") return "Đưa nghĩa đoán từ";
+  return "Nghe và ghi từ";
 };
+
+const normalize = (s) => (s || "").toLowerCase().trim();
 
 const VocabularyTestTake = () => {
   const { testId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Test session tracking
-  const [testResultId, setTestResultId] = useState(null);
-  const {
-    initializeSession,
-    endSession,
-    recordBehavior,
-    isTracking
-  } = useTestSession(testResultId);
-
-  const initialSettings = useMemo(() => {
+  // ===== settings =====
+  const settings = useMemo(() => {
     const fromState = location.state?.settings;
-    const fromLS = JSON.parse(localStorage.getItem(`vocab_settings_${testId}`) || '{}');
+    const fromLS = JSON.parse(localStorage.getItem(`vocab_settings_${testId}`) || "{}");
     return sanitizeSettings(fromState || fromLS);
   }, [location.state, testId]);
 
+  // ===== session tracking =====
+  const [testResultId, setTestResultId] = useState(null);
+  const { initializeSession, endSession, recordBehavior, isTracking } = useTestSession(testResultId);
+
+  // ===== states =====
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const [testInfo, setTestInfo] = useState(null);
-  const [settings] = useState(initialSettings);
-
   const [items, setItems] = useState([]);
   const [index, setIndex] = useState(0);
 
+  // answers[i] = { question, userAnswer, isCorrect, timeSpentSec }
   const [answers, setAnswers] = useState([]);
-  const [currentAnswer, setCurrentAnswer] = useState('');
-
-  // Mark for review
-  const [markedQuestions, setMarkedQuestions] = useState({}); // idx -> true
+  const [currentAnswer, setCurrentAnswer] = useState("");
 
   const [timeLeft, setTimeLeft] = useState(settings.timePerQuestion || DEFAULT_TIME_PER_QUESTION);
   const [isPaused, setIsPaused] = useState(false);
@@ -92,323 +93,96 @@ const VocabularyTestTake = () => {
   const [showAnswer, setShowAnswer] = useState(false);
   const [lastAnswerResult, setLastAnswerResult] = useState(null);
 
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [availableVoices, setAvailableVoices] = useState([]);
+  const [toast, setToast] = useState({ show: false, message: "", type: "info" });
+  const showToastMsg = useCallback((message, type = "info") => {
+    setToast({ show: true, message, type });
+    window.clearTimeout(showToastMsg._t);
+    showToastMsg._t = window.setTimeout(() => setToast({ show: false, message: "", type: "info" }), 2500);
+  }, []);
+  // eslint-disable-next-line
+  showToastMsg._t = showToastMsg._t || null;
 
-  const [voiceId, setVoiceId] = useState(() => localStorage.getItem(`vocab_voice_${testId}`) || '');
-
-  // Modals
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
-  const [showResultModal, setShowResultModal] = useState(false);
-  const [resultModalData, setResultModalData] = useState(null);
-  
-  const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // ===== speech =====
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [availableVoices, setAvailableVoices] = useState([]);
+  const [voiceId, setVoiceId] = useState(() => localStorage.getItem(`vocab_voice_${testId}`) || "");
+
+  // ===== refs =====
   const timerRef = useRef(null);
   const startTimeRef = useRef(Date.now());
 
-  // Storage keys
   const STORE_KEY = `vocab_take_state_${testId}`;
   const DRAFT_KEY = `vocab_draft_${testId}`;
 
-  // Refs to avoid stale closures
-  const itemsRef = useRef(items);
-  const settingsRef = useRef(settings);
-  const answersRef = useRef(answers);
-  const markedRef = useRef(markedQuestions);
-  const indexRef = useRef(index);
-  const timeLeftRef = useRef(timeLeft);
-  
-  useEffect(() => { itemsRef.current = items; }, [items]);
-  useEffect(() => { settingsRef.current = settings; }, [settings]);
-  useEffect(() => { answersRef.current = answers; }, [answers]);
-  useEffect(() => { markedRef.current = markedQuestions; }, [markedQuestions]);
-  useEffect(() => { indexRef.current = index; }, [index]);
-  useEffect(() => { timeLeftRef.current = timeLeft; }, [timeLeft]);
-
-  // ===================== UNDO/REDO =====================
+  // ===== undo/redo =====
   const undoStackRef = useRef([]);
   const redoStackRef = useRef([]);
   const MAX_STACK = 30;
 
   const pushHistory = useCallback(() => {
-    const state = {
+    undoStackRef.current.push({
       index,
       currentAnswer,
       answers: [...answers],
-      markedQuestions: { ...markedQuestions },
-      timestamp: Date.now(),
-    };
-    
-    undoStackRef.current.push(state);
-    if (undoStackRef.current.length > MAX_STACK) {
-      undoStackRef.current.shift();
-    }
-    redoStackRef.current = []; // clear redo when new action
-  }, [index, currentAnswer, answers, markedQuestions]);
-
-  const undo = useCallback(() => {
-    if (undoStackRef.current.length === 0) return;
-    
-    const currentState = {
-      index,
-      currentAnswer, 
-      answers: [...answers],
-      markedQuestions: { ...markedQuestions },
-      timestamp: Date.now(),
-    };
-    
-    redoStackRef.current.push(currentState);
-    
-    const prevState = undoStackRef.current.pop();
-    setIndex(prevState.index);
-    setCurrentAnswer(prevState.currentAnswer);
-    setAnswers(prevState.answers);
-    setMarkedQuestions(prevState.markedQuestions);
-    
-    setShowAnswer(false);
-    setLastAnswerResult(null);
-    setIsPaused(false);
-    setTimeLeft(settings.timePerQuestion || DEFAULT_TIME_PER_QUESTION);
-    
-    showToastMsg('Đã hoàn tác', 'info');
-  }, [index, currentAnswer, answers, markedQuestions, settings.timePerQuestion]);
-
-  const redo = useCallback(() => {
-    if (redoStackRef.current.length === 0) return;
-    
-    const currentState = {
-      index,
-      currentAnswer,
-      answers: [...answers], 
-      markedQuestions: { ...markedQuestions },
-      timestamp: Date.now(),
-    };
-    
-    undoStackRef.current.push(currentState);
-    
-    const nextState = redoStackRef.current.pop();
-    setIndex(nextState.index);
-    setCurrentAnswer(nextState.currentAnswer);
-    setAnswers(nextState.answers);
-    setMarkedQuestions(nextState.markedQuestions);
-    
-    setShowAnswer(false);
-    setLastAnswerResult(null);
-    setIsPaused(false);
-    setTimeLeft(settings.timePerQuestion || DEFAULT_TIME_PER_QUESTION);
-    
-    showToastMsg('Đã làm lại', 'info');
-  }, [index, currentAnswer, answers, markedQuestions, settings.timePerQuestion]);
-
-  // Load voices
-  useEffect(() => {
-    const loadVoices = () => setAvailableVoices(speechSynthesis.getVoices() || []);
-    loadVoices();
-    speechSynthesis.addEventListener('voiceschanged', loadVoices);
-    return () => speechSynthesis.removeEventListener('voiceschanged', loadVoices);
-  }, []);
-
-  // Fetch test + vocab
-  useEffect(() => {
-    const run = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const [test, data] = await Promise.all([
-          testService.getTestById(testId),
-          vocabularyService.getAllVocabulariesByTestId(testId),
-        ]);
-
-        setTestInfo(test);
-
-        if (!Array.isArray(data) || data.length === 0) {
-          setError(`Không tìm thấy câu hỏi nào cho bài test ${testId}. Vui lòng kiểm tra lại.`);
-          return;
-        }
-
-        const shuffled = [...data].sort(() => 0.5 - Math.random());
-        const maxQ = Math.min(settings.totalQuestions || DEFAULT_TOTAL_QUESTIONS, data.length);
-
-        const selected = shuffled.slice(0, maxQ).map((it, i) => ({
-          ...it,
-          questionNumber: i + 1,
-        }));
-
-        setItems(selected);
-        setAnswers(new Array(selected.length).fill(null));
-
-        setIndex(0);
-        setCurrentAnswer('');
-        setShowAnswer(false);
-        setLastAnswerResult(null);
-        setIsPaused(false);
-        setTimeLeft(settings.timePerQuestion || DEFAULT_TIME_PER_QUESTION);
-
-        startTimeRef.current = Date.now();
-
-        // Create initial draft test result for session tracking
-        try {
-          const testSnapshot = {
-            test_id: testId,
-            test_title: test?.test_title || 'Vocabulary Test',
-            main_topic: test?.main_topic || 'Vocabulary',
-            sub_topic: test?.sub_topic || '',
-            test_type: test?.test_type || 'vocabulary',
-            difficulty: test?.difficulty || 'medium',
-          };
-
-          const initialPayload = {
-            test_id: testId,
-            test_snapshot: testSnapshot,
-            answers: [
-              {
-                question_id: selected[0]?._id || 'placeholder',
-                question_collection: 'vocabularies',
-                word: selected[0]?.word || '',
-                meaning: selected[0]?.meaning || '',
-                example_sentence: selected[0]?.example_sentence || '',
-                question_mode: settings.mode || 'word_to_meaning',
-                correct_answer: '',
-                user_answer: '',
-                is_correct: false,
-                time_spent_ms: 0,
-              }
-            ], // ✅ Must be non-empty array for BE validation
-            duration_ms: 0,
-            start_time: new Date(startTimeRef.current),
-            end_time: null,
-            status: 'in_progress',
-          };
-
-          const draftResult = await testResultService.createTestResult(initialPayload);
-          setTestResultId(draftResult?._id || draftResult?.id);
-
-          console.log('✅ Initial draft result created for session tracking:', draftResult?._id || draftResult?.id);
-        } catch (err) {
-          console.error('❌ Failed to create initial draft result:', err);
-          // Continue without session tracking if this fails
-        }
-      } catch (e) {
-        console.error('Error fetching test data:', e);
-        setError(`Có lỗi xảy ra khi tải câu hỏi: ${e.message}. Vui lòng thử lại.`);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    run();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [testId]);
-
-  // ===================== autosave/resume =====================
-  useEffect(() => {
-    if (!items.length) return;
-    
-    const state = {
-      answers,
-      markedQuestions,
-      index,
-      currentAnswer,
       timeLeft,
       timestamp: Date.now(),
-    };
-    
-    try {
-      localStorage.setItem(STORE_KEY, JSON.stringify(state));
-    } catch (e) {
-      console.warn('Cannot save state to localStorage:', e);
-    }
-  }, [STORE_KEY, answers, markedQuestions, index, currentAnswer, timeLeft]);
+    });
+    if (undoStackRef.current.length > MAX_STACK) undoStackRef.current.shift();
+    redoStackRef.current = [];
+  }, [answers, currentAnswer, index, timeLeft]);
 
-  // Resume from autosave
-  useEffect(() => {
-    if (!items.length || answers.length > 0) return;
-    
-    try {
-      const saved = localStorage.getItem(STORE_KEY);
-      if (saved) {
-        const state = JSON.parse(saved);
-        const timeDiff = Date.now() - (state.timestamp || 0);
-        
-        // Only resume if saved within last 4 hours
-        if (timeDiff < 4 * 60 * 60 * 1000) {
-          const answeredCount = (state.answers || []).filter(Boolean).length;
-          if (answeredCount > 0) {
-            if (Array.isArray(state.answers)) setAnswers(state.answers);
-            if (state.markedQuestions) setMarkedQuestions(state.markedQuestions);
-            if (typeof state.index === 'number') setIndex(state.index);
-            if (typeof state.currentAnswer === 'string') setCurrentAnswer(state.currentAnswer);
-            if (typeof state.timeLeft === 'number') setTimeLeft(state.timeLeft);
-            
-            const timeAgo = Math.round(timeDiff / 60000); // minutes
-            showToastMsg(`🔄 Đã khôi phục tiến trình (${answeredCount} câu, ${timeAgo} phút trước)`, 'success');
-          }
-        } else {
-          // Clear old save data
-          localStorage.removeItem(STORE_KEY);
-        }
-      }
-    } catch (e) {
-      console.warn('Cannot restore state from localStorage:', e);
-      // Clear corrupted data
-      localStorage.removeItem(STORE_KEY);
-    }
-  }, [STORE_KEY, items.length, answers.length]);
-
-  // Initialize test session when testResultId is available
-  useEffect(() => {
-    if (testResultId && !isTracking) {
-      initializeSession();
-    }
-  }, [testResultId, isTracking, initializeSession]);
-
-  // Cleanup session on unmount
-  useEffect(() => {
-    return () => {
-      if (isTracking) {
-        endSession();
-      }
-    };
-  }, [isTracking, endSession]);
+  // ===== helpers =====
+  const current = useMemo(() => items[index], [items, index]);
 
   const getCorrectAnswer = useCallback(
     (item) => {
-      if (!item) return '';
-      if (settings.mode === 'word_to_meaning') return item.meaning;
-      if (settings.mode === 'meaning_to_word') return item.word;
-      return item.word; // listen_and_type
+      if (!item) return "";
+      if (settings.mode === "word_to_meaning") return item.meaning || "";
+      if (settings.mode === "meaning_to_word") return item.word || "";
+      return item.word || ""; // listen_and_type
     },
     [settings.mode]
   );
 
   const checkAnswer = useCallback((item, answer, mode) => {
-    const ua = (answer || '').toLowerCase().trim();
-    if (mode === 'word_to_meaning') return ua === (item.meaning || '').toLowerCase().trim();
-    if (mode === 'meaning_to_word') return ua === (item.word || '').toLowerCase().trim();
-    return ua === (item.word || '').toLowerCase().trim();
+    if (!item) return false;
+    const ua = normalize(answer);
+    if (mode === "word_to_meaning") return ua === normalize(item.meaning);
+    if (mode === "meaning_to_word") return ua === normalize(item.word);
+    return ua === normalize(item.word);
   }, []);
 
-  const showToastMsg = (message, type = 'info') => {
-    setToast({ show: true, message, type });
-    setTimeout(() => setToast({ show: false, message: '', type: 'info' }), 2500);
-  };
+  const answeredState = useCallback(
+    (idx) => {
+      const a = answers[idx];
+      if (!a) return "idle";
+      return a.isCorrect ? "correct" : "wrong";
+    },
+    [answers]
+  );
+
+  // ===== voices load =====
+  useEffect(() => {
+    const loadVoices = () => setAvailableVoices(speechSynthesis.getVoices() || []);
+    loadVoices();
+    speechSynthesis.addEventListener("voiceschanged", loadVoices);
+    return () => speechSynthesis.removeEventListener("voiceschanged", loadVoices);
+  }, []);
 
   const pickVoice = useCallback(() => {
     if (!voiceId) return null;
     const voices = speechSynthesis.getVoices() || [];
-
     const preset = VOICE_PRESETS.find((p) => p.id === voiceId);
-    const prefix = preset?.prefix || '';
+    const prefix = preset?.prefix || "";
 
     const byPrefix = prefix ? voices.find((v) => v.lang?.startsWith(prefix)) : null;
     if (byPrefix) return byPrefix;
 
-    const anyEn = voices.find((v) => v.lang?.startsWith('en')) || null;
-    return anyEn;
+    return voices.find((v) => v.lang?.startsWith("en")) || null;
   }, [voiceId]);
 
   const playAudio = useCallback(
@@ -417,172 +191,409 @@ const VocabularyTestTake = () => {
       setIsPlaying(true);
 
       const u = new SpeechSynthesisUtterance(text);
-      u.lang = 'en-US';
+      let lang = "en-US";
 
       const v = pickVoice();
       if (v) {
         u.voice = v;
-        u.lang = v.lang || 'en-US';
+        lang = v.lang || lang;
       }
-
+      u.lang = lang;
       u.rate = 0.85;
-      u.pitch = 1.0;
-      u.volume = 1.0;
+      u.pitch = 1;
+      u.volume = 1;
 
       u.onend = () => setIsPlaying(false);
       u.onerror = () => setIsPlaying(false);
 
-      // Record audio playback
-      recordBehavior('audio_playback', {
+      recordBehavior?.("audio_playback", {
         question_index: index,
-        text_length: text.length,
+        question_id: current?._id,
         voice_id: voiceId,
-        voice_lang: v?.lang || 'en-US'
+        voice_lang: lang,
+        text_length: (text || "").length,
       });
 
       speechSynthesis.speak(u);
     },
-    [isPlaying, pickVoice, index, voiceId, recordBehavior]
+    [current?._id, index, isPlaying, pickVoice, recordBehavior, voiceId]
   );
 
-  const toggleMarkCurrent = useCallback(() => {
-    if (!items[index]) return;
-    
-    pushHistory();
-    
-    setMarkedQuestions(prev => {
-      const next = { ...prev };
-      if (next[index]) {
-        delete next[index];
-        showToastMsg('Đã bỏ đánh dấu câu hỏi', 'info');
-      } else {
-        next[index] = true;
-        showToastMsg('Đã đánh dấu câu hỏi để xem lại', 'info');
-      }
-      return next;
-    });
-    
-    // Record behavior
-    recordBehavior('question_marked', {
-      question_index: index,
-      question_id: items[index]?._id,
-      marked: !markedQuestions[index]
-    });
-  }, [index, items, markedQuestions, pushHistory, recordBehavior]);
+  // ===== fetch + restore =====
+  useEffect(() => {
+    let mounted = true;
 
+    const restoreIfPossible = (selectedCount) => {
+      try {
+        const raw = localStorage.getItem(STORE_KEY);
+        if (!raw) return null;
+        const state = JSON.parse(raw);
+
+        const tooOld = Date.now() - (state?.timestamp || 0) > 4 * 60 * 60 * 1000;
+        if (tooOld) {
+          localStorage.removeItem(STORE_KEY);
+          return null;
+        }
+
+        if (!Array.isArray(state?.answers)) return null;
+        if (state.answers.length !== selectedCount) return null;
+
+        const answeredCount = state.answers.filter(Boolean).length;
+        if (!answeredCount) return null;
+
+        return {
+          answers: state.answers,
+          index: typeof state.index === "number" ? state.index : 0,
+          currentAnswer: typeof state.currentAnswer === "string" ? state.currentAnswer : "",
+          timeLeft: typeof state.timeLeft === "number" ? state.timeLeft : settings.timePerQuestion,
+          answeredCount,
+          minutesAgo: Math.round((Date.now() - (state.timestamp || 0)) / 60000),
+        };
+      } catch (e) {
+        localStorage.removeItem(STORE_KEY);
+        return null;
+      }
+    };
+
+    const run = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const [test, vocab] = await Promise.all([
+          testService.getTestById(testId),
+          vocabularyService.getAllVocabulariesByTestId(testId),
+        ]);
+
+        if (!mounted) return;
+
+        setTestInfo(test);
+
+        if (!Array.isArray(vocab) || vocab.length === 0) {
+          setError(`Không tìm thấy câu hỏi nào cho bài test ${testId}.`);
+          return;
+        }
+
+        const shuffled = [...vocab].sort(() => Math.random() - 0.5);
+        const maxQ = Math.min(settings.totalQuestions || DEFAULT_TOTAL_QUESTIONS, shuffled.length);
+
+        const selected = shuffled.slice(0, maxQ).map((it, i) => ({
+          ...it,
+          questionNumber: i + 1,
+        }));
+
+        setItems(selected);
+
+        // init start time
+        startTimeRef.current = Date.now();
+
+        // restore first, else init fresh
+        const restored = restoreIfPossible(selected.length);
+        if (restored) {
+          setAnswers(restored.answers);
+          setIndex(Math.min(restored.index, selected.length - 1));
+          setCurrentAnswer(restored.currentAnswer);
+          setTimeLeft(restored.timeLeft || settings.timePerQuestion);
+          setShowAnswer(false);
+          setLastAnswerResult(null);
+          setIsPaused(false);
+          showToastMsg(`🔄 Đã khôi phục (${restored.answeredCount} câu, ${restored.minutesAgo} phút trước)`, "success");
+        } else {
+          setAnswers(new Array(selected.length).fill(null));
+          setIndex(0);
+          setCurrentAnswer("");
+          setTimeLeft(settings.timePerQuestion || DEFAULT_TIME_PER_QUESTION);
+          setShowAnswer(false);
+          setLastAnswerResult(null);
+          setIsPaused(false);
+        }
+
+        // create draft result for session tracking (optional)
+        try {
+          const testSnapshot = {
+            test_id: testId,
+            test_title: test?.test_title || "Vocabulary Test",
+            main_topic: test?.main_topic || "Vocabulary",
+            sub_topic: test?.sub_topic || "",
+            test_type: test?.test_type || "vocabulary",
+            difficulty: test?.difficulty || "medium",
+          };
+
+          const first = selected[0];
+          const draftPayload = {
+            test_id: testId,
+            test_snapshot: testSnapshot,
+            answers: [
+              {
+                question_id: first?._id || "placeholder",
+                question_collection: "vocabularies",
+                word: first?.word || "",
+                meaning: first?.meaning || "",
+                example_sentence: first?.example_sentence || "",
+                question_mode: settings.mode,
+                correct_answer: "",
+                user_answer: "",
+                is_correct: false,
+                time_spent_ms: 0,
+              },
+            ],
+            duration_ms: 0,
+            start_time: new Date(startTimeRef.current),
+            end_time: null,
+            status: "in_progress",
+          };
+
+          const draft = await testResultService.createTestResult(draftPayload);
+          const id = draft?._id || draft?.id;
+          if (id) {
+            setTestResultId(id);
+            localStorage.setItem(DRAFT_KEY, id);
+          }
+        } catch (e) {
+          // ignore: still allow do test without session tracking
+        }
+      } catch (e) {
+        console.error(e);
+        if (mounted) setError(`Có lỗi xảy ra khi tải câu hỏi: ${e?.message || "Unknown error"}`);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    run();
+    return () => {
+      mounted = false;
+    };
+  }, [DRAFT_KEY, STORE_KEY, settings.mode, settings.timePerQuestion, settings.totalQuestions, showToastMsg, testId]);
+
+  // ===== init session when have testResultId =====
+  useEffect(() => {
+    if (testResultId && !isTracking) initializeSession?.();
+  }, [initializeSession, isTracking, testResultId]);
+
+  // ===== cleanup session on unmount =====
+  useEffect(() => {
+    return () => {
+      if (isTracking) endSession?.();
+    };
+  }, [endSession, isTracking]);
+
+  // ===== autosave =====
+  useEffect(() => {
+    if (!items.length) return;
+    try {
+      localStorage.setItem(
+        STORE_KEY,
+        JSON.stringify({
+          answers,
+          index,
+          currentAnswer,
+          timeLeft,
+          timestamp: Date.now(),
+        })
+      );
+    } catch (e) {
+      // ignore
+    }
+  }, [STORE_KEY, answers, currentAnswer, index, items.length, timeLeft]);
+
+  // ===== timer =====
+  useEffect(() => {
+    if (loading || !items.length || showAnswer || isPaused || isSubmitting) return;
+
+    timerRef.current && clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          // auto submit empty
+          // note: revealAnswer uses current state safely
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => timerRef.current && clearInterval(timerRef.current);
+  }, [isPaused, isSubmitting, items.length, loading, showAnswer]);
+
+  // when timeLeft hits 0 => reveal empty once
+  useEffect(() => {
+    if (loading || !items.length) return;
+    if (timeLeft !== 0) return;
+    if (showAnswer || isPaused) return;
+
+    // time-out
+    // eslint-disable-next-line
+    revealAnswer("");
+    // reset happens inside revealAnswer
+  }, [timeLeft, loading, items.length, showAnswer, isPaused]);
+
+  // ===== reveal answer =====
   const revealAnswer = useCallback(
     (answerText) => {
+      if (!current) return;
+      if (showAnswer) return;
+
       timerRef.current && clearInterval(timerRef.current);
 
-      const current = items[index];
       const isCorrect = checkAnswer(current, answerText, settings.mode);
+      const timeSpentSec = (settings.timePerQuestion || DEFAULT_TIME_PER_QUESTION) - (timeLeft || 0);
 
-      const next = [...answers];
-      next[index] = {
+      const nextAnswers = [...answers];
+      nextAnswers[index] = {
         question: current,
         userAnswer: answerText,
         isCorrect,
-        timeSpent: (settings.timePerQuestion || DEFAULT_TIME_PER_QUESTION) - timeLeft,
+        timeSpentSec: Math.max(0, timeSpentSec),
       };
-      setAnswers(next);
+
+      setAnswers(nextAnswers);
 
       const resultData = {
         isCorrect,
         correctAnswer: getCorrectAnswer(current),
         userAnswer: answerText,
         question: current,
-        timeSpent: (settings.timePerQuestion || DEFAULT_TIME_PER_QUESTION) - timeLeft,
+        timeSpentSec: Math.max(0, timeSpentSec),
         questionIndex: index + 1,
         totalQuestions: items.length,
       };
-      
+
       setLastAnswerResult(resultData);
-      setResultModalData(resultData);
       setShowAnswer(true);
-      setShowResultModal(true);
       setIsPaused(true);
 
-      // Record answer submission behavior
-      recordBehavior('answer_submitted', {
+      recordBehavior?.("answer_submitted", {
         question_index: index,
         question_id: current?._id,
         mode: settings.mode,
-        time_spent: (settings.timePerQuestion || DEFAULT_TIME_PER_QUESTION) - timeLeft,
+        time_spent_sec: Math.max(0, timeSpentSec),
         is_correct: isCorrect,
-        answer_length: answerText?.length || 0
+        answer_length: (answerText || "").length,
       });
+
+      // keep timeLeft stable
+      setTimeLeft(settings.timePerQuestion || DEFAULT_TIME_PER_QUESTION);
     },
-    [answers, checkAnswer, getCorrectAnswer, index, items, settings.mode, settings.timePerQuestion, timeLeft, recordBehavior]
+    [
+      answers,
+      checkAnswer,
+      current,
+      getCorrectAnswer,
+      index,
+      items.length,
+      recordBehavior,
+      settings.mode,
+      settings.timePerQuestion,
+      showAnswer,
+      timeLeft,
+    ]
   );
 
+  const moveNextAfterReveal = useCallback(async () => {
+    setShowAnswer(false);
+    setLastAnswerResult(null);
+    setIsPaused(false);
+
+    recordBehavior?.("question_navigation", {
+      from_question: index,
+      to_question: index < items.length - 1 ? index + 1 : "completed",
+      action: "next_after_reveal",
+    });
+
+    if (index < items.length - 1) {
+      setIndex((i) => i + 1);
+      setCurrentAnswer("");
+      setTimeLeft(settings.timePerQuestion || DEFAULT_TIME_PER_QUESTION);
+      return;
+    }
+
+    // last question => submit
+    setShowSubmitConfirm(true);
+  }, [index, items.length, recordBehavior, settings.timePerQuestion]);
+
+  const handlePrev = useCallback(() => {
+    if (index <= 0) return;
+    pushHistory();
+    setIndex((i) => i - 1);
+    setCurrentAnswer("");
+    setShowAnswer(false);
+    setLastAnswerResult(null);
+    setIsPaused(false);
+    setTimeLeft(settings.timePerQuestion || DEFAULT_TIME_PER_QUESTION);
+
+    recordBehavior?.("question_navigation", { from_question: index, to_question: index - 1, action: "manual_prev" });
+  }, [index, pushHistory, recordBehavior, settings.timePerQuestion]);
+
+  const handleNext = useCallback(() => {
+    if (index >= items.length - 1) return;
+    pushHistory();
+    setIndex((i) => i + 1);
+    setCurrentAnswer("");
+    setShowAnswer(false);
+    setLastAnswerResult(null);
+    setIsPaused(false);
+    setTimeLeft(settings.timePerQuestion || DEFAULT_TIME_PER_QUESTION);
+
+    recordBehavior?.("question_navigation", { from_question: index, to_question: index + 1, action: "manual_next" });
+  }, [index, items.length, pushHistory, recordBehavior, settings.timePerQuestion]);
+
+  // ===== submit =====
   const completeTest = useCallback(
-    async (finalAnswers = null) => {
-      let payload = null; // Declare outside try block for catch access
-      
+    async (finalAnswers) => {
+      const aList = Array.isArray(finalAnswers) ? finalAnswers : answers;
+
       try {
         setIsSubmitting(true);
 
-        const aList = Array.isArray(finalAnswers) ? finalAnswers : answers;
         const timeTakenMs = Date.now() - startTimeRef.current;
 
-        // ✅ BE mới: lưu snapshot thông tin bài test
         const testSnapshot = {
           test_id: testId,
-          test_title: testInfo?.test_title || 'Vocabulary Test',
-          main_topic: testInfo?.main_topic || 'Vocabulary',
-          sub_topic: testInfo?.sub_topic || '',
-          test_type: testInfo?.test_type || 'vocabulary',
-          difficulty: testInfo?.difficulty || 'medium',
+          test_title: testInfo?.test_title || "Vocabulary Test",
+          main_topic: testInfo?.main_topic || "Vocabulary",
+          sub_topic: testInfo?.sub_topic || "",
+          test_type: testInfo?.test_type || "vocabulary",
+          difficulty: testInfo?.difficulty || "medium",
         };
 
-        payload = {
-          test_id: testId, // giữ lại cho tiện filter / join nếu BE vẫn dùng
+        const payload = {
+          test_id: testId,
           test_snapshot: testSnapshot,
-          answers: aList.map((answer) => ({
-            question_id: answer?.question?._id || answer?.question?.id,
-            question_collection: 'vocabularies',
-            // BE yêu cầu đầy đủ các trường vocabulary
-            word: answer?.question?.word || '',
-            meaning: answer?.question?.meaning || '',
-            example_sentence: answer?.question?.example_sentence || answer?.question?.example || '',
-            question_mode: settings?.mode || 'word_to_meaning',
-            correct_answer: getCorrectAnswer(answer?.question),
-            user_answer: answer?.userAnswer ?? '',
-            is_correct: !!answer?.isCorrect,
+          answers: aList.map((a) => ({
+            question_id: a?.question?._id || a?.question?.id,
+            question_collection: "vocabularies",
+            word: a?.question?.word || "",
+            meaning: a?.question?.meaning || "",
+            example_sentence: a?.question?.example_sentence || a?.question?.example || "",
+            question_mode: settings.mode,
+            correct_answer: getCorrectAnswer(a?.question),
+            user_answer: a?.userAnswer ?? "",
+            is_correct: !!a?.isCorrect,
+            time_spent_ms: Math.max(0, (a?.timeSpentSec || 0) * 1000),
           })),
           duration_ms: timeTakenMs,
           start_time: new Date(startTimeRef.current),
           end_time: new Date(),
-          status: 'draft',
+          status: "draft",
         };
 
-        console.log('📤 Sending payload to BE:', JSON.stringify(payload, null, 2));
-        
-        // ✅ Luôn tạo mới test result khi submit (không update draft tracking)
-        // Draft tracking (in_progress) chỉ dùng cho session tracking
-        console.log('📝 Creating new draft TestResult');
         const finalResult = await testResultService.createTestResult(payload);
-        console.log('✅ TestResult created:', finalResult);
 
-        // End test session tracking BEFORE navigation
         if (isTracking) {
           try {
-            await endSession();
-            console.log('✅ Test session ended successfully');
-          } catch (err) {
-            console.error('❌ Failed to end test session:', err);
-            // Continue anyway
+            await endSession?.();
+          } catch (e) {
+            // ignore
           }
         }
 
-        // Clean up localStorage
+        // cleanup
         try {
           localStorage.removeItem(STORE_KEY);
           localStorage.removeItem(DRAFT_KEY);
-        } catch (e) {
-          console.warn('Cannot clean localStorage:', e);
-        }
-        
+        } catch (e) {}
+
         navigate(`/vocabulary/test/${testId}/result`, {
           state: {
             answers: aList,
@@ -592,257 +603,103 @@ const VocabularyTestTake = () => {
           },
         });
       } catch (err) {
-        console.error('❌ Error creating draft result:', err);
-        if (payload) {
-          console.error('📤 Failed payload was:', JSON.stringify(payload, null, 2));
-        }
-        // fallback vẫn cho xem kết quả FE
+        console.error(err);
+        // fallback FE
         navigate(`/vocabulary/test/${testId}/result`, {
-          state: { answers: finalAnswers || answers, settings, testInfo },
+          state: { answers: aList, settings, testInfo },
         });
       } finally {
         setIsSubmitting(false);
       }
     },
-    [answers, getCorrectAnswer, navigate, settings, testId, testInfo, endSession, isTracking, STORE_KEY, DRAFT_KEY]
+    [answers, endSession, getCorrectAnswer, isTracking, navigate, settings, testId, testInfo, DRAFT_KEY, STORE_KEY]
   );
 
-  const moveNextAfterReveal = useCallback(async () => {
-    setShowAnswer(false);
-    setLastAnswerResult(null);
-    setShowResultModal(false);
-    setResultModalData(null);
-    setIsPaused(false);
-
-    // Record question navigation
-    recordBehavior('question_navigation', {
-      from_question: index,
-      to_question: index < items.length - 1 ? index + 1 : 'completed',
-      action: 'next_after_reveal'
-    });
-
-    if (index < items.length - 1) {
-      setIndex((i) => i + 1);
-      setCurrentAnswer('');
-      setTimeLeft(settings.timePerQuestion || DEFAULT_TIME_PER_QUESTION);
-    } else {
-      await completeTest();
-    }
-  }, [completeTest, index, items.length, settings.timePerQuestion, recordBehavior]);
-
-  const handleNext = useCallback(() => {
-    if (index >= items.length - 1) return;
-    
-    pushHistory();
-    setIndex(i => i + 1);
-    setCurrentAnswer('');
-    setShowAnswer(false);
-    setLastAnswerResult(null);
-    setShowResultModal(false);
-    setResultModalData(null);
-    setIsPaused(false);
-    setTimeLeft(settings.timePerQuestion || DEFAULT_TIME_PER_QUESTION);
-    
-    recordBehavior('question_navigation', {
-      from_question: index,
-      to_question: index + 1,
-      action: 'manual_next'
-    });
-  }, [index, items.length, pushHistory, recordBehavior, settings.timePerQuestion]);
-
-  const handlePrev = useCallback(() => {
-    if (index <= 0) return;
-    
-    pushHistory();
-    setIndex(i => i - 1);
-    setCurrentAnswer('');
-    setShowAnswer(false);
-    setLastAnswerResult(null);
-    setShowResultModal(false);
-    setResultModalData(null);
-    setIsPaused(false);
-    setTimeLeft(settings.timePerQuestion || DEFAULT_TIME_PER_QUESTION);
-    
-    recordBehavior('question_navigation', {
-      from_question: index,
-      to_question: index - 1,
-      action: 'manual_prev'
-    });
-  }, [index, pushHistory, recordBehavior, settings.timePerQuestion]);
-
-  // Define current question early for use in callbacks
-  const current = useMemo(() => items[index], [items, index]);
-
-  // ===================== keyboard shortcuts =====================
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      // Don't trigger shortcuts when typing in input or modal is open
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || 
-          showResultModal || showSubmitConfirm || showExitConfirm) {
-        return;
-      }
-      
-      switch (e.key) {
-        case 'ArrowLeft':
-        case 'a':
-        case 'A':
-          e.preventDefault();
-          handlePrev();
-          break;
-        case 'ArrowRight':
-        case 'd':
-        case 'D':
-          e.preventDefault();
-          handleNext();
-          break;
-        case 'Enter':
-          e.preventDefault();
-          if (showAnswer) {
-            moveNextAfterReveal();
-          } else if (currentAnswer.trim()) {
-            revealAnswer(currentAnswer);
-          }
-          break;
-        case ' ':
-          if (showAnswer) {
-            e.preventDefault();
-            moveNextAfterReveal();
-          }
-          break;
-        case 'm':
-        case 'M':
-          e.preventDefault();
-          toggleMarkCurrent();
-          break;
-        case 'z':
-          if (e.ctrlKey || e.metaKey) {
-            e.preventDefault();
-            if (e.shiftKey) {
-              redo();
-            } else {
-              undo();
-            }
-          }
-          break;
-        case 'y':
-          if (e.ctrlKey || e.metaKey) {
-            e.preventDefault();
-            redo();
-          }
-          break;
-        case 'p':
-        case 'P':
-          e.preventDefault();
-          if (current?.word) {
-            playAudio(current.word);
-          }
-          break;
-        default:
-          break;
-      }
-    };
-    
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleNext, handlePrev, moveNextAfterReveal, toggleMarkCurrent, undo, redo, showAnswer, showResultModal, showSubmitConfirm, showExitConfirm, playAudio, current]);
-
-  const submitNow = useCallback(() => {
-    setShowSubmitConfirm(true);
-  }, []);
+  const submitNow = useCallback(() => setShowSubmitConfirm(true), []);
 
   const confirmSubmit = useCallback(async () => {
     setShowSubmitConfirm(false);
-    
-    // Record early submission
-    recordBehavior('test_submission', {
-      action: 'early_submit',
+
+    recordBehavior?.("test_submission", {
+      action: "submit",
       current_question: index,
       total_questions: items.length,
-      answered_questions: answers.filter(a => a !== null).length
+      answered_questions: answers.filter(Boolean).length,
     });
 
+    // fill blanks
     const remain = [...answers];
     for (let i = 0; i < items.length; i++) {
-      if (!remain[i]) {
-        remain[i] = { question: items[i], userAnswer: '', isCorrect: false, timeSpent: 0 };
-      }
+      if (!remain[i]) remain[i] = { question: items[i], userAnswer: "", isCorrect: false, timeSpentSec: 0 };
     }
-
-    // đảm bảo state cũng sync
     setAnswers(remain);
     await completeTest(remain);
-  }, [answers, completeTest, items, index, recordBehavior]);
+  }, [answers, completeTest, index, items, recordBehavior]);
 
-  // Timer
+  // ===== keyboard shortcuts (global) =====
   useEffect(() => {
-    if (loading || showAnswer || isPaused || !items.length) return;
+    const onKeyDown = (e) => {
+      // ignore shortcuts when modal open
+      if (showExitConfirm || showSubmitConfirm) return;
 
-    timerRef.current = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          revealAnswer('');
-          return settings.timePerQuestion || DEFAULT_TIME_PER_QUESTION;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+      // ignore when typing input (we handle Enter in input itself)
+      const tag = e.target?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") {
+        // still allow arrows & P maybe? skip
+        return;
+      }
 
-    return () => timerRef.current && clearInterval(timerRef.current);
-  }, [loading, showAnswer, isPaused, items.length, revealAnswer, settings.timePerQuestion]);
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        handlePrev();
+      }
+      if (e.key === "ArrowRight") {
+        e.preventDefault();
+        handleNext();
+      }
+      if (e.key === "p" || e.key === "P") {
+        e.preventDefault();
+        if (current?.word) playAudio(current.word);
+      }
+    };
 
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [current?.word, handleNext, handlePrev, playAudio, showExitConfirm, showSubmitConfirm]);
+
+  // ===== exit =====
   const handleExit = () => setShowExitConfirm(true);
   const confirmExit = useCallback(() => {
     setShowExitConfirm(false);
-    
-    // Clean up localStorage on exit
     try {
       localStorage.removeItem(STORE_KEY);
       localStorage.removeItem(DRAFT_KEY);
-    } catch (e) {
-      console.warn('Cannot clean localStorage:', e);
-    }
-    
+    } catch (e) {}
     navigate(-1);
-  }, [navigate, STORE_KEY, DRAFT_KEY]);
+  }, [DRAFT_KEY, STORE_KEY, navigate]);
+
   const cancelExit = () => setShowExitConfirm(false);
 
-  const answeredState = (idx) => {
-    const a = answers[idx];
-    if (!a) return 'idle';
-    return a.isCorrect ? 'correct' : 'wrong';
-  };
-
-  const isMarked = useCallback((idx) => !!markedQuestions[idx], [markedQuestions]);
-  
-  const handleResultModalNext = useCallback(() => {
-    moveNextAfterReveal();
-  }, [moveNextAfterReveal]);
-
-  // Show autosave status - must be before early returns
-  const [lastSaved, setLastSaved] = useState(null);
-  useEffect(() => {
-    setLastSaved(new Date());
-  }, [answers, markedQuestions, index]);
-
+  // ===== UI stats =====
   if (loading) return <LoadingSpinner message="Đang tải câu hỏi..." />;
   if (error) return <ErrorMessage error={error} onRetry={() => window.location.reload()} />;
   if (!items.length) return <ErrorMessage error="Không có câu hỏi nào." />;
+
   const progressDone = answers.filter(Boolean).length;
   const progressPct = items.length ? Math.round((progressDone / items.length) * 100) : 0;
-
-  const topHint =
-    settings.mode === 'word_to_meaning'
-      ? 'Nhập nghĩa tiếng Việt.'
-      : settings.mode === 'meaning_to_word'
-      ? 'Nhập từ tiếng Anh.'
-      : 'Bấm nghe, rồi gõ từ bạn nghe được.';
-
   const correctSoFar = answers.filter((a) => a?.isCorrect).length;
   const wrongSoFar = answers.filter((a) => a && !a.isCorrect).length;
 
+  const topHint =
+    settings.mode === "word_to_meaning"
+      ? "Nhập nghĩa tiếng Việt."
+      : settings.mode === "meaning_to_word"
+      ? "Nhập từ tiếng Anh."
+      : "Bấm nghe, rồi gõ từ bạn nghe được.";
+
   return (
     <TestLayout
-      testTitle={testInfo?.test_title || 'Bài test từ vựng'}
+      testTitle={testInfo?.test_title || "Bài test từ vựng"}
       currentQuestion={index}
       totalQuestions={items.length}
       timeLeft={timeLeft}
@@ -851,9 +708,9 @@ const VocabularyTestTake = () => {
     >
       <div className="min-h-[calc(100svh-136px)] bg-zinc-50">
         <div className="mx-auto w-full max-w-7xl px-3 md:px-4 py-3">
-          {/* Top bar */}
-          <div className="mb-3 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-            <div className="flex items-center gap-2 flex-wrap">
+          {/* TOP BAR */}
+          <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-semibold text-zinc-700 shadow-sm">
                 <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
                 {modeLabel(settings.mode)}
@@ -864,61 +721,55 @@ const VocabularyTestTake = () => {
               </span>
 
               <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-semibold text-zinc-700 shadow-sm">
-                📌 Câu {current.questionNumber}/{items.length}
+                📌 Câu {index + 1}/{items.length}
               </span>
 
               <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-semibold text-zinc-700 shadow-sm">
                 ✅ {correctSoFar} • ❌ {wrongSoFar}
               </span>
 
-              <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 shadow-sm" title="Tiến trình tự động được lưu. Bạn có thể load lại trang mà không lo mất tiến trình.">
+              <span
+                className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 shadow-sm"
+                title="Tiến trình được lưu tự động"
+              >
                 💾 Tự động lưu
               </span>
-              
-              {isMarked(index) && (
-                <span className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 shadow-sm">
-                  🏷️ Đã đánh dấu
-                </span>
-              )}
             </div>
 
             <div className="flex items-center gap-2">
               <div className="hidden md:block text-xs text-zinc-600 font-medium">{topHint}</div>
-              <span className="hidden sm:inline text-xs text-zinc-500 font-medium">(Enter: kiểm tra/tiếp tục, Shift+Enter: bỏ qua, M: đánh dấu, ←→: điều hướng, P: phát âm)</span>
+              <span className="hidden sm:inline text-xs text-zinc-500 font-medium">
+                (Enter: kiểm tra/tiếp tục • Shift+Enter: bỏ qua • ←→: điều hướng • P: phát âm)
+              </span>
             </div>
           </div>
 
-          {/* Main layout */}
+          {/* MAIN GRID */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* LEFT */}
             <div className="lg:col-span-2 flex flex-col">
-              {/* Question card */}
-              <div className="relative rounded-2xl border border-zinc-200 bg-white shadow-sm overflow-hidden flex flex-col">
-                <div className="absolute inset-0 bg-[radial-gradient(70%_60%_at_10%_0%,rgba(59,130,246,0.10),transparent)]" />
-                <div className="absolute inset-0 bg-[radial-gradient(60%_60%_at_90%_100%,rgba(236,72,153,0.08),transparent)]" />
+              <div className="relative rounded-2xl border border-zinc-200 bg-white shadow-sm overflow-hidden">
+                <div className="absolute inset-0 bg-[radial-gradient(70%_60%_at_10%_0%,rgba(124,58,237,0.08),transparent)]" />
+                <div className="absolute inset-0 bg-[radial-gradient(60%_60%_at_90%_100%,rgba(16,185,129,0.06),transparent)]" />
 
                 <div className="relative p-4 sm:p-5">
-                  {/* Header */}
+                  {/* header row */}
                   <div className="flex items-center justify-between gap-3">
                     <span className="inline-flex items-center gap-2 rounded-full bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-white">
                       {modeBadge(settings.mode)}
                     </span>
 
-                    <div className="flex items-center gap-2">
-                      <div className="w-28 sm:w-44">
-                        <div className="h-2 rounded-full bg-zinc-200 overflow-hidden">
-                          <div className="h-full bg-blue-600" style={{ width: `${progressPct}%` }} />
-                        </div>
-                        <div className="mt-1 text-[11px] text-zinc-600 font-medium text-right">
-                          {progressPct}% hoàn thành
-                        </div>
+                    <div className="w-28 sm:w-44">
+                      <div className="h-2 rounded-full bg-zinc-200 overflow-hidden">
+                        <div className="h-full bg-violet-600" style={{ width: `${progressPct}%` }} />
                       </div>
+                      <div className="mt-1 text-[11px] text-zinc-600 font-medium text-right">{progressPct}% hoàn thành</div>
                     </div>
                   </div>
 
-                  {/* Prompt */}
+                  {/* prompt */}
                   <div className="mt-6 text-center">
-                    {settings.mode === 'word_to_meaning' && (
+                    {settings.mode === "word_to_meaning" && (
                       <>
                         <div className="flex items-center justify-center gap-2">
                           <h2 className="text-3xl sm:text-4xl font-extrabold text-zinc-900 tracking-tight">
@@ -928,8 +779,7 @@ const VocabularyTestTake = () => {
                             onClick={() => playAudio(current?.word)}
                             disabled={isPlaying}
                             className="inline-flex items-center justify-center rounded-full border border-zinc-200 bg-white p-2 text-zinc-700 shadow-sm hover:bg-zinc-50 disabled:opacity-50"
-                            aria-label="Phát âm"
-                            title="Phát âm"
+                            title="Phát âm (P)"
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path
@@ -945,7 +795,7 @@ const VocabularyTestTake = () => {
                       </>
                     )}
 
-                    {settings.mode === 'meaning_to_word' && (
+                    {settings.mode === "meaning_to_word" && (
                       <>
                         <h2 className="text-xl sm:text-2xl font-extrabold text-zinc-900 leading-relaxed">
                           {current?.meaning}
@@ -954,29 +804,32 @@ const VocabularyTestTake = () => {
                       </>
                     )}
 
-                    {settings.mode === 'listen_and_type' && (
+                    {settings.mode === "listen_and_type" && (
                       <>
-                        <button
-                          onClick={() => playAudio(current?.word)}
-                          disabled={isPlaying}
-                          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg hover:opacity-95 disabled:opacity-50"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2"
-                              d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M6 10v4a1 1 0 001 1h1l4 4V5l-4 4H7a1 1 0 00-1 1z"
-                            />
-                          </svg>
-                          {isPlaying ? 'Đang phát...' : 'Nghe từ'}
-                        </button>
+                        <div className="flex items-center justify-center gap-3">
+                          <button
+                            onClick={() => playAudio(current?.word)}
+                            disabled={isPlaying}
+                            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg hover:opacity-95 disabled:opacity-50"
+                          >
+                            🔊 {isPlaying ? "Đang phát..." : "Nghe từ"}
+                          </button>
+                          {!!current?.example_sentence && (
+                            <button
+                              onClick={() => playAudio(current?.example_sentence)}
+                              disabled={isPlaying}
+                              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-bold text-zinc-700 shadow-lg hover:bg-zinc-50 disabled:opacity-50"
+                            >
+                              📖 Nghe câu
+                            </button>
+                          )}
+                        </div>
                         <p className="mt-2 text-sm text-zinc-600">Nghe và gõ từ bạn nghe được.</p>
                       </>
                     )}
                   </div>
 
-                  {/* Input */}
+                  {/* input */}
                   <div className="mt-6">
                     <div className="rounded-2xl border border-zinc-200 bg-white shadow-sm p-3 sm:p-4">
                       <input
@@ -984,78 +837,70 @@ const VocabularyTestTake = () => {
                         value={currentAnswer}
                         onChange={(e) => setCurrentAnswer(e.target.value)}
                         onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault(); // Prevent default, let global handler manage it
+                          if (e.key === "Enter" && e.shiftKey) {
+                            e.preventDefault();
+                            if (!showAnswer && !isSubmitting) revealAnswer("");
+                            return;
+                          }
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            if (showAnswer) moveNextAfterReveal();
+                            else if (!isSubmitting) revealAnswer(currentAnswer);
                           }
                         }}
                         placeholder={
-                          settings.mode === 'word_to_meaning'
-                            ? 'Gõ nghĩa tiếng Việt...'
-                            : settings.mode === 'meaning_to_word'
-                            ? 'Gõ từ tiếng Anh...'
-                            : 'Gõ từ tiếng Anh bạn nghe được...'
+                          settings.mode === "word_to_meaning"
+                            ? "Gõ nghĩa tiếng Việt..."
+                            : settings.mode === "meaning_to_word"
+                            ? "Gõ từ tiếng Anh..."
+                            : "Gõ từ tiếng Anh bạn nghe được..."
                         }
-                        className="w-full rounded-xl border border-zinc-300 px-4 py-3 text-sm outline-none focus:border-blue-500"
+                        className="w-full rounded-xl border border-zinc-300 px-4 py-3 text-sm outline-none focus:border-violet-500"
                         disabled={showAnswer || isSubmitting}
                         autoFocus
                       />
 
                       <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
-                        <button
-                          onClick={() => playAudio(current?.word)}
-                          disabled={isPlaying}
-                          className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 shadow-sm hover:bg-zinc-50 disabled:opacity-50"
-                        >
-                          🔊 Nghe từ
-                        </button>
-
-                        {!!current?.example_sentence && (
-                          <button
-                            onClick={() => playAudio(current?.example_sentence)}
-                            disabled={isPlaying}
-                            className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 shadow-sm hover:bg-zinc-50 disabled:opacity-50"
-                          >
-                            📖 Nghe câu
-                          </button>
-                        )}
-
                         <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 shadow-sm">
                           ⏱️ {timeLeft}s còn lại
                         </span>
 
-                        <span className="hidden sm:inline text-[11px] text-zinc-500 font-medium">(Enter: kiểm tra • Shift+Enter: bỏ qua)</span>
+                        <span className="hidden sm:inline text-[11px] text-zinc-500 font-medium">
+                          (Enter: kiểm tra/tiếp tục • Shift+Enter: bỏ qua)
+                        </span>
                       </div>
                     </div>
 
-                    {/* Result panel */}
+                    {/* result panel */}
                     {showAnswer && lastAnswerResult && (
                       <div
                         className={`mt-4 rounded-2xl border p-4 shadow-sm ${
-                          lastAnswerResult.isCorrect ? 'border-emerald-200 bg-emerald-50' : 'border-rose-200 bg-rose-50'
+                          lastAnswerResult.isCorrect ? "border-emerald-200 bg-emerald-50" : "border-rose-200 bg-rose-50"
                         }`}
                       >
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                           <div className="flex items-start gap-3">
                             <div
                               className={`h-10 w-10 rounded-2xl flex items-center justify-center text-white font-extrabold ${
-                                lastAnswerResult.isCorrect ? 'bg-emerald-600' : 'bg-rose-600'
+                                lastAnswerResult.isCorrect ? "bg-emerald-600" : "bg-rose-600"
                               }`}
                             >
-                              {lastAnswerResult.isCorrect ? '✓' : '✗'}
+                              {lastAnswerResult.isCorrect ? "✓" : "✗"}
                             </div>
 
                             <div>
                               <div
                                 className={`font-extrabold ${
-                                  lastAnswerResult.isCorrect ? 'text-emerald-800' : 'text-rose-800'
+                                  lastAnswerResult.isCorrect ? "text-emerald-800" : "text-rose-800"
                                 }`}
                               >
-                                {lastAnswerResult.isCorrect ? 'Chính xác!' : 'Chưa đúng'}
+                                {lastAnswerResult.isCorrect ? "Chính xác!" : "Chưa đúng"}
                               </div>
 
                               {!lastAnswerResult.isCorrect && (
                                 <div className="mt-1 text-sm text-rose-800">
-                                  Đáp án đúng: <span className="font-extrabold">{lastAnswerResult.correctAnswer}</span>
+                                  Đáp án đúng:{" "}
+                                  <span className="font-extrabold">{lastAnswerResult.correctAnswer}</span>
                                 </div>
                               )}
 
@@ -1069,10 +914,10 @@ const VocabularyTestTake = () => {
 
                           <button
                             onClick={moveNextAfterReveal}
-                            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-blue-700"
+                            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-violet-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-violet-700"
                             disabled={isSubmitting}
                           >
-                            {index === items.length - 1 ? 'Hoàn thành' : 'Tiếp tục'} →
+                            {index === items.length - 1 ? "Hoàn thành" : "Tiếp tục"} →
                           </button>
                         </div>
                       </div>
@@ -1081,25 +926,23 @@ const VocabularyTestTake = () => {
                 </div>
               </div>
 
-              {/* ✅ BUTTONS SECTION */}
+              {/* ACTION BUTTONS */}
               <div className="mt-3">
-                {/* Main action buttons */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <button
                     type="button"
                     onClick={() => revealAnswer(currentAnswer)}
-                    disabled={showAnswer || isSubmitting || !currentAnswer.trim()}
-                    className="w-full inline-flex items-center justify-center rounded-xl bg-blue-600 px-3 py-3 text-sm font-extrabold text-white shadow-sm hover:bg-blue-700 disabled:opacity-50"
+                    disabled={showAnswer || isSubmitting || (!currentAnswer.trim() && settings.mode !== "listen_and_type")}
+                    className="w-full inline-flex items-center justify-center rounded-xl bg-violet-600 px-3 py-3 text-sm font-extrabold text-white shadow-sm hover:bg-violet-700 disabled:opacity-50"
                   >
                     Kiểm tra
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => revealAnswer('')}
+                    onClick={() => revealAnswer("")}
                     disabled={showAnswer || isSubmitting}
                     className="w-full inline-flex items-center justify-center rounded-xl bg-zinc-900 px-3 py-3 text-sm font-extrabold text-white shadow-sm hover:bg-zinc-800 disabled:opacity-50"
-                    title="Bỏ qua câu này"
                   >
                     Bỏ qua
                   </button>
@@ -1113,9 +956,8 @@ const VocabularyTestTake = () => {
                     Nộp bài
                   </button>
                 </div>
-                
-                {/* Navigation and utility buttons */}
-                <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-2">
+
+                <div className="mt-2 grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={handlePrev}
@@ -1125,7 +967,7 @@ const VocabularyTestTake = () => {
                   >
                     ← Trước
                   </button>
-                  
+
                   <button
                     type="button"
                     onClick={handleNext}
@@ -1135,40 +977,14 @@ const VocabularyTestTake = () => {
                   >
                     Sau →
                   </button>
-                  
-                  <button
-                    type="button"
-                    onClick={toggleMarkCurrent}
-                    disabled={isSubmitting}
-                    className={`inline-flex items-center justify-center gap-1 rounded-lg border px-2 py-2 text-xs font-semibold shadow-sm hover:opacity-90 disabled:opacity-50 ${
-                      isMarked(index) 
-                        ? 'border-amber-200 bg-amber-50 text-amber-700'
-                        : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50'
-                    }`}
-                    title="Đánh dấu để xem lại (M)"
-                  >
-                    🏷️ {isMarked(index) ? 'Bỏ dấu' : 'Đánh dấu'}
-                  </button>
-                  
-                  <button
-                    type="button"
-                    onClick={undo}
-                    disabled={undoStackRef.current.length === 0 || isSubmitting}
-                    className="inline-flex items-center justify-center gap-1 rounded-lg border border-zinc-200 bg-white px-2 py-2 text-xs font-semibold text-zinc-700 shadow-sm hover:bg-zinc-50 disabled:opacity-50"
-                    title="Hoàn tác (Ctrl+Z)"
-                  >
-                    ↶ Hoàn tác
-                  </button>
                 </div>
-
-                <p className="mt-2 text-center text-[11px] text-zinc-600">Enter: kiểm tra đáp án hoặc chuyển câu tiếp • Shift+Enter: bỏ qua câu hiện tại • Nộp bài bất cứ lúc nào</p>
               </div>
             </div>
 
             {/* RIGHT */}
             <div className="lg:col-span-1">
               <div className="space-y-3">
-                {/* Voice card */}
+                {/* Voice */}
                 <div className="rounded-2xl border border-zinc-200 bg-white shadow-sm p-4">
                   <div className="flex items-center justify-between gap-2">
                     <div>
@@ -1176,7 +992,7 @@ const VocabularyTestTake = () => {
                       <p className="text-xs text-zinc-600 mt-0.5">Áp dụng ngay khi bấm “Nghe”.</p>
                     </div>
                     <span className="inline-flex items-center rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-700">
-                      {availableVoices.filter((v) => v.lang?.startsWith('en')).length} EN
+                      {availableVoices.filter((v) => v.lang?.startsWith("en")).length} EN
                     </span>
                   </div>
 
@@ -1185,9 +1001,9 @@ const VocabularyTestTake = () => {
                     onChange={(e) => {
                       setVoiceId(e.target.value);
                       localStorage.setItem(`vocab_voice_${testId}`, e.target.value);
-                      showToastMsg('Đã đổi giọng đọc', 'success');
+                      showToastMsg("Đã đổi giọng đọc", "success");
                     }}
-                    className="mt-3 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500"
+                    className="mt-3 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-violet-500"
                   >
                     {VOICE_PRESETS.map((p) => (
                       <option key={p.id} value={p.id}>
@@ -1198,10 +1014,7 @@ const VocabularyTestTake = () => {
 
                   <button
                     type="button"
-                    onClick={() => {
-                      const sample = current?.word || 'hello';
-                      playAudio(sample);
-                    }}
+                    onClick={() => playAudio(current?.word || "hello")}
                     disabled={isPlaying}
                     className="mt-3 w-full inline-flex items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-bold text-zinc-800 shadow-sm hover:bg-zinc-50 disabled:opacity-50"
                   >
@@ -1209,7 +1022,7 @@ const VocabularyTestTake = () => {
                   </button>
                 </div>
 
-                {/* Progress card */}
+                {/* Progress */}
                 <div className="rounded-2xl border border-zinc-200 bg-white shadow-sm p-4">
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-extrabold text-zinc-900">Tiến độ</h3>
@@ -1221,17 +1034,14 @@ const VocabularyTestTake = () => {
                   <div className="mt-3 grid grid-cols-10 gap-1.5">
                     {items.map((_, idx) => {
                       const st = answeredState(idx);
-                      const marked = isMarked(idx);
-
-                      let cls = 'bg-zinc-100 text-zinc-700 border-zinc-200';
-                      if (st === 'correct') cls = 'bg-emerald-100 text-emerald-800 border-emerald-200';
-                      if (st === 'wrong') cls = 'bg-rose-100 text-rose-800 border-rose-200';
-                      
-                      if (marked && st === 'idle') {
-                        cls = 'bg-amber-100 text-amber-800 border-amber-200';
-                      }
-
                       const isCurrent = idx === index;
+
+                      const base =
+                        st === "correct"
+                          ? "bg-emerald-100 text-emerald-800 border-emerald-200"
+                          : st === "wrong"
+                          ? "bg-rose-100 text-rose-800 border-rose-200"
+                          : "bg-zinc-100 text-zinc-700 border-zinc-200";
 
                       return (
                         <button
@@ -1240,24 +1050,19 @@ const VocabularyTestTake = () => {
                           onClick={() => {
                             pushHistory();
                             setIndex(idx);
-                            setCurrentAnswer('');
+                            setCurrentAnswer("");
                             setShowAnswer(false);
                             setLastAnswerResult(null);
-                            setShowResultModal(false);
-                            setResultModalData(null);
                             setIsPaused(false);
                             setTimeLeft(settings.timePerQuestion || DEFAULT_TIME_PER_QUESTION);
                           }}
-                          className={`w-7 h-7 rounded-lg border ${cls} flex items-center justify-center text-[10px] font-semibold transition relative ${
-                            isCurrent ? 'ring-2 ring-blue-400 ring-offset-1' : 'hover:opacity-90'
+                          className={`w-7 h-7 rounded-lg border ${base} flex items-center justify-center text-[10px] font-semibold transition ${
+                            isCurrent ? "ring-2 ring-violet-400 ring-offset-1" : "hover:opacity-90"
                           }`}
-                          title={`Câu ${idx + 1}${marked ? ' (Đã đánh dấu)' : ''}${st === 'correct' ? ' ✓' : st === 'wrong' ? ' ✗' : ''}`}
                           disabled={isSubmitting}
+                          title={`Câu ${idx + 1}${st === "correct" ? " ✓" : st === "wrong" ? " ✗" : ""}`}
                         >
                           {idx + 1}
-                          {marked && (
-                            <span className="absolute -top-1 -right-1 w-2 h-2 bg-amber-500 rounded-full" />
-                          )}
                         </button>
                       );
                     })}
@@ -1269,7 +1074,7 @@ const VocabularyTestTake = () => {
                       <span>{progressPct}%</span>
                     </div>
                     <div className="mt-2 h-2 rounded-full bg-zinc-200 overflow-hidden">
-                      <div className="h-full bg-blue-600" style={{ width: `${progressPct}%` }} />
+                      <div className="h-full bg-violet-600" style={{ width: `${progressPct}%` }} />
                     </div>
 
                     <div className="mt-2 flex items-center gap-3 text-[11px] text-zinc-600 font-medium">
@@ -1279,11 +1084,6 @@ const VocabularyTestTake = () => {
                       <span className="inline-flex items-center gap-1">
                         <span className="h-2 w-2 rounded-full bg-rose-500" /> Sai: {wrongSoFar}
                       </span>
-                      {Object.keys(markedQuestions).length > 0 && (
-                        <span className="inline-flex items-center gap-1">
-                          <span className="h-2 w-2 rounded-full bg-amber-500" /> Đánh dấu: {Object.keys(markedQuestions).length}
-                        </span>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -1291,7 +1091,7 @@ const VocabularyTestTake = () => {
             </div>
           </div>
 
-          {/* Exit Confirmation Modal */}
+          {/* EXIT CONFIRM */}
           {showExitConfirm && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
               <div className="bg-white rounded-2xl shadow-xl p-6 max-w-md w-full mx-4 border border-zinc-200">
@@ -1301,7 +1101,7 @@ const VocabularyTestTake = () => {
                   </div>
                   <div>
                     <h3 className="text-lg font-extrabold text-zinc-900">Xác nhận thoát</h3>
-                    <p className="text-sm text-zinc-600 mt-1">Bạn có chắc chắn muốn thoát? Kết quả sẽ không được lưu.</p>
+                    <p className="text-sm text-zinc-600 mt-1">Bạn có chắc chắn muốn thoát? Tiến trình sẽ bị xóa.</p>
                   </div>
                 </div>
 
@@ -1320,115 +1120,113 @@ const VocabularyTestTake = () => {
             </div>
           )}
 
-          {/* Submit Confirmation Modal */}
+          {/* SUBMIT CONFIRM */}
           {showSubmitConfirm && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-              <div className="bg-white rounded-2xl shadow-xl p-6 max-w-md w-full mx-4 border border-zinc-200">
-                <div className="flex items-start gap-3">
-                  <div className="h-12 w-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center font-extrabold">
-                    ?
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-extrabold text-zinc-900">Xác nhận nộp bài</h3>
-                    <p className="text-sm text-zinc-600 mt-1">Bạn có chắc chắn muốn nộp bài? Các câu chưa trả lời sẽ được tính là sai.</p>
-                  </div>
-                </div>
-
-                <div className="mt-5 flex justify-end gap-2">
-                  <button
-                    onClick={() => setShowSubmitConfirm(false)}
-                    disabled={isSubmitting}
-                    className="px-4 py-2 rounded-xl border border-zinc-200 bg-white text-zinc-700 font-semibold hover:bg-zinc-50 disabled:opacity-50"
-                  >
-                    Hủy
-                  </button>
-                  <button
-                    onClick={confirmSubmit}
-                    disabled={isSubmitting}
-                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 text-white font-semibold hover:opacity-95 disabled:opacity-60"
-                  >
-                    {isSubmitting ? 'Đang nộp...' : 'Nộp bài'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Result Modal - Will be implemented later */}
-          {showResultModal && resultModalData && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-              <div className="bg-white rounded-2xl shadow-xl p-6 max-w-md w-full mx-4 border border-zinc-200">
-                <div className="text-center">
-                  <div className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl mb-4 ${
-                    resultModalData.isCorrect ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'
-                  }`}>
-                    {resultModalData.isCorrect ? '✓' : '✗'}
-                  </div>
-                  <h3 className="text-lg font-bold text-slate-900 mb-2">
-                    {resultModalData.isCorrect ? 'Chính xác!' : 'Chưa đúng'}
-                  </h3>
-                  {!resultModalData.isCorrect && (
-                    <p className="text-sm text-slate-600 mb-4">
-                      Đáp án đúng: <span className="font-bold">{resultModalData.correctAnswer}</span>
-                    </p>
-                  )}
-                  <button
-                    onClick={handleResultModalNext}
-                    className="w-full bg-blue-600 text-white py-2 px-4 rounded-xl font-semibold hover:bg-blue-700"
-                  >
-                    {index === items.length - 1 ? 'Hoàn thành' : 'Tiếp tục'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-          
-          {/* Submit Confirmation Modal */}
-          {showSubmitConfirm && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-              <div className="bg-white rounded-2xl shadow-xl p-6 max-w-md w-full mx-4 border border-zinc-200">
-                <div className="flex items-start gap-3">
-                  <div className="h-12 w-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center font-extrabold">
-                    ?
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-extrabold text-zinc-900">Xác nhận nộp bài</h3>
-                    <p className="text-sm text-zinc-600 mt-1">Bạn có chắc chắn muốn nộp bài? Các câu chưa trả lời sẽ được tính là sai.</p>
-                    <div className="mt-3 text-xs text-zinc-500">
-                      <p>Đã trả lời: {answers.filter(a => a !== null).length}/{items.length}</p>
-                      <p>Đúng: {correctSoFar} • Sai: {wrongSoFar}</p>
-                      {Object.keys(markedQuestions).length > 0 && (
-                        <p>Đã đánh dấu: {Object.keys(markedQuestions).length}</p>
-                      )}
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full border border-zinc-200 overflow-hidden">
+                {/* Header */}
+                <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white">
+                  <div className="flex items-center gap-4">
+                    <div className="h-14 w-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                      <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold">Hoàn thành bài thi</h2>
+                      <p className="text-blue-100 text-sm mt-1">Xác nhận nộp bài của bạn</p>
                     </div>
                   </div>
                 </div>
-                <div className="mt-5 flex justify-end gap-2">
-                  <button
-                    onClick={() => setShowSubmitConfirm(false)}
-                    disabled={isSubmitting}
-                    className="px-4 py-2 rounded-xl border border-zinc-200 bg-white text-zinc-700 font-semibold hover:bg-zinc-50 disabled:opacity-50"
-                  >
-                    Hủy
-                  </button>
-                  <button
-                    onClick={confirmSubmit}
-                    disabled={isSubmitting}
-                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 text-white font-semibold hover:opacity-95 disabled:opacity-60"
-                  >
-                    {isSubmitting ? 'Đang nộp...' : 'Nộp bài'}
-                  </button>
+
+                {/* Content */}
+                <div className="p-6">
+                  <div className="space-y-4">
+                    {/* Progress Summary */}
+                    <div className="bg-zinc-50 rounded-2xl p-4">
+                      <h3 className="text-sm font-bold text-zinc-900 mb-3">Tóm tắt tiến độ</h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-blue-600">{answers.filter(Boolean).length}</div>
+                          <div className="text-xs text-zinc-600">Đã trả lời</div>
+                          <div className="text-xs text-zinc-500">/{items.length} câu</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-green-600">{correctSoFar}</div>
+                          <div className="text-xs text-zinc-600">Đúng</div>
+                          <div className="text-xs text-zinc-500">{wrongSoFar} sai</div>
+                        </div>
+                      </div>
+
+                      {/* Progress Bar */}
+                      <div className="mt-4">
+                        <div className="flex justify-between text-xs text-zinc-600 mb-1">
+                          <span>Hoàn thành</span>
+                          <span>{progressPct}%</span>
+                        </div>
+                        <div className="h-2 bg-zinc-200 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-300"
+                            style={{ width: `${progressPct}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Warning */}
+                    <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
+                      <div className="flex items-start gap-3">
+                        <svg className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <div>
+                          <p className="text-sm font-medium text-orange-800">Lưu ý quan trọng</p>
+                          <p className="text-xs text-orange-700 mt-1">
+                            Các câu chưa trả lời sẽ được tính là sai. Bạn có thể quay lại làm bài sau khi nộp.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="mt-6 flex gap-3">
+                    <button
+                      onClick={() => setShowSubmitConfirm(false)}
+                      disabled={isSubmitting}
+                      className="flex-1 px-4 py-3 rounded-xl border-2 border-zinc-200 bg-white text-zinc-700 font-semibold hover:bg-zinc-50 disabled:opacity-50 transition-colors"
+                    >
+                      Quay lại làm bài
+                    </button>
+                    <button
+                      onClick={confirmSubmit}
+                      disabled={isSubmitting}
+                      className="flex-1 px-4 py-3 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold hover:from-green-700 hover:to-emerald-700 disabled:opacity-50 transition-all shadow-lg hover:shadow-xl"
+                    >
+                      {isSubmitting ? (
+                        <div className="flex items-center justify-center gap-2">
+                          <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                          </svg>
+                          Đang nộp...
+                        </div>
+                      ) : (
+                        "Nộp bài ngay"
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Toast */}
+          {/* TOAST */}
           <Toast
-            show={toast.show}
+            isVisible={toast.show}
             message={toast.message}
             type={toast.type}
-            onClose={() => setToast({ show: false, message: '', type: 'info' })}
+            onClose={() => setToast({ show: false, message: "", type: "info" })}
           />
         </div>
       </div>

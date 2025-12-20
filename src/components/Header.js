@@ -94,9 +94,13 @@ export default function Header() {
                 onClick={() => setOpenUser((v) => !v)}
                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition"
               >
-                <div className="w-7 h-7 rounded-full bg-cyan-500 text-black grid place-items-center text-xs font-black">
-                  {user?.full_name?.[0] || "U"}
-                </div>
+                {user?.avatar_url ? (
+                  <img src={user.avatar_url} alt="Avatar" className="w-7 h-7 rounded-full" />
+                ) : (
+                  <div className="w-7 h-7 rounded-full bg-cyan-500 text-black grid place-items-center text-xs font-black">
+                    {user?.full_name?.[0] || "U"}
+                  </div>
+                )}
                 <span className="hidden sm:block text-sm font-semibold text-white">
                   {user?.full_name}
                 </span>

@@ -3,9 +3,9 @@ import React from 'react';
 const StatisticsCards = ({ statistics, loading }) => {
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
+          <div key={i} className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
             <div className="animate-pulse">
               <div className="h-8 bg-gray-200 rounded w-16 mb-2"></div>
               <div className="h-4 bg-gray-200 rounded w-24"></div>
@@ -68,19 +68,19 @@ const StatisticsCards = ({ statistics, loading }) => {
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 mb-6">
       {stats.map((stat, index) => (
-        <div key={index} className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 hover:shadow-md transition-shadow">
+        <div key={index} className="bg-white rounded-xl border border-gray-200 shadow-sm p-3 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
             <div>
-              <div className={`text-3xl font-bold ${stat.color} mb-1`}>
+              <div className={`text-xl font-bold ${stat.color} mb-1`}>
                 {stat.value}
               </div>
               <div className="text-sm text-gray-600">
                 {stat.label}
               </div>
             </div>
-            <div className={`w-12 h-12 rounded-lg ${stat.bgColor} flex items-center justify-center ${stat.color}`}>
+            <div className={`w-8 h-8 rounded-lg ${stat.bgColor} flex items-center justify-center ${stat.color}`}>
               {stat.icon}
             </div>
           </div>

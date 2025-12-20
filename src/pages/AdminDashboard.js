@@ -5,6 +5,7 @@ import testService from '../services/testService';
 import userService from '../services/userService';
 import testResultService from '../services/testResultService';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 
 const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -27,16 +28,22 @@ const AdminDashboard = () => {
       setLoading(true);
       
       // Fetch all data in parallel
-      const [tests, users] = await Promise.all([
+      const [tests, users, testResults] = await Promise.all([
         testService.getAllTests(),
         userService.getAllUsers(),
+        testResultService.getAllTestResults(),
       ]);
 
       setStats({
         totalTests: tests.length || 0,
         totalUsers: users.length || 0,
+        totalTestResults: testResults.length || 0,
         totalVocabularies: tests.filter(t => t.test_type === 'vocabulary').length || 0,
         totalMultipleChoices: tests.filter(t => t.test_type === 'multiple_choice').length || 0,
+        totalAdmins: users.filter(u => u.role === 'admin').length || 0,
+        totalRegularUsers: users.filter(u => u.role === 'user').length || 0,
+        totalPublicTests: tests.filter(t => t.visibility === 'public').length || 0,
+        totalPrivateTests: tests.filter(t => t.visibility === 'private').length || 0,
         recentTests: tests.slice(0, 5) || [],
         recentUsers: users.slice(0, 5) || [],
       });
@@ -46,6 +53,43 @@ const AdminDashboard = () => {
       setLoading(false);
     }
   };
+
+  // Prepare chart data
+  const pieData = [
+    { name: 'Vocabulary', value: stats.totalVocabularies, color: '#8884d8' },
+    { name: 'Multiple Choice', value: stats.totalMultipleChoices, color: '#82ca9d' },
+  ];
+
+  const userRoleData = [
+    { name: 'Admin', value: stats.totalAdmins, color: '#ff7300' },
+    { name: 'User', value: stats.totalRegularUsers, color: '#00ff00' },
+  ];
+
+  const testVisibilityData = [
+    { name: 'Public', value: stats.totalPublicTests, color: '#0088fe' },
+    { name: 'Private', value: stats.totalPrivateTests, color: '#ffbb28' },
+  ];
+
+  const barData = [
+    { name: 'Tests', value: stats.totalTests },
+    { name: 'Users', value: stats.totalUsers },
+    { name: 'Test Results', value: stats.totalTestResults },
+  ];
+
+  const recentTestsQuestionsData = stats.recentTests.map(test => ({
+    name: test.test_title.length > 10 ? test.test_title.slice(0, 10) + '...' : test.test_title,
+    questions: test.total_questions,
+  }));
+
+  // Sample data for line chart (user growth over months)
+  const userGrowthData = [
+    { month: 'Jan', users: 10 },
+    { month: 'Feb', users: 25 },
+    { month: 'Mar', users: 40 },
+    { month: 'Apr', users: 60 },
+    { month: 'May', users: 85 },
+    { month: 'Jun', users: stats.totalUsers }, // Current total
+  ];
 
   if (loading) {
     return (
@@ -141,6 +185,117 @@ const AdminDashboard = () => {
               </div>
             </Link>
           ))}
+        </div>
+
+        {/* Charts */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Phân bố Tests</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={pieData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {pieData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Tổng quan</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={barData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="value" fill="#8884d8" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Phân bố Users</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={userRoleData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {userRoleData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Visibility Tests</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={testVisibilityData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {testVisibilityData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Tests Questions</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={recentTestsQuestionsData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="questions" fill="#82ca9d" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">User Growth</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={userGrowthData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip />
+                <Line type="monotone" dataKey="users" stroke="#8884d8" strokeWidth={2} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         </div>
 
         {/* Recent Data Grid */}

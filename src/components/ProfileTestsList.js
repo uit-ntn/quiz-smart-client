@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 const ProfileTestsList = ({ tests, loading, error, onRetry, onTakeTest, onEditTest, onDeleteTest }) => {
   const getTestTypeIcon = (testType) => {
@@ -73,7 +74,7 @@ const ProfileTestsList = ({ tests, loading, error, onRetry, onTakeTest, onEditTe
 
   if (loading) {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-12">
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-8">
         <div className="flex items-center justify-center">
           <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
           <span className="ml-3 text-gray-600">Đang tải bài test của bạn...</span>
@@ -84,7 +85,7 @@ const ProfileTestsList = ({ tests, loading, error, onRetry, onTakeTest, onEditTe
 
   if (error) {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-12">
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-8">
         <div className="text-center">
           <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
             <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -104,21 +105,42 @@ const ProfileTestsList = ({ tests, loading, error, onRetry, onTakeTest, onEditTe
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm relative pb-6">
       {!Array.isArray(tests) || tests.length === 0 ? (
-        <div className="p-12 text-center">
-          <div className="text-gray-400 mb-4">
-            <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
+        <div className="p-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+            <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 shadow-sm p-6 flex flex-col items-center justify-center">
+              <div className="text-gray-400 mb-3">
+                <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Bạn chưa tạo bài test nào</h3>
+              <p className="text-gray-600 mb-4 text-center max-w-lg">Tạo bài test để chia sẻ hoặc ôn luyện — bắt đầu bằng việc tạo một bài trắc nghiệm hoặc từ vựng mới.</p>
+              <div className="flex gap-3">
+                <Link to="/multiple-choice/new" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Tạo trắc nghiệm</Link>
+                <Link to="/vocabulary/new" className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">Tạo từ vựng</Link>
+              </div>
+            </div>
+
+            <aside className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+              <h4 className="text-sm font-semibold text-gray-800 mb-3">Mẹo tạo bài</h4>
+              <ul className="space-y-3 text-sm text-gray-600">
+                <li>
+                  <div className="font-medium text-gray-800">Giữ số câu hỏi ngắn gọn</div>
+                  <div className="text-xs">Bắt đầu 5–10 câu cho mỗi bài để người học dễ tiếp cận.</div>
+                </li>
+                <li>
+                  <div className="font-medium text-gray-800">Sử dụng chủ đề rõ ràng</div>
+                  <div className="text-xs">Đặt tiêu đề và chủ đề giúp người học tìm được bài nhanh.</div>
+                </li>
+                <li>
+                  <div className="font-medium text-gray-800">Thêm mô tả ngắn</div>
+                  <div className="text-xs">Mô tả mục tiêu của bài để người làm biết nên tập trung gì.</div>
+                </li>
+              </ul>
+            </aside>
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Chưa có bài test nào</h3>
-          <p className="text-gray-600 mb-6">
-            {!Array.isArray(tests) 
-              ? 'Có lỗi xảy ra khi tải dữ liệu bài test.' 
-              : 'Bạn chưa tạo bài test nào. Hãy tạo bài test đầu tiên!'
-            }
-          </p>
         </div>
       ) : (
         <div className="divide-y divide-gray-200">
@@ -128,7 +150,7 @@ const ProfileTestsList = ({ tests, loading, error, onRetry, onTakeTest, onEditTe
             const statusConfig = getStatusConfig(test.status);
 
             return (
-              <div key={test._id} className="p-6 hover:bg-gray-50 transition-colors">
+              <div key={test._id} className="p-3 hover:bg-gray-50 transition-colors">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center space-x-3">
@@ -145,13 +167,13 @@ const ProfileTestsList = ({ tests, loading, error, onRetry, onTakeTest, onEditTe
                         
                         {/* Description */}
                         {test.description && (
-                          <p className="text-sm text-gray-600 mb-2 line-clamp-2">
+                          <p className="text-sm text-gray-600 mb-1 line-clamp-2">
                             {test.description}
                           </p>
                         )}
                         
                         {/* Badges */}
-                        <div className="flex items-center flex-wrap gap-2 mb-2">
+                        <div className="flex items-center flex-wrap gap-2 mb-1">
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                             {getTestTypeName(test.test_type)}
                           </span>
@@ -199,7 +221,7 @@ const ProfileTestsList = ({ tests, loading, error, onRetry, onTakeTest, onEditTe
                         </div>
                         
                         {/* Created Date */}
-                        <div className="mt-2 text-xs text-gray-500">
+                        <div className="mt-1 text-xs text-gray-500">
                           Tạo: {new Date(test.created_at).toLocaleDateString('vi-VN')}
                         </div>
                       </div>

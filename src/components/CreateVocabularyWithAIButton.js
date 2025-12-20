@@ -177,6 +177,9 @@ const CreateVocabularyWithAIButton = ({ className = '' }) => {
     visibility: 'public',
   });
 
+  // Created test
+  const [createdTest, setCreatedTest] = useState(null);
+
   // Refs
   const overlayRef = useRef(null);
   const cardRef = useRef(null);
@@ -261,6 +264,7 @@ const CreateVocabularyWithAIButton = ({ className = '' }) => {
     });
     setErrMsg('');
     setLoading(false);
+    setCreatedTest(null);
   };
 
   const handleClose = () => {
@@ -379,6 +383,7 @@ const CreateVocabularyWithAIButton = ({ className = '' }) => {
       };
 
       const createdTest = await testService.createTest(testData);
+      setCreatedTest(createdTest);
 
       const vocabularyPromises = generatedVocabularies.map((vocab) =>
         vocabularyService.createVocabulary({ ...vocab, test_id: createdTest._id })
@@ -389,11 +394,6 @@ const CreateVocabularyWithAIButton = ({ className = '' }) => {
       if (rejected.length) setErrMsg(`Một số từ vựng tạo không thành công: ${rejected.length}/${generatedVocabularies.length}`);
 
       setCurrentStep('success');
-
-      redirectTimerRef.current = setTimeout(() => {
-        navigate(`/vocabulary/test/${createdTest._id}/settings`);
-        if (mountedRef.current) handleClose();
-      }, 1100);
     } catch (err) {
       console.error('Error creating vocabulary test:', err);
       setErrMsg(err?.message || 'Có lỗi xảy ra khi tạo bài test');
@@ -850,7 +850,38 @@ const CreateVocabularyWithAIButton = ({ className = '' }) => {
                     <p className="mt-1 text-sm text-slate-600">
                       Bài test "<span className="font-semibold text-slate-900">{testInfo.test_title}</span>" đã được tạo.
                     </p>
-                    <p className="mt-3 text-xs text-slate-500">Đang chuyển hướng…</p>
+                    <div className="mt-6 flex gap-3 justify-center">
+                      <Button
+                        type="button"
+                        onClick={() => {
+                          handleClose();
+                          navigate(`/vocabulary/test/${createdTest._id}/settings`);
+                        }}
+                        tone="primary"
+                        size="sm"
+                      >
+                        Làm bài test ngay
+                      </Button>
+                      <Button
+                        type="button"
+                        onClick={() => {
+                          handleClose();
+                          navigate(`/vocabulary/tests/${testInfo.main_topic}/${testInfo.sub_topic}`);
+                        }}
+                        tone="secondary"
+                        size="sm"
+                      >
+                        Xem bài test
+                      </Button>
+                      <Button
+                        type="button"
+                        onClick={handleClose}
+                        tone="ghost"
+                        size="sm"
+                      >
+                        Đóng
+                      </Button>
+                    </div>
                   </div>
                 )}
               </div>

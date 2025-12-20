@@ -9,7 +9,7 @@ import OTPVerificationPage from '../pages/OTPVerificationPage';
 import AuthCallbackPage from '../pages/AuthCallbackPage';
 import ProtectedRoute from '../components/ProtectedRoute';
 import ProfilePage from '../pages/ProfilePage';
-// import HelpPage from '../pages/HelpPage';
+import HelpPage from '../pages/HelpPage';
 import TopicListPage from '../pages/TopicListPage';
 import MultipleChoiceTestSettings from '../pages/MultipleChoiceTestSettings';
 import MultipleChoiceTestTake from '../pages/MultipleChoiceTestTake';
@@ -35,7 +35,7 @@ const AppRoutes = () => {
     <Routes>
       <Route path="/" element={<HomePage />} />
       <Route path="/about" element={<AboutPage />} />
-      {/* <Route path="/help" element={<HelpPage />} /> */}
+      <Route path="/help" element={<HelpPage />} />
       
       {/* Authentication Routes */}
       <Route path="/login" element={

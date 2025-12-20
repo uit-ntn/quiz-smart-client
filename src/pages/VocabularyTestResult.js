@@ -266,8 +266,7 @@ const VocabularyTestResult = () => {
 
   return (
     <VocabularyLayout>
-      <div>
-        <div className="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6">        <div className="mx-auto max-w-5xl px-3 sm:px-4 py-4 sm:py-6">
+      <div className="max-w-5xl mx-auto px-2 sm:px-3 py-2 sm:py-3">
           {/* Top bar */}
           <div className="flex items-start justify-between gap-3 mb-4">
             <div className="min-w-0">
@@ -346,7 +345,7 @@ const VocabularyTestResult = () => {
                       setTab('wrong');
                       expandAllWrong();
                     }}
-                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-rose-600 px-3 py-2 text-sm font-semibold text-white hover:bg-rose-700"
                   >
                     ❌ Xem câu sai
                   </button>
@@ -355,7 +354,7 @@ const VocabularyTestResult = () => {
                     <button
                       onClick={saveResult}
                       disabled={loading}
-                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
                     >
                       {loading ? 'Đang lưu…' : '💾 Lưu kết quả'}
                     </button>
@@ -379,9 +378,9 @@ const VocabularyTestResult = () => {
               <div className="text-sm font-extrabold text-slate-900">Bộ lọc</div>
 
               <div className="mt-3 flex gap-2">
-                <TabButton active={tab === 'all'} onClick={() => setTab('all')}>Tất cả</TabButton>
-                <TabButton active={tab === 'wrong'} onClick={() => setTab('wrong')}>Sai</TabButton>
-                <TabButton active={tab === 'correct'} onClick={() => setTab('correct')}>Đúng</TabButton>
+                <TabButton active={tab === 'all'} onClick={() => setTab('all')} tone="blue">Tất cả</TabButton>
+                <TabButton active={tab === 'wrong'} onClick={() => setTab('wrong')} tone="rose">Sai</TabButton>
+                <TabButton active={tab === 'correct'} onClick={() => setTab('correct')} tone="emerald">Đúng</TabButton>
               </div>
 
               <div className="mt-3">
@@ -400,13 +399,13 @@ const VocabularyTestResult = () => {
               <div className="mt-4 grid grid-cols-2 gap-2">
                 <button
                   onClick={() => navigate(`/vocabulary/test/${testId}/settings`)}
-                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-extrabold text-slate-700 hover:bg-slate-50"
+                  className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-extrabold text-white hover:bg-blue-700"
                 >
                   🔄 Làm lại
                 </button>
                 <button
-                  onClick={() => navigate('/vocabulary')}
-                  className="rounded-xl bg-slate-900 px-3 py-2 text-xs font-extrabold text-white hover:bg-slate-800"
+                  onClick={() => navigate(`/vocabulary/tests/${testInfo?.main_topic}/${testInfo?.sub_topic}`)}
+                  className="rounded-xl bg-indigo-600 px-3 py-2 text-xs font-extrabold text-white hover:bg-indigo-700"
                 >
                   📚 Về DS
                 </button>
@@ -555,7 +554,6 @@ const VocabularyTestResult = () => {
           </div>
 
           <div className="h-2" />
-        </div>
 
           {/* Overlay loading */}
           {loading && (
@@ -568,7 +566,6 @@ const VocabularyTestResult = () => {
             </div>
           )}
         </div>
-      </div>
     </VocabularyLayout>
   );
 };
@@ -582,13 +579,21 @@ function MiniStat({ label, value, tone }) {
   );
 }
 
-function TabButton({ active, onClick, children }) {
+function TabButton({ active, onClick, children, tone = 'slate' }) {
+  const getToneClasses = (t) => {
+    if (t === 'blue') return { active: 'bg-blue-600 text-white border-blue-600', inactive: 'bg-white text-blue-700 border-blue-200 hover:bg-blue-50' };
+    if (t === 'rose') return { active: 'bg-rose-600 text-white border-rose-600', inactive: 'bg-white text-rose-700 border-rose-200 hover:bg-rose-50' };
+    if (t === 'emerald') return { active: 'bg-emerald-600 text-white border-emerald-600', inactive: 'bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-50' };
+    return { active: 'bg-slate-900 text-white border-slate-900', inactive: 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50' };
+  };
+
+  const classes = getToneClasses(tone);
+
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`flex-1 rounded-xl px-3 py-2 text-xs font-extrabold border transition ${active ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-        }`}
+      className={`flex-1 rounded-xl px-3 py-2 text-xs font-extrabold border transition ${active ? classes.active : classes.inactive}`}
     >
       {children}
     </button>

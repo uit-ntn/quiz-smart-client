@@ -120,17 +120,6 @@ const VocabForm = ({ onSubmit, buttonText, formData, setFormData, allTests, onCa
             placeholder="Nhập từ vựng..."
           />
         </div>
-
-        <div>
-          <label className="block text-xs font-medium text-slate-700 mb-1">Phiên âm</label>
-          <input
-            type="text"
-            value={formData.phonetic}
-            onChange={update("phonetic")}
-            className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            placeholder="Ví dụ: /ˈaɪəl/"
-          />
-        </div>
       </div>
 
       <div>
@@ -158,43 +147,7 @@ const VocabForm = ({ onSubmit, buttonText, formData, setFormData, allTests, onCa
             placeholder="Câu ví dụ..."
           />
         </div>
-
-        <div>
-          <label className="block text-xs font-medium text-slate-700 mb-1">Nghĩa ví dụ</label>
-          <textarea
-            value={formData.example_meaning}
-            onChange={update("example_meaning")}
-            rows={2}
-            className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            placeholder="Nghĩa của câu ví dụ..."
-          />
-        </div>
       </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs font-medium text-slate-700 mb-1">URL hình ảnh</label>
-          <input
-            type="url"
-            value={formData.image_url}
-            onChange={update("image_url")}
-            className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            placeholder="https://..."
-          />
-        </div>
-
-        <div>
-          <label className="block text-xs font-medium text-slate-700 mb-1">URL audio</label>
-          <input
-            type="url"
-            value={formData.audio_url}
-            onChange={update("audio_url")}
-            className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            placeholder="https://..."
-          />
-        </div>
-      </div>
-
       <div className="pt-1 flex gap-2">
         <button
           type="button"
