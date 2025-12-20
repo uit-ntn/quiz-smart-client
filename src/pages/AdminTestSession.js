@@ -78,7 +78,9 @@ const AdminTestSession = () => {
         active_sessions: analyticsData?.active_sessions || 0,
         completed_sessions: analyticsData?.completed_sessions || 0,
         flagged_sessions: analyticsData?.flagged_sessions || 0,
-        suspicious_behaviors: analyticsData?.suspicious_behaviors || 0,
+        suspicious_behaviors: analyticsData?.suspicious_behavior_count || analyticsData?.suspicious_behaviors || 0,
+        cheating_detected_count: analyticsData?.cheating_detected_count || 0,
+        vpn_suspected_count: analyticsData?.vpn_suspected_count || 0,
         ...analyticsData
       };
       
@@ -339,7 +341,7 @@ const AdminTestSession = () => {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Hành vi đáng ngờ</p>
-                <p className="text-2xl font-semibold text-gray-900">{analytics?.suspicious_behaviors}</p>
+                <p className="text-2xl font-semibold text-gray-900">{analytics?.suspicious_behaviors || analytics?.suspicious_behavior_count || 0}</p>
               </div>
             </div>
           </div>
@@ -465,9 +467,12 @@ const AdminTestSession = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredSessions.map((session) => {
-                  // Count behavior events
+                  // Count behavior events (including generic events)
                   const behaviorCount = Object.values(session.behavior || {}).reduce((count, events) => {
-                    return count + (Array.isArray(events) ? events.length : 0);
+                    if (Array.isArray(events)) {
+                      return count + events.length;
+                    }
+                    return count;
                   }, 0);
                   
                   // Count flags
@@ -737,77 +742,97 @@ const SessionDetailModal = ({ session, onClose, onFlag }) => {
                   <div className="p-4 bg-gray-50 rounded-lg">
                     <h5 className="font-medium text-sm mb-2">Tab Blur</h5>
                     <p className="text-sm text-gray-600">{session.behavior?.tab_blur?.length || 0} sự kiện</p>
-                    {session.behavior?.tab_blur?.map((event, index) => (
-                      <div key={index} className="text-xs text-gray-500 mt-1 p-2 bg-white rounded border">
-                        <div>Thời gian: {event.at ? formatDate(event.at) : 'N/A'}</div>
-                        <div>Thời lượng: {event.duration_ms || 0}ms</div>
+                    {session.behavior?.tab_blur?.length > 0 && (
+                      <div className="max-h-32 overflow-y-auto space-y-1">
+                        {session.behavior.tab_blur.map((event, index) => (
+                          <div key={index} className="text-xs text-gray-500 p-2 bg-white rounded border">
+                            <div>Thời gian: {event.at ? formatDate(event.at) : 'N/A'}</div>
+                            <div>Thời lượng: {event.duration_ms || 0}ms</div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    )}
                   </div>
                   <div className="p-4 bg-gray-50 rounded-lg">
                     <h5 className="font-medium text-sm mb-2">Reloads</h5>
                     <p className="text-sm text-gray-600">{session.behavior?.reloads?.length || 0} sự kiện</p>
-                    {session.behavior?.reloads?.map((event, index) => (
-                      <div key={index} className="text-xs text-gray-500 mt-1 p-2 bg-white rounded border">
-                        <div>Thời gian: {formatDate(event.at)}</div>
+                    {session.behavior?.reloads?.length > 0 && (
+                      <div className="max-h-32 overflow-y-auto space-y-1">
+                        {session.behavior.reloads.map((event, index) => (
+                          <div key={index} className="text-xs text-gray-500 p-2 bg-white rounded border">
+                            <div>Thời gian: {formatDate(event.at)}</div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    )}
                   </div>
                   <div className="p-4 bg-gray-50 rounded-lg">
                     <h5 className="font-medium text-sm mb-2">Socket Disconnects</h5>
                     <p className="text-sm text-gray-600">{session.behavior?.socket_disconnects?.length || 0} sự kiện</p>
-                    {session.behavior?.socket_disconnects?.map((event, index) => (
-                      <div key={index} className="text-xs text-gray-500 mt-1 p-2 bg-white rounded border">
-                        <div>Thời gian: {formatDate(event.at)}</div>
-                        <div>Lý do: {event.reason || 'unknown'}</div>
+                    {session.behavior?.socket_disconnects?.length > 0 && (
+                      <div className="max-h-32 overflow-y-auto space-y-1">
+                        {session.behavior.socket_disconnects.map((event, index) => (
+                          <div key={index} className="text-xs text-gray-500 p-2 bg-white rounded border">
+                            <div>Thời gian: {formatDate(event.at)}</div>
+                            <div>Lý do: {event.reason || 'unknown'}</div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    )}
                   </div>
                   <div className="p-4 bg-gray-50 rounded-lg">
                     <h5 className="font-medium text-sm mb-2">Visibility Changes</h5>
                     <p className="text-sm text-gray-600">{session.behavior?.visibility_changes?.length || 0} sự kiện</p>
-                    {session.behavior?.visibility_changes?.map((event, index) => (
-                      <div key={index} className="text-xs text-gray-500 mt-1 p-2 bg-white rounded border">
-                        <div>Thời gian: {formatDate(event.at)}</div>
-                        <div>Trạng thái: {event.state === 'visible' ? 'Hiện thị' : 'Ẩn'}</div>
+                    {session.behavior?.visibility_changes?.length > 0 && (
+                      <div className="max-h-32 overflow-y-auto space-y-1">
+                        {session.behavior.visibility_changes.map((event, index) => (
+                          <div key={index} className="text-xs text-gray-500 p-2 bg-white rounded border">
+                            <div>Thời gian: {formatDate(event.at)}</div>
+                            <div>Trạng thái: {event.state === 'visible' ? 'Hiện thị' : 'Ẩn'}</div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    )}
                   </div>
                   <div className="p-4 bg-gray-50 rounded-lg">
                     <h5 className="font-medium text-sm mb-2">Clipboard Events</h5>
                     <p className="text-sm text-gray-600">{session.behavior?.clipboard_events?.length || 0} sự kiện</p>
-                    {session.behavior?.clipboard_events?.map((event, index) => (
-                      <div key={index} className="text-xs text-gray-500 mt-1 p-2 bg-white rounded border">
-                        <div>Thời gian: {event.at ? formatDate(event.at) : 'N/A'}</div>
-                        <div>Loại: {event.type || 'unknown'} ({event.source || 'external'})</div>
-                        <div>Kích thước: {event.text_length || 0} ký tự</div>
-                        {event.text && event.text.length <= 100 && (
-                          <div className="mt-1 p-1 bg-gray-100 rounded text-xs">
-                            Nội dung: {String(event.text)}
+                    {session.behavior?.clipboard_events?.length > 0 && (
+                      <div className="max-h-32 overflow-y-auto space-y-1">
+                        {session.behavior.clipboard_events.map((event, index) => (
+                          <div key={index} className="text-xs text-gray-500 p-2 bg-white rounded border">
+                            <div>Thời gian: {event.at ? formatDate(event.at) : 'N/A'}</div>
+                            <div>Loại: {event.type || 'unknown'} ({event.source || 'external'})</div>
+                            <div>Kích thước: {event.text_length || 0} ký tự</div>
+                            {event.text && String(event.text).length <= 100 && (
+                              <div className="mt-1 p-1 bg-gray-100 rounded text-xs">
+                                Nội dung: {String(event.text)}
+                              </div>
+                            )}
                           </div>
-                        )}
+                        ))}
                       </div>
-                    ))}
+                    )}
                   </div>
                 </div>
               </div>
               
-              {/* Legacy behavior events */}
-              {session.behavior_events?.length > 0 && (
+              {/* Generic behavior events */}
+              {session.behavior?.events?.length > 0 && (
                 <div>
-                  <h4 className="font-semibold text-gray-900 mb-3">Sự kiện Hành vi (Legacy)</h4>
-                  <div className="space-y-2">
-                    {session.behavior_events.map((event, index) => (
+                  <h4 className="font-semibold text-gray-900 mb-3">Sự kiện Tổng quát ({session.behavior.events.length})</h4>
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {session.behavior.events.map((event, index) => (
                       <div key={index} className="p-3 bg-gray-50 rounded-lg">
                         <div className="flex justify-between items-center">
-                          <span className="font-medium text-sm">{event.event_type}</span>
+                          <span className="font-medium text-sm">{event.type}</span>
                           <span className="text-xs text-gray-500">
-                            {formatDate(event.timestamp)}
+                            {formatDate(event.at)}
                           </span>
                         </div>
-                        {event.event_data && (
-                          <pre className="text-xs text-gray-600 mt-2 whitespace-pre-wrap">
-                            {JSON.stringify(event.event_data, null, 2)}
+                        {event.data && Object.keys(event.data).length > 0 && (
+                          <pre className="text-xs text-gray-600 mt-2 whitespace-pre-wrap bg-white p-2 rounded border">
+                            {JSON.stringify(event.data, null, 2)}
                           </pre>
                         )}
                       </div>
@@ -1060,12 +1085,22 @@ const SessionDetailModal = ({ session, onClose, onFlag }) => {
                   onChange={(e) => setFlagReason(e.target.value)}
                   className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500"
                 />
-                <button
-                  onClick={() => handleFlag('manual_review')}
-                  className="px-3 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700"
+                <select
+                  value=""
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      handleFlag(e.target.value);
+                    }
+                  }}
+                  className="px-3 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 focus:ring-2 focus:ring-yellow-500"
                 >
-                  Xác nhận
-                </button>
+                  <option value="">Chọn loại cảnh báo</option>
+                  <option value="suspicious_behavior">Hành vi đáng ngờ</option>
+                  <option value="vpn_suspected">Nghi ngờ VPN</option>
+                  <option value="gps_mismatch">GPS không khớp</option>
+                  <option value="multi_device">Nhiều thiết bị</option>
+                  <option value="cheating_detected">Phát hiện gian lận</option>
+                </select>
                 <button
                   onClick={() => {
                     setShowFlagForm(false);

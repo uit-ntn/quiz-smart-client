@@ -10,6 +10,7 @@ import ProfileTestResultsList from '../components/ProfileTestResultsList';
 import ProfileTestList from '../components/ProfileTestsList';
 import Toast from '../components/Toast';
 import testResultService from '../services/testResultService';
+import testService from '../services/testService';
 
 const ProfilePage = () => {
   const navigate = useNavigate();
@@ -28,6 +29,11 @@ const ProfilePage = () => {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [resultToDelete, setResultToDelete] = useState(null);
+  
+  // Delete test state
+  const [deleteTestLoading, setDeleteTestLoading] = useState(false);
+  const [showDeleteTestConfirm, setShowDeleteTestConfirm] = useState(false);
+  const [testToDelete, setTestToDelete] = useState(null);
 
   // Toast state
   const [toast, setToast] = useState({ message: '', type: 'success', isVisible: false });
@@ -109,8 +115,32 @@ const ProfilePage = () => {
 
   const handleViewDetail = (result) => {
     const resultId = result?._id || result?.id;
-    if (resultId) navigate(`/vocabulary/test-result/${resultId}/review`);
-    else console.error('No result ID found:', result);
+    const testType = result?.test_id?.test_type || result?.test_type;
+
+    if (!resultId) {
+      console.error('No result ID found:', result);
+      return;
+    }
+
+    // Try to determine test type from various sources
+    let routeType = testType;
+    if (!routeType) {
+      // Fallback: check if it's a vocabulary test by looking at the data structure
+      if (result?.answers && Array.isArray(result.answers) && result.answers.some(a => a?.word)) {
+        routeType = 'vocabulary';
+      } else {
+        routeType = 'multiple_choice'; // default assumption
+      }
+    }
+
+    if (routeType === 'vocabulary') {
+      navigate(`/vocabulary/result/${resultId}/review`);
+    } else if (routeType === 'multiple_choice') {
+      navigate(`/multiple-choice/result/${resultId}/review`);
+    } else {
+      console.warn('Unknown test type:', testType, 'defaulting to multiple choice');
+      navigate(`/multiple-choice/result/${resultId}/review`);
+    }
   };
 
   const handleRetakeTest = (result) => {
@@ -140,6 +170,32 @@ const ProfilePage = () => {
   };
 
   const handleEditTest = () => showToast('Tính năng chỉnh sửa đang phát triển', 'warning');
+
+  const handleDeleteTest = async (test) => {
+    setTestToDelete(test);
+    setShowDeleteTestConfirm(true);
+  };
+
+  const confirmDeleteTest = async () => {
+    if (!testToDelete) return;
+
+    try {
+      setDeleteTestLoading(true);
+      await testService.softDeleteTest(testToDelete._id);
+      
+      // Remove from local state
+      setMyTests(prev => prev.filter(t => t._id !== testToDelete._id));
+      
+      showToast('Đã xóa bài test thành công', 'success');
+      setShowDeleteTestConfirm(false);
+      setTestToDelete(null);
+    } catch (err) {
+      console.error('Error deleting test:', err);
+      showToast('Không thể xóa bài test. Vui lòng thử lại.', 'error');
+    } finally {
+      setDeleteTestLoading(false);
+    }
+  };
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type, isVisible: true });
@@ -205,6 +261,7 @@ const ProfilePage = () => {
             onRetry={fetchMyTests}
             onTakeTest={handleTakeTest}
             onEditTest={handleEditTest}
+            onDeleteTest={handleDeleteTest}
           />
         );
 
@@ -318,6 +375,61 @@ const ProfilePage = () => {
                   className="flex-1 rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {deleteLoading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      Đang xóa...
+                    </span>
+                  ) : (
+                    'Xóa ngay'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Test Confirmation Modal */}
+      {showDeleteTestConfirm && testToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full">
+            <div className="p-5">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-10 w-10 rounded-xl bg-rose-100 flex items-center justify-center">
+                  <svg className="w-5 h-5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-extrabold text-slate-900">Xác nhận xóa bài test</h3>
+                  <p className="text-sm text-slate-600">Thao tác này không thể hoàn tác</p>
+                </div>
+              </div>
+              
+              <p className="text-sm text-slate-700 mb-5">
+                Bạn có chắc chắn muốn xóa bài test "<strong>{testToDelete.test_title || 'Bài test'}</strong>" không? 
+                Bài test sẽ được chuyển vào thùng rác và có thể khôi phục sau.
+              </p>
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowDeleteTestConfirm(false);
+                    setTestToDelete(null);
+                  }}
+                  disabled={deleteTestLoading}
+                  className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={confirmDeleteTest}
+                  disabled={deleteTestLoading}
+                  className="flex-1 rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {deleteTestLoading ? (
                     <span className="flex items-center justify-center gap-2">
                       <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />

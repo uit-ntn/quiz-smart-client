@@ -191,6 +191,23 @@ class SocketService {
     });
   }
 
+  // Update permissions
+  updatePermissions(permissions) {
+    if (!this.socket || !this.isConnected || !this.sessionId) {
+      console.warn('Socket not ready for permissions update');
+      return;
+    }
+
+    this.socket.emit('permissions_update', {
+      session_id: this.sessionId,
+      permissions: permissions
+    });
+
+    this.socket.once('permissions_updated', (data) => {
+      console.log('✅ Permissions updated:', data);
+    });
+  }
+
   // Get connection status
   getStatus() {
     return {

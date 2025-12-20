@@ -6,26 +6,22 @@ class TestSessionService {
   async createTestSession(sessionData) {
     try {
       // Validate required fields
-      if (!sessionData.user_id) {
-        throw new Error('user_id is required');
-      }
       if (!sessionData.test_result_id) {
         throw new Error('test_result_id is required');
       }
 
       // Ensure required fields are present and properly formatted
       const payload = {
-        user_id: sessionData.user_id, // ✅ Required - from auth user
         test_result_id: sessionData.test_result_id, // ✅ Required - draft TestResult ID
         device: sessionData.device, // ✅ Required - device info object
         locale: sessionData.locale, // ✅ Required - locale info object
         permissions: sessionData.permissions || {}, // Optional but recommended
         location: sessionData.location || { enabled: false }, // Optional
         socket_id: sessionData.socket_id || null, // Optional
-        session_token: sessionData.session_token || `session_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`, // Generated if not provided
+        session_token: sessionData.session_token || crypto.randomUUID(), // Generated if not provided
       };
 
-      // Note: ip, user_agent, started_at will be set by backend automatically
+      // Note: user_id, ip, user_agent, started_at will be set by backend automatically from auth token
 
       console.log('📤 Sending POST /test-sessions with payload:', payload);
 
@@ -110,9 +106,38 @@ class TestSessionService {
         status: 'completed'
       };
       const response = await apiCall('POST', `/test-sessions/${sessionId}/end`, payload);
-      return response.data.session;
+      
+      console.log('✅ EndTestSession API response:', response);
+      
+      // ✅ FIX: Check response structure
+      if (!response) {
+        throw new Error('Empty response from server');
+      }
+      
+      if (response.error || !response.success) {
+        throw new Error(response.message || 'Server returned error');
+      }
+      
+      // ✅ FIX: Normalize response structure
+      // Backend may return: { success: true, message: '...', data: { session: {...} } }
+      // or { success: true, session: {...} }
+      const sessionResponseData = response.data?.session || response.session || response.data || response;
+      
+      if (!sessionResponseData || (!sessionResponseData._id && !sessionResponseData.id)) {
+        console.error('Invalid session response:', response);
+        throw new Error('Invalid session data from server');
+      }
+      
+      console.log('✅ Validated ended session data:', sessionResponseData);
+      return sessionResponseData;
     } catch (error) {
       console.error('❌ Failed to end test session:', error);
+      
+      // ✅ FIX: Better error handling
+      if (error.message?.includes('HTML')) {
+        throw new Error('Server returned HTML instead of JSON - check authentication');
+      }
+      
       throw error;
     }
   }
@@ -281,37 +306,88 @@ class TestSessionService {
     const ua = navigator.userAgent;
     const screen = `${window.screen.width}x${window.screen.height}`;
 
-    // Simple device detection
+    // Enhanced platform detection
     let platform = 'desktop';
     if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua)) {
-      platform = /iPad|iPhone|iPod/.test(ua) ? 'tablet' : 'mobile';
+      if (/iPad/.test(ua)) platform = 'tablet';
+      else if (/iPhone|iPod/.test(ua)) platform = 'mobile';
+      else platform = 'mobile';
+    } else if (/Windows/.test(ua)) {
+      platform = 'desktop';
+    } else if (/Mac/.test(ua)) {
+      platform = 'desktop';
+    } else if (/Linux/.test(ua)) {
+      platform = 'desktop';
     }
 
-    // Browser detection
+    // Enhanced OS detection
+    let os = 'Unknown';
+    if (/Windows NT 10.0/.test(ua)) os = 'Windows 10';
+    else if (/Windows NT 6.3/.test(ua)) os = 'Windows 8.1';
+    else if (/Windows NT 6.2/.test(ua)) os = 'Windows 8';
+    else if (/Windows NT 6.1/.test(ua)) os = 'Windows 7';
+    else if (/Windows/.test(ua)) os = 'Windows';
+    else if (/Mac OS X ([0-9_]+)/.test(ua)) {
+      const version = ua.match(/Mac OS X ([0-9_]+)/)[1].replace(/_/g, '.');
+      os = `macOS ${version}`;
+    } else if (/Linux/.test(ua)) os = 'Linux';
+    else if (/Android ([0-9.]+)/.test(ua)) {
+      const version = ua.match(/Android ([0-9.]+)/)[1];
+      os = `Android ${version}`;
+    } else if (/iPhone OS ([0-9_]+)/.test(ua)) {
+      const version = ua.match(/iPhone OS ([0-9_]+)/)[1].replace(/_/g, '.');
+      os = `iOS ${version}`;
+    } else if (/iPad; OS ([0-9_]+)/.test(ua)) {
+      const version = ua.match(/OS ([0-9_]+)/)[1].replace(/_/g, '.');
+      os = `iPadOS ${version}`;
+    }
+
+    // Enhanced browser detection
     let browser = 'Unknown';
     let browserVersion = 'Unknown';
 
-    if (ua.includes('Chrome')) {
+    if (/Chrome/.test(ua) && !/Edge/.test(ua)) {
       browser = 'Chrome';
-      const match = ua.match(/Chrome\/(\d+)/);
+      const match = ua.match(/Chrome\/(\d+\.\d+)/);
       browserVersion = match ? match[1] : 'Unknown';
-    } else if (ua.includes('Firefox')) {
+    } else if (/Firefox/.test(ua)) {
       browser = 'Firefox';
-      const match = ua.match(/Firefox\/(\d+)/);
+      const match = ua.match(/Firefox\/(\d+\.\d+)/);
       browserVersion = match ? match[1] : 'Unknown';
-    } else if (ua.includes('Safari') && !ua.includes('Chrome')) {
+    } else if (/Safari/.test(ua) && !/Chrome/.test(ua)) {
       browser = 'Safari';
-      const match = ua.match(/Version\/(\d+)/);
+      const match = ua.match(/Version\/(\d+\.\d+)/);
       browserVersion = match ? match[1] : 'Unknown';
-    } else if (ua.includes('Edge')) {
+    } else if (/Edg/.test(ua)) {
       browser = 'Edge';
-      const match = ua.match(/Edge\/(\d+)/);
+      const match = ua.match(/Edg\/(\d+\.\d+)/);
       browserVersion = match ? match[1] : 'Unknown';
+    } else if (/MSIE|Trident/.test(ua)) {
+      browser = 'Internet Explorer';
+      const match = ua.match(/(MSIE\s|rv:)(\d+\.\d+)/);
+      browserVersion = match ? match[2] : 'Unknown';
+    }
+
+    // GPU detection attempt
+    let gpu = 'Unknown';
+    try {
+      const canvas = document.createElement('canvas');
+      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+      if (gl) {
+        const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+        if (debugInfo) {
+          gpu = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) || 'Unknown';
+        } else {
+          gpu = gl.getParameter(gl.RENDERER) || 'Unknown';
+        }
+      }
+    } catch (e) {
+      console.warn('GPU detection failed:', e);
     }
 
     return {
       platform,
-      os: navigator.platform || 'Unknown',
+      os,
       browser,
       browser_version: browserVersion,
       screen,
@@ -319,7 +395,7 @@ class TestSessionService {
       touch_support: 'ontouchstart' in window,
       cpu: navigator.hardwareConcurrency || null,
       ram: navigator.deviceMemory || null,
-      gpu: null // Can't easily detect GPU from frontend
+      gpu
     };
   }
 
@@ -340,24 +416,67 @@ class TestSessionService {
       // Check location permission
       if (navigator.permissions) {
         const locationPermission = await navigator.permissions.query({ name: 'geolocation' });
-        // Ensure valid enum: 'granted', 'denied', 'prompt'
         permissions.location = locationPermission.state === 'granted' ? 'granted' 
           : locationPermission.state === 'denied' ? 'denied' 
           : 'prompt';
       } else {
-        permissions.location = 'prompt'; // ✅ Changed from 'unknown' to 'prompt'
+        permissions.location = 'prompt';
       }
     } catch (e) {
-      permissions.location = 'prompt'; // ✅ Changed from 'unknown' to 'prompt'
+      permissions.location = 'prompt';
     }
 
-    // Other permissions default to prompt
-    permissions.camera = 'prompt';
-    permissions.microphone = 'prompt';
+    try {
+      // Check camera permission
+      if (navigator.permissions) {
+        const cameraPermission = await navigator.permissions.query({ name: 'camera' });
+        permissions.camera = cameraPermission.state === 'granted' ? 'granted'
+          : cameraPermission.state === 'denied' ? 'denied'
+          : 'prompt';
+      } else {
+        permissions.camera = 'prompt';
+      }
+    } catch (e) {
+      permissions.camera = 'prompt';
+    }
+
+    try {
+      // Check microphone permission
+      if (navigator.permissions) {
+        const micPermission = await navigator.permissions.query({ name: 'microphone' });
+        permissions.microphone = micPermission.state === 'granted' ? 'granted'
+          : micPermission.state === 'denied' ? 'denied'
+          : 'prompt';
+      } else {
+        permissions.microphone = 'prompt';
+      }
+    } catch (e) {
+      permissions.microphone = 'prompt';
+    }
+
+    // Screen sharing is typically handled by application, default to prompt
     permissions.screen = 'prompt';
-    permissions.clipboard = 'prompt';
+
+    // Clipboard - check if we can read
+    try {
+      if (navigator.clipboard && navigator.clipboard.readText) {
+        // Try to read clipboard to test permission
+        await navigator.clipboard.readText();
+        permissions.clipboard = 'granted';
+      } else {
+        permissions.clipboard = 'prompt';
+      }
+    } catch (e) {
+      // If read fails, it's either denied or prompt
+      permissions.clipboard = 'prompt';
+    }
 
     return permissions;
+  }
+
+  // Helper: Update permissions when they change
+  async updatePermissions() {
+    return await this.getPermissionsInfo();
   }
 
   // Helper: Get location info
@@ -378,13 +497,22 @@ class TestSessionService {
               lng: position.coords.longitude,
               accuracy: position.coords.accuracy,
               speed: position.coords.speed || 0,
-              timestamp: new Date()
+              heading: position.coords.heading || null,
+              altitude: position.coords.altitude || null,
+              altitudeAccuracy: position.coords.altitudeAccuracy || null,
+              timestamp: new Date(position.timestamp || Date.now())
             }]
           });
         },
         (error) => {
           console.warn('Geolocation error:', error);
-          resolve({ enabled: false });
+          resolve({ 
+            enabled: false, 
+            error: {
+              code: error.code,
+              message: error.message
+            }
+          });
         },
         {
           enableHighAccuracy: true,
@@ -393,6 +521,73 @@ class TestSessionService {
         }
       );
     });
+  }
+
+  // Helper: Start location watching
+  startLocationWatching(callback, options = {}) {
+    if (!navigator.geolocation) {
+      console.warn('Geolocation not available');
+      return null;
+    }
+
+    const watchOptions = {
+      enableHighAccuracy: true,
+      timeout: 30000,
+      maximumAge: 60000, // 1 minute
+      ...options
+    };
+
+    const watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        const locationData = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+          speed: position.coords.speed || 0,
+          heading: position.coords.heading || null,
+          altitude: position.coords.altitude || null,
+          altitudeAccuracy: position.coords.altitudeAccuracy || null,
+          timestamp: new Date(position.timestamp || Date.now())
+        };
+        
+        if (callback) {
+          callback(locationData);
+        }
+      },
+      (error) => {
+        console.warn('Location watch error:', error);
+        if (callback) {
+          callback(null, {
+            code: error.code,
+            message: error.message
+          });
+        }
+      },
+      watchOptions
+    );
+
+    return watchId;
+  }
+
+  // Helper: Stop location watching
+  stopLocationWatching(watchId) {
+    if (watchId && navigator.geolocation) {
+      navigator.geolocation.clearWatch(watchId);
+    }
+  }
+
+  // Send heartbeat to keep session alive
+  async heartbeat(sessionId) {
+    try {
+      const response = await apiCall('POST', `/test-sessions/${sessionId}/heartbeat`, {
+        timestamp: new Date().toISOString()
+      });
+      return response.data;
+    } catch (error) {
+      console.warn('❌ Failed to send heartbeat:', error);
+      // Don't throw - heartbeat failures shouldn't break the app
+      return null;
+    }
   }
 }
 

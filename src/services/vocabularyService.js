@@ -1,6 +1,9 @@
 // =========================
 // 📘 src/services/vocabularyService.js (functions)
 // =========================
+// =========================
+// 📘 src/services/vocabularyService.js
+// =========================
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
 // ---- Helpers
@@ -37,9 +40,21 @@ async function handle(res) {
 }
 
 /* =========================
+   AI GENERATE ✅ (ADD THIS)
+========================= */
+export async function generateVocabulary(payload) {
+  // bạn có thể đổi endpoint này cho đúng với BE của bạn
+  const res = await fetch(`${API_BASE_URL}/vocabularies/generate`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify(payload),
+  });
+  return await handle(res);
+}
+
+/* =========================
    READ
 ========================= */
-
 export async function getAllVocabularies(filters = {}) {
   const res = await fetch(`${API_BASE_URL}/vocabularies${toQuery(filters)}`, {
     headers: authHeaders(),
@@ -82,7 +97,6 @@ export async function getRandomVocabularies(count = 10, filters = {}) {
 /* =========================
    WRITE (auth required)
 ========================= */
-
 export async function createVocabulary(payload) {
   const res = await fetch(`${API_BASE_URL}/vocabularies`, {
     method: 'POST',
@@ -116,6 +130,7 @@ export async function deleteVocabulary(id) {
    DEFAULT EXPORT
 ========================= */
 const VocabularyService = {
+  generateVocabulary,
   getAllVocabularies,
   getAllVocabulariesByTestId,
   getVocabularyById,

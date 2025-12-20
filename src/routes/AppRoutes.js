@@ -135,6 +135,11 @@ const AppRoutes = () => {
           <MultipleChoiceTestReview />
         </ProtectedRoute>
       } />
+      <Route path="/multiple-choice/result/:resultId/review" element={
+        <ProtectedRoute>
+          <ProfileTestReview />
+        </ProtectedRoute>
+      } />
       
       {/* Vocabulary Routes */}
       <Route path="/vocabulary/tests/:mainTopic/:subTopic" element={<VocabularyTestList />} />
@@ -153,7 +158,7 @@ const AppRoutes = () => {
           <VocabularyTestResult />
         </ProtectedRoute>
       } />
-      <Route path="/vocabulary/test-result/:resultId/review" element={
+      <Route path="/vocabulary/result/:resultId/review" element={
         <ProtectedRoute>
           <ProfileTestReview />
         </ProtectedRoute>
