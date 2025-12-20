@@ -11,7 +11,9 @@ import {
   FiUsers,
   FiCalendar,
   FiZap,
-  FiAward
+  FiAward,
+  FiBookOpen,
+  FiTrendingUp
 } from "react-icons/fi";
 
 import MainLayout from "../layout/MainLayout";
@@ -20,7 +22,7 @@ const teamMembers = [
   {
     name: "Nguyễn Thanh Nhân",
     role: "Web Developer",
-    image: "https://via.placeholder.com/240",
+    image: "https://avatars.githubusercontent.com/u/95362896?v=4",
     description:
       "Sinh viên Đại học Công nghệ Thông tin, đam mê phát triển ứng dụng web và cloud.",
     email: "npthanhnhan2003@gmail.com",
@@ -61,230 +63,164 @@ const milestones = [
   },
 ];
 
+const features = [
+  {
+    icon: <FiBookOpen className="w-6 h-6 text-blue-600" />,
+    title: "Học từ vựng",
+    desc: "Quizz từ vựng với phát âm AI chính xác."
+  },
+  {
+    icon: <FiTrendingUp className="w-6 h-6 text-green-600" />,
+    title: "Luyện thi",
+    desc: "Bài tập trắc nghiệm đa dạng theo chủ đề."
+  },
+  {
+    icon: <FiZap className="w-6 h-6 text-purple-600" />,
+    title: "AI Tạo bài",
+    desc: "Tự động tạo bài test từ văn bản đầu vào."
+  }
+];
+
 function AboutPage() {
   return (
     <MainLayout>
-      <div className="min-h-screen bg-gray-50">
-        {/* HERO */}
-        <section className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 text-white">
-          <div className="absolute -top-24 -right-24 w-[28rem] h-[28rem] bg-white/10 rounded-full blur-3xl" />
-          <div className="absolute -bottom-24 -left-24 w-[28rem] h-[28rem] bg-white/10 rounded-full blur-3xl" />
-
-          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-            <div className="grid lg:grid-cols-2 gap-12 items-center">
-              <div>
-                <span className="inline-flex items-center text-xs font-semibold uppercase tracking-wider text-white/80 bg-white/10 border border-white/20 rounded-full px-3 py-1">
-                  Về QuizSmart
-                </span>
-                <h1 className="mt-5 text-4xl lg:text-5xl font-extrabold leading-tight">
-                  Biến học tập thành trải nghiệm
-                  <span className="block bg-gradient-to-r from-yellow-300 to-orange-300 bg-clip-text text-transparent">
-                    thú vị & hiệu quả
-                  </span>
-                </h1>
-                <p className="mt-4 text-white/90 text-lg leading-relaxed">
-                  QuizSmart giúp học từ vựng và luyện thi trở nên mạch lạc,
-                  có lộ trình và đo lường được tiến bộ.
-                </p>
-
-                <div className="mt-8 grid grid-cols-3 gap-4 max-w-xl">
-                  <Stat
-                    value="2025"
-                    label="Năm thành lập"
-                    icon={<FiCalendar className="w-5 h-5 text-blue-700" />}
-                  />
-                  <Stat
-                    value="500+"
-                    label="Người dùng"
-                    icon={<FiUsers className="w-5 h-5 text-indigo-700" />}
-                  />
-                  <Stat
-                    value="3"
-                    label="Chế độ quiz"
-                    icon={<FiZap className="w-5 h-5 text-purple-700" />}
-                  />
-                </div>
-              </div>
-
-              {/* Visual */}
-              <div className="relative">
-                <div className="aspect-[4/3] rounded-3xl bg-white/10 border border-white/20 backdrop-blur shadow-2xl" />
-                <div className="absolute inset-0 -z-10 bg-gradient-to-tr from-white/10 via-transparent to-white/10 rounded-3xl blur-2xl" />
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+        {/* Hero Section */}
+        <section className="relative py-20 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center">
+              <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
+                Chào mừng đến với <span className="text-blue-600">QuizSmart</span>
+              </h1>
+              <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
+                Nền tảng học tập thông minh giúp bạn ôn tập từ vựng và luyện thi một cách hiệu quả với công nghệ AI.
+              </p>
+              <div className="flex justify-center space-x-4">
+                <button className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 transition">
+                  Bắt đầu học
+                </button>
+                <button className="border border-gray-300 text-gray-700 px-8 py-3 rounded-lg font-semibold hover:bg-gray-50 transition">
+                  Tìm hiểu thêm
+                </button>
               </div>
             </div>
           </div>
         </section>
 
-        {/* MISSION / VISION / VALUES */}
+        {/* Features Section */}
         <section className="py-16 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900">
-                Sứ mệnh, Tầm nhìn & Giá trị
-              </h2>
-              <p className="mt-3 text-gray-600 max-w-2xl mx-auto">
-                Hướng tới một nền tảng học tập có tác động bền vững.
-              </p>
+              <h2 className="text-3xl font-bold text-gray-900">Tính năng nổi bật</h2>
+              <p className="text-gray-600 mt-4">Những gì QuizSmart mang lại cho bạn</p>
             </div>
-
-            <div className="grid md:grid-cols-3 gap-6">
-              <KVCard
-                icon={<FiTarget className="w-5 h-5 text-white" />}
-                title="Sứ mệnh"
-                desc="Giúp mọi người học dễ hơn, nhớ lâu hơn, học ở bất kỳ đâu."
-                gradient="from-blue-600 to-indigo-600"
-              />
-              <KVCard
-                icon={<FiEye className="w-5 h-5 text-white" />}
-                title="Tầm nhìn"
-                desc="Trở thành nền tảng học từ vựng & luyện thi hàng đầu Việt Nam."
-                gradient="from-emerald-600 to-teal-600"
-              />
-              <KVCard
-                icon={<FiHeart className="w-5 h-5 text-white" />}
-                title="Giá trị"
-                desc="Đổi mới, chất lượng, cộng đồng và phát triển bền vững."
-                gradient="from-pink-600 to-rose-600"
-              />
+            <div className="grid md:grid-cols-3 gap-8">
+              {features.map((feature, index) => (
+                <div key={index} className="text-center p-6 bg-gray-50 rounded-lg">
+                  <div className="flex justify-center mb-4">{feature.icon}</div>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">{feature.title}</h3>
+                  <p className="text-gray-600">{feature.desc}</p>
+                </div>
+              ))}
             </div>
           </div>
         </section>
 
-        {/* TIMELINE */}
+        {/* Mission, Vision, Values */}
         <section className="py-16 bg-gray-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl font-bold text-gray-900">Sứ mệnh, Tầm nhìn & Giá trị</h2>
+            </div>
+            <div className="grid md:grid-cols-3 gap-8">
+              <div className="text-center p-6 bg-white rounded-lg shadow">
+                <FiTarget className="w-12 h-12 text-blue-600 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">Sứ mệnh</h3>
+                <p className="text-gray-600">Giúp mọi người học dễ hơn, nhớ lâu hơn, học ở bất kỳ đâu.</p>
+              </div>
+              <div className="text-center p-6 bg-white rounded-lg shadow">
+                <FiEye className="w-12 h-12 text-green-600 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">Tầm nhìn</h3>
+                <p className="text-gray-600">Trở thành nền tảng học từ vựng & luyện thi hàng đầu Việt Nam.</p>
+              </div>
+              <div className="text-center p-6 bg-white rounded-lg shadow">
+                <FiHeart className="w-12 h-12 text-red-600 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">Giá trị</h3>
+                <p className="text-gray-600">Đổi mới, chất lượng, cộng đồng và phát triển bền vững.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Timeline */}
+        <section className="py-16 bg-white">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900">
-                Hành trình phát triển
-              </h2>
-              <p className="mt-3 text-gray-600">
-                Những cột mốc quan trọng của QuizSmart.
-              </p>
+              <h2 className="text-3xl font-bold text-gray-900">Hành trình phát triển</h2>
             </div>
-
-            <ol className="relative border-l border-gray-200">
-              {milestones.map((m, i) => (
-                <li key={i} className="mb-10 ml-6">
-                  <span className="absolute -left-3 flex items-center justify-center w-6 h-6 rounded-full ring-8 ring-gray-50 bg-gradient-to-br from-blue-600 to-indigo-600">
-                    <FiAward className="w-3.5 h-3.5 text-white" />
-                  </span>
-                  <div className="flex items-center gap-3 mb-1">
-                    <span className="text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-100 rounded-full px-2 py-0.5">
-                      {m.year}
-                    </span>
-                    <h4 className="text-base md:text-lg font-semibold text-gray-900">{m.title}</h4>
+            <div className="space-y-8">
+              {milestones.map((milestone, index) => (
+                <div key={index} className="flex items-start space-x-4">
+                  <div className="flex-shrink-0">
+                    <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
+                      <FiAward className="w-6 h-6 text-white" />
+                    </div>
                   </div>
-                  <p className="text-gray-600">{m.description}</p>
-                </li>
-              ))}
-            </ol>
-          </div>
-        </section>
-
-        {/* TEAM */}
-        <section className="py-16 bg-white">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900">
-                Đội ngũ
-              </h2>
-              <p className="mt-3 text-gray-600">
-                Những người xây dựng nên trải nghiệm học tập tốt hơn.
-              </p>
-            </div>
-
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {teamMembers.map((m, idx) => (
-                <div
-                  key={idx}
-                  className="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-lg transition overflow-hidden"
-                >
-                  <div className="p-8">
-                    <div className="w-28 h-28 rounded-2xl overflow-hidden bg-gradient-to-br from-blue-600 to-indigo-600 mx-auto shadow-md">
-                      {m.image ? (
-                        <img
-                          src={m.image}
-                          alt={m.name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-white text-2xl font-bold">
-                          {getInitials(m.name)}
-                        </div>
-                      )}
+                  <div>
+                    <div className="flex items-center space-x-2 mb-2">
+                      <span className="text-sm font-semibold text-blue-600 bg-blue-100 px-2 py-1 rounded">{milestone.year}</span>
+                      <h3 className="text-lg font-semibold text-gray-900">{milestone.title}</h3>
                     </div>
-
-                    <h5 className="mt-5 text-lg font-bold text-gray-900 text-center">
-                      {m.name}
-                    </h5>
-                    <p className="text-blue-600 font-medium text-center">
-                      {m.role}
-                    </p>
-                    <p className="mt-3 text-gray-600 text-sm text-center leading-relaxed">
-                      {m.description}
-                    </p>
-
-                    <div className="mt-5 flex justify-center gap-3">
-                      <a
-                        href={`mailto:${m.email}`}
-                        className="w-10 h-10 rounded-full bg-blue-50 hover:bg-blue-100 flex items-center justify-center transition"
-                        title="Email"
-                      >
-                        <SiGmail size={18} className="text-[#EA4335]" />
-                      </a>
-                      <a
-                        href={m.github}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-10 h-10 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center transition"
-                        title="GitHub"
-                      >
-                        <SiGithub size={18} className="text-[#181717]" />
-                      </a>
-                      <a
-                        href={m.linkedin}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-10 h-10 rounded-full bg-blue-50 hover:bg-blue-100 flex items-center justify-center transition"
-                        title="LinkedIn"
-                      >
-                        <SiLinkedin size={18} className="text-[#0A66C2]" />
-                      </a>
-                    </div>
+                    <p className="text-gray-600">{milestone.description}</p>
                   </div>
                 </div>
               ))}
             </div>
+          </div>
+        </section>
 
+        {/* Team */}
+        <section className="py-16 bg-gray-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl font-bold text-gray-900">Đội ngũ</h2>
+            </div>
+            <div className="grid md:grid-cols-1 gap-8 justify-center">
+              {teamMembers.map((member, index) => (
+                <div key={index} className="bg-white p-8 rounded-lg shadow text-center">
+                  <img src={member.image} alt={member.name} className="w-24 h-24 rounded-full mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">{member.name}</h3>
+                  <p className="text-blue-600 mb-4">{member.role}</p>
+                  <p className="text-gray-600 mb-6">{member.description}</p>
+                  <div className="flex justify-center space-x-4">
+                    <a href={`mailto:${member.email}`} className="text-gray-500 hover:text-blue-600">
+                      <SiGmail size={24} />
+                    </a>
+                    <a href={member.github} target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-gray-900">
+                      <SiGithub size={24} />
+                    </a>
+                    <a href={member.linkedin} target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-blue-700">
+                      <SiLinkedin size={24} />
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 
         {/* CTA */}
-        <section className="py-16 bg-gray-50">
+        <section className="py-16 bg-blue-600 text-white">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <div className="bg-white rounded-2xl border border-gray-200 p-10 shadow-sm">
-              <h3 className="text-2xl md:text-3xl font-extrabold text-gray-900">
-                Đồng hành cùng QuizSmart
-              </h3>
-              <p className="mt-3 text-gray-600">
-                Tham gia cộng đồng học tập hiệu quả ngay hôm nay.
-              </p>
-              <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
-                <a
-                  href="mailto:npthanhnhan2003@gmail.com"
-                  className="inline-flex items-center justify-center px-6 py-3 rounded-lg text-white font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md transition"
-                >
-                  Liên hệ hợp tác
-                </a>
-                <a
-                  href="https://github.com/npthanhnhan2003"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center px-6 py-3 rounded-lg font-semibold border border-gray-300 text-gray-800 hover:bg-gray-50 transition"
-                >
-                  Xem mã nguồn
-                </a>
-              </div>
+            <h2 className="text-3xl font-bold mb-4">Đồng hành cùng QuizSmart</h2>
+            <p className="text-blue-100 mb-8">Tham gia cộng đồng học tập hiệu quả ngay hôm nay.</p>
+            <div className="flex justify-center space-x-4">
+              <a href="mailto:npthanhnhan2003@gmail.com" className="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition">
+                Liên hệ hợp tác
+              </a>
+              <a href="https://github.com/npthanhnhan2003" target="_blank" rel="noopener noreferrer" className="border border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-blue-600 transition">
+                Xem mã nguồn
+              </a>
             </div>
           </div>
         </section>
@@ -292,41 +228,5 @@ function AboutPage() {
     </MainLayout>
   );
 }
-
-
-
-/* ----------- small presentational components ----------- */
-
-const Stat = ({ value, label, icon }) => (
-  <div className="bg-white/10 rounded-xl border border-white/20 p-4">
-    <div className="flex items-center justify-between">
-      <div>
-        <p className="text-2xl font-bold text-white">{value}</p>
-        <p className="text-white/80 text-sm">{label}</p>
-      </div>
-      <div className="p-3 rounded-lg bg-white/10 border border-white/20">
-        {icon}
-      </div>
-    </div>
-  </div>
-);
-
-const KVCard = ({ icon, title, desc, gradient = "from-blue-600 to-indigo-600" }) => (
-  <div className="h-full bg-white rounded-2xl border border-gray-200 p-6 shadow-sm hover:shadow-lg hover:-translate-y-1 transition">
-    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${gradient} text-white flex items-center justify-center shadow-md`}>
-      {icon}
-    </div>
-    <h4 className="mt-4 text-lg font-semibold text-gray-900">{title}</h4>
-    <p className="mt-2 text-gray-600 leading-relaxed">{desc}</p>
-  </div>
-);
-
-const getInitials = (fullName = "") => {
-  const parts = fullName.trim().split(/\s+/);
-  if (!parts.length) return "QS";
-  const first = parts[0]?.[0] || "";
-  const last = parts.length > 1 ? parts[parts.length - 1]?.[0] : "";
-  return (first + last).toUpperCase();
-};
 
 export default AboutPage;

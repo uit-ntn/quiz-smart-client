@@ -100,10 +100,10 @@ const MultipleChoiceTestSettings = () => {
 
   if (error || !test) {
     return (
-      <div className="min-h-screen bg-slate-50 py-8">
+      <div className="min-h-screen bg-slate-50 py-4">
         <div className="max-w-xl mx-auto px-4">
           <div className="rounded-2xl border border-red-200 bg-white shadow-sm">
-            <div className="p-5">
+            <div className="p-4">
               <ErrorMessage
                 error={error || "Không tìm thấy bài kiểm tra"}
                 onRetry={error ? () => window.location.reload() : null}
@@ -153,18 +153,18 @@ const MultipleChoiceTestSettings = () => {
   return (
     <MultipleChoiceLayout>
         {/* Top header */}
-        <div className="mb-4 sm:mb-6 flex items-start justify-between gap-3">
+        <div className="mb-2 sm:mb-4 flex items-start justify-between gap-3">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm">
               <span className="inline-flex h-2 w-2 rounded-full bg-blue-600" />
               Multiple Choice
             </div>
 
-            <h1 className="mt-2 text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+            <h1 className="mt-1 text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
               Cấu hình bài test
             </h1>
 
-            <p className="mt-1 text-sm text-slate-600">
+            <p className="mt-0.5 text-sm text-slate-600">
               <span className="font-semibold text-slate-800">{title}</span>
               <span className="mx-2 text-slate-300">•</span>
               {effective.totalQuestions} câu hỏi
@@ -180,13 +180,33 @@ const MultipleChoiceTestSettings = () => {
         </div>
 
         {/* Content */}
-        <div className="mt-4 sm:mt-6 grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Settings card (2/3) */}
-          <div className="lg:col-span-2 rounded-2xl border border-slate-200 bg-white shadow-sm p-4 sm:p-6">
-            <div className="flex items-start justify-between gap-3">
+        <div className="mt-2 sm:mt-4 grid grid-cols-1 lg:grid-cols-2 gap-3">
+          {/* Left: Test Info */}
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-3 sm:p-4">
+            <h2 className="text-base sm:text-lg font-extrabold text-slate-900 mb-3">Thông tin bài test</h2>
+            <div className="space-y-2">
+              <InfoLine icon="📝" label="Tiêu đề" value={test?.test_title || "—"} />
+              <InfoLine icon="📖" label="Mô tả" value={test?.description || "—"} />
+              <div className="grid grid-cols-2 gap-2">
+                <InfoLine icon="🏷️" label="Chủ đề chính" value={test?.main_topic || "—"} />
+                <InfoLine icon="📂" label="Chủ đề phụ" value={test?.sub_topic || "—"} />
+                <InfoLine icon="🔧" label="Loại test" value={test?.test_type || "—"} />
+                <InfoLine icon="❓" label="Số câu" value={test?.total_questions || "—"} />
+                <InfoLine icon="⏱️" label="Thời gian" value={`${test?.time_limit_minutes || 0} phút`} />
+                <InfoLine icon="📊" label="Độ khó" value={test?.difficulty || "—"} />
+                <InfoLine icon="🔒" label="Trạng thái" value={test?.status || "—"} />
+                <InfoLine icon="👁️" label="Hiển thị" value={test?.visibility || "—"} />
+                <InfoLine icon="👤" label="Tạo bởi" value={test?.created_by_full_name || "—"} />
+              </div>
+            </div>
+          </div>
+
+          {/* Right: Settings */}
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-3 sm:p-4">
+            <div className="flex items-start justify-between gap-3 mb-3">
               <div>
                 <h2 className="text-base sm:text-lg font-extrabold text-slate-900">Tùy chọn hiển thị</h2>
-                <p className="text-sm text-slate-600 mt-1">
+                <p className="text-sm text-slate-600 mt-0.5">
                   Bật/tắt một số yếu tố giao diện khi làm bài.
                 </p>
               </div>
@@ -196,19 +216,19 @@ const MultipleChoiceTestSettings = () => {
               </span>
             </div>
 
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
               {displayOptions.map((item) => (
                 <label
                   key={item.id}
                   htmlFor={item.id}
-                  className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm hover:bg-slate-50 transition cursor-pointer"
+                  className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm hover:bg-slate-50 transition cursor-pointer"
                 >
                   <input
                     id={item.id}
                     type="checkbox"
                     checked={!!settings[item.key]}
                     onChange={(e) => handleSettingChange(item.key, e.target.checked)}
-                    className="mt-1 w-4 h-4 accent-slate-900 rounded border-slate-300"
+                    className="mt-1 w-3 h-3 accent-slate-900 rounded border-slate-300"
                   />
                   <div className="min-w-0">
                     <div className="text-sm font-extrabold text-slate-900">{item.label}</div>
@@ -218,12 +238,12 @@ const MultipleChoiceTestSettings = () => {
               ))}
             </div>
 
-            {/* optional: per-question time limit (nhẹ nhàng, giống style) */}
-            <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4">
+            {/* optional: per-question time limit */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-3">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h3 className="text-sm font-extrabold text-slate-900">Giới hạn thời gian mỗi câu</h3>
-                  <p className="text-xs text-slate-600 mt-1">
+                  <p className="text-xs text-slate-600 mt-0.5">
                     Để trống nếu muốn theo tổng thời gian bài.
                   </p>
                 </div>
@@ -232,7 +252,7 @@ const MultipleChoiceTestSettings = () => {
                 </span>
               </div>
 
-              <div className="mt-3 flex items-center gap-2">
+              <div className="mt-2 flex items-center gap-2">
                 <input
                   type="number"
                   min={5}
@@ -256,31 +276,13 @@ const MultipleChoiceTestSettings = () => {
                 </button>
               </div>
             </div>
-          </div>
-
-          {/* Summary card (1/3) */}
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4 sm:p-6">
-            <h2 className="text-base sm:text-lg font-extrabold text-slate-900">Tóm tắt</h2>
-            <p className="text-sm text-slate-600 mt-1">Kiểm tra nhanh trước khi bắt đầu.</p>
-
-            <div className="mt-4 space-y-3">
-              <InfoLine icon="📝" label="Số câu" value={`${effective.totalQuestions}`} />
-              <InfoLine icon="⏱️" label="Thời gian" value={`${effective.timeLimitMinutes} phút`} />
-              <InfoLine icon="✅" label="Đáp án" value={effective.checkMode} />
-              <InfoLine icon="🔀" label="Xáo câu" value={effective.shuffleQuestions ? "Bật" : "Tắt"} />
-              <InfoLine icon="🔁" label="Xáo đáp án" value={effective.shuffleAnswers ? "Bật" : "Tắt"} />
-              <InfoLine icon="⌛" label="Mỗi câu" value={effective.perQuestion} />
-            </div>
 
             <button
               onClick={handleStartTest}
-              className="mt-5 w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3 text-sm font-bold text-white shadow-lg hover:opacity-95 active:opacity-90"
+              className="mt-4 w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-3 py-2 text-sm font-bold text-white shadow-lg hover:opacity-95 active:opacity-90"
             >
               Bắt đầu làm bài <span className="text-lg">→</span>
             </button>
-
-            {/* mobile helper spacing */}
-            <div className="h-1" />
           </div>
         </div>
     </MultipleChoiceLayout>
@@ -289,7 +291,7 @@ const MultipleChoiceTestSettings = () => {
 
 function InfoLine({ icon, label, value }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2">
+    <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-2 py-1.5">
       <div className="flex items-center gap-2 text-sm text-slate-700">
         <span className="text-base">{icon}</span>
         <span className="text-slate-500">{label}</span>

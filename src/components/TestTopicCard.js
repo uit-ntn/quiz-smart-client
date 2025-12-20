@@ -2,6 +2,20 @@ import React from "react";
 
 const cx = (...a) => a.filter(Boolean).join(" ");
 
+// ================= Header Color Palette =================
+const HEADER_COLORS = [
+  "bg-gradient-to-r from-sky-600 to-sky-700",
+  "bg-gradient-to-r from-teal-600 to-teal-700",
+  "bg-gradient-to-r from-cyan-600 to-cyan-700",
+  "bg-gradient-to-r from-blue-600 to-blue-700",
+  "bg-gradient-to-r from-indigo-600 to-indigo-700",
+  "bg-gradient-to-r from-violet-600 to-violet-700",
+  "bg-gradient-to-r from-fuchsia-600 to-fuchsia-700",
+  "bg-gradient-to-r from-pink-600 to-pink-700",
+  "bg-gradient-to-r from-rose-600 to-rose-700",
+  "bg-gradient-to-r from-emerald-600 to-emerald-700",
+];
+
 const THEME = {
   vocabulary: {
     label: "Từ vựng",
@@ -39,6 +53,14 @@ export default function TestTopicCard({
 
   const t = THEME[safeType] || THEME.vocabulary;
 
+  const colorIndex =
+    String(title || "")
+      .split("")
+      .reduce((s, c) => s + c.charCodeAt(0), 0) %
+    HEADER_COLORS.length;
+
+  const headerColor = HEADER_COLORS[colorIndex];
+
   return (
     <button
       type="button"
@@ -54,7 +76,7 @@ export default function TestTopicCard({
       )}
     >
       {/* Top bar (solid color) */}
-      <div className={cx("h-1 rounded-t-xl", t.top)} />
+      <div className={cx("h-1 rounded-t-xl", headerColor)} />
 
       <div className="p-3">
         <div className="flex items-start justify-between gap-2">

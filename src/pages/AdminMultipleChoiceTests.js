@@ -18,10 +18,9 @@ const AdminMultipleChoiceTests = () => {
   const [filterVisibility, setFilterVisibility] = useState('all');
   const [filterDifficulty, setFilterDifficulty] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [sortBy, setSortBy] = useState('created_at');
+  const [sortBy, setSortBy] = useState('created_by_full_name');
   const [sortOrder, setSortOrder] = useState('desc');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  const [filterCreator, setFilterCreator] = useState('all');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedTestId, setSelectedTestId] = useState(null);
@@ -57,7 +56,7 @@ const AdminMultipleChoiceTests = () => {
 
   useEffect(() => {
     filterTests();
-  }, [tests, searchTerm, filterVisibility, filterDifficulty, filterStatus, sortBy, sortOrder, dateFrom, dateTo]);
+  }, [tests, searchTerm, filterVisibility, filterDifficulty, filterStatus, sortBy, sortOrder, filterCreator]);
 
   const fetchMultipleChoiceTests = async () => {
     try {
@@ -133,13 +132,15 @@ const AdminMultipleChoiceTests = () => {
       filtered = filtered.filter(test => test.status === filterStatus);
     }
 
-    // Filter by date range
-    if (dateFrom) {
-      filtered = filtered.filter(test => new Date(test.created_at) >= new Date(dateFrom));
+    // Filter by creator
+    if (filterCreator !== 'all') {
+      filtered = filtered.filter(test => {
+        const creator = test.created_by_full_name || test.created_by || '';
+        return creator === filterCreator;
+      });
     }
-    if (dateTo) {
-      filtered = filtered.filter(test => new Date(test.created_at) <= new Date(dateTo + 'T23:59:59'));
-    }
+
+    // (date range filter removed)
 
     // Sort
     filtered.sort((a, b) => {
@@ -173,7 +174,7 @@ const AdminMultipleChoiceTests = () => {
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filterVisibility, filterDifficulty, filterStatus, sortBy, sortOrder, dateFrom, dateTo]);
+  }, [searchTerm, filterVisibility, filterDifficulty, filterStatus, sortBy, sortOrder, filterCreator]);
 
   const handleDeleteClick = (test) => {
     setTestToDelete(test);
@@ -222,84 +223,75 @@ const AdminMultipleChoiceTests = () => {
 
   return (
     <AdminLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-        {/* Header */}
+      <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-2 space-y-4">
+        {/* Stats Cards and Button */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex-1 min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">Quản Lý Bài Test Trắc Nghiệm</h1>
-            <p className="text-gray-600 mt-1 text-sm sm:text-base">Quản lý tất cả bài test trắc nghiệm trong hệ thống</p>
-          </div>
-          <div className="flex-shrink-0">
-            <CreateMultipleChoiceTestButton label="Tạo Test" />
-          </div>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <div className="bg-white rounded-lg shadow-sm p-4">
+          <div className="flex-1">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-2">
+          <div className="bg-emerald-500 rounded-lg shadow-sm p-2">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
-                  <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="w-6 h-6 bg-white rounded-lg flex items-center justify-center">
+                  <svg className="w-3 h-3 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                 </div>
               </div>
-              <div className="ml-3">
-                <p className="text-xs sm:text-sm font-medium text-gray-600">Tổng số</p>
-                <p className="text-lg sm:text-xl font-semibold text-gray-900">{tests.length}</p>
+              <div className="ml-3 flex items-center justify-between flex-1">
+                <p className="text-xs sm:text-sm font-medium text-white">Tổng số</p>
+                <p className="text-base sm:text-lg font-semibold text-white">{tests.length}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-sm p-4">
+          <div className="bg-green-500 rounded-lg shadow-sm p-2">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                  <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="w-6 h-6 bg-white rounded-lg flex items-center justify-center">
+                  <svg className="w-3 h-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
               </div>
-              <div className="ml-3">
-                <p className="text-xs sm:text-sm font-medium text-gray-600">Kích hoạt</p>
-                <p className="text-lg sm:text-xl font-semibold text-gray-900">
+              <div className="ml-3 flex items-center justify-between flex-1">
+                <p className="text-xs sm:text-sm font-medium text-white">Kích hoạt</p>
+                <p className="text-base sm:text-lg font-semibold text-white">
                   {tests.filter(test => test.status === 'active').length}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-sm p-4">
+          <div className="bg-yellow-500 rounded-lg shadow-sm p-2">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
-                  <svg className="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="w-6 h-6 bg-white rounded-lg flex items-center justify-center">
+                  <svg className="w-3 h-3 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
                   </svg>
                 </div>
               </div>
-              <div className="ml-3">
-                <p className="text-xs sm:text-sm font-medium text-gray-600">Tạm dừng</p>
-                <p className="text-lg sm:text-xl font-semibold text-gray-900">
+              <div className="ml-3 flex items-center justify-between flex-1">
+                <p className="text-xs sm:text-sm font-medium text-white">Tạm dừng</p>
+                <p className="text-base sm:text-lg font-semibold text-white">
                   {tests.filter(test => test.status === 'inactive').length}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-sm p-4">
+          <div className="bg-purple-500 rounded-lg shadow-sm p-2">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="w-6 h-6 bg-white rounded-lg flex items-center justify-center">
+                  <svg className="w-3 h-3 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
               </div>
-              <div className="ml-3">
-                <p className="text-xs sm:text-sm font-medium text-gray-600">Công khai</p>
-                <p className="text-lg sm:text-xl font-semibold text-gray-900">
+              <div className="ml-3 flex items-center justify-between flex-1">
+                <p className="text-xs sm:text-sm font-medium text-white">Công khai</p>
+                <p className="text-base sm:text-lg font-semibold text-white">
                   {tests.filter(test => test.visibility === 'public').length}
                 </p>
               </div>
@@ -307,127 +299,88 @@ const AdminMultipleChoiceTests = () => {
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="bg-white rounded-lg shadow-sm p-4">
-          {/* Search Bar */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Tìm kiếm</label>
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Tìm theo tên, chủ đề..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white text-sm"
-            />
           </div>
 
-          {/* Filter Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-            {/* Visibility Filter */}
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Hiển thị</label>
-              <select
-                value={filterVisibility}
-                onChange={(e) => setFilterVisibility(e.target.value)}
-                className="w-full px-2 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-transparent bg-white text-sm"
-              >
-                <option value="all">Tất cả</option>
-                <option value="public">Công khai</option>
-                <option value="private">Riêng tư</option>
-              </select>
-            </div>
-
-            {/* Difficulty Filter */}
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Độ khó</label>
-              <select
-                value={filterDifficulty}
-                onChange={(e) => setFilterDifficulty(e.target.value)}
-                className="w-full px-2 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-transparent bg-white text-sm"
-              >
-                <option value="all">Tất cả</option>
-                <option value="easy">Dễ</option>
-                <option value="medium">Trung bình</option>
-                <option value="hard">Khó</option>
-              </select>
-            </div>
-
-            {/* Status Filter */}
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Trạng thái</label>
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="w-full px-2 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-transparent bg-white text-sm"
-              >
-                <option value="all">Tất cả</option>
-                <option value="active">Kích hoạt</option>
-                <option value="inactive">Tạm dừng</option>
-                <option value="deleted">Đã xóa</option>
-              </select>
-            </div>
-
-            {/* Sort */}
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Sắp xếp</label>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="w-full px-2 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-transparent bg-white text-sm"
-              >
-                <option value="created_at">Ngày tạo</option>
-                <option value="test_title">Tên test</option>
-                <option value="main_topic">Chủ đề chính</option>
-                <option value="total_questions">Số câu hỏi</option>
-              </select>
-            </div>
-
-            {/* Items per page */}
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Hiển thị</label>
-              <select
-                value={itemsPerPage}
-                onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                className="w-full px-2 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-transparent bg-white text-sm"
-              >
-                <option value="5">5 mục</option>
-                <option value="10">10 mục</option>
-                <option value="20">20 mục</option>
-                <option value="50">50 mục</option>
-              </select>
-            </div>
+          <div className="flex-shrink-0">
+            <CreateMultipleChoiceTestButton label="Tạo Test" />
           </div>
-
-          {/* Date Range - Collapsible */}
-          <details className="mt-4">
-            <summary className="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900">
-              Lọc theo ngày tạo
-            </summary>
-            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Từ ngày</label>
-                <input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-transparent bg-white text-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Đến ngày</label>
-                <input
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-transparent bg-white text-sm"
-                />
-              </div>
-            </div>
-          </details>
         </div>
+
+        
+        
 
         {/* Tests List - Mobile First Design */}
         <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+          {/* Compact Filter Toolbar (moved onto table) */}
+          <div className="px-4 py-3 border-b border-gray-100 bg-white">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex-1 mr-4">
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Tìm theo tên, chủ đề..."
+                  className="w-full px-2 py-1 border border-gray-200 rounded-md bg-white text-sm"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <select
+                  value={filterVisibility}
+                  onChange={(e) => setFilterVisibility(e.target.value)}
+                  className="px-2 py-1 border border-gray-200 rounded-md text-sm bg-white"
+                >
+                  <option value="all">Tất cả</option>
+                  <option value="public">Công khai</option>
+                  <option value="private">Riêng tư</option>
+                </select>
+
+                <select
+                  value={filterDifficulty}
+                  onChange={(e) => setFilterDifficulty(e.target.value)}
+                  className="px-2 py-1 border border-gray-200 rounded-md text-sm bg-white"
+                >
+                  <option value="all">Tất cả</option>
+                  <option value="easy">Dễ</option>
+                  <option value="medium">Trung bình</option>
+                  <option value="hard">Khó</option>
+                </select>
+
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="px-2 py-1 border border-gray-200 rounded-md text-sm bg-white"
+                >
+                  <option value="all">Tất cả</option>
+                  <option value="active">Kích hoạt</option>
+                  <option value="inactive">Tạm dừng</option>
+                  <option value="deleted">Đã xóa</option>
+                </select>
+
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="px-2 py-1 border border-gray-200 rounded-md text-sm bg-white"
+                >
+                  <option value="created_by_full_name">Được tạo bởi</option>
+                  <option value="test_title">Tên test</option>
+                  <option value="main_topic">Chủ đề</option>
+                  <option value="total_questions">Số câu hỏi</option>
+                </select>
+
+                <select
+                  value={filterCreator}
+                  onChange={(e) => setFilterCreator(e.target.value)}
+                  className="px-2 py-1 border border-gray-200 rounded-md text-sm bg-white"
+                >
+                  <option value="all">Tất cả</option>
+                  {(Array.from(new Set(tests.map(t => t.created_by_full_name || t.created_by).filter(Boolean)))).map((c, idx) => (
+                    <option key={idx} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
           {/* Desktop Table View */}
           <div className="hidden lg:block">
             <div className="overflow-x-auto">
@@ -435,7 +388,7 @@ const AdminMultipleChoiceTests = () => {
                 <thead className="bg-gray-50">
                   <tr>
                     <th 
-                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                       onClick={() => handleSort('test_title')}
                     >
                       <div className="flex items-center space-x-1">
@@ -444,7 +397,7 @@ const AdminMultipleChoiceTests = () => {
                       </div>
                     </th>
                     <th 
-                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                       onClick={() => handleSort('main_topic')}
                     >
                       <div className="flex items-center space-x-1">
@@ -453,7 +406,7 @@ const AdminMultipleChoiceTests = () => {
                       </div>
                     </th>
                     <th 
-                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                       onClick={() => handleSort('total_questions')}
                     >
                       <div className="flex items-center space-x-1">
@@ -468,12 +421,12 @@ const AdminMultipleChoiceTests = () => {
                       Trạng thái
                     </th>
                     <th 
-                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort('created_at')}
+                      className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort('created_by_full_name')}
                     >
                       <div className="flex items-center space-x-1">
-                        <span>Ngày tạo</span>
-                        <SortIcon field="created_at" />
+                        <span>Được tạo bởi</span>
+                        <SortIcon field="created_by_full_name" />
                       </div>
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -485,21 +438,21 @@ const AdminMultipleChoiceTests = () => {
                   {paginatedTests.length > 0 ? (
                     paginatedTests.map((test) => (
                       <tr key={test._id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3">
+                        <td className="px-3 py-2">
                           <div className="max-w-xs">
                             <div className="text-sm font-medium text-gray-900 truncate">{test.test_title}</div>
                           </div>
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-3 py-2">
                           <div className="max-w-xs">
                             <div className="text-sm text-gray-900 truncate">{test.main_topic}</div>
                             <div className="text-xs text-gray-500 truncate">{test.sub_topic}</div>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-900">
+                        <td className="px-3 py-2 text-sm text-gray-900">
                           {test.total_questions}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-3 py-2">
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                             test.difficulty === 'easy' ? 'bg-green-100 text-green-800' :
                             test.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-800' :
@@ -508,7 +461,7 @@ const AdminMultipleChoiceTests = () => {
                             {test.difficulty === 'easy' ? 'Dễ' : test.difficulty === 'medium' ? 'TB' : 'Khó'}
                           </span>
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-3 py-2">
                           <div className="flex flex-col space-y-1">
                             <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                               test.status === 'active' ? 'bg-green-100 text-green-800' :
@@ -524,10 +477,10 @@ const AdminMultipleChoiceTests = () => {
                             </span>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-xs text-gray-500">
-                          {new Date(test.created_at).toLocaleDateString('vi-VN')}
+                        <td className="px-3 py-2 text-xs text-gray-500">
+                          {test.created_by_full_name || test.created_by || (test.created_at ? new Date(test.created_at).toLocaleDateString('vi-VN') : '—')}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-3 py-2">
                           <div className="flex flex-col space-y-1">
                             <button
                               onClick={() => handleDetailClick(test._id)}
@@ -577,7 +530,7 @@ const AdminMultipleChoiceTests = () => {
                         {test.total_questions} câu hỏi
                       </span>
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                        test.difficulty === 'easy' ? 'bg-green-100 text-green-800' :
+                         test.difficulty === 'easy' ? 'bg-green-100 text-green-800' :
                         test.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-800' :
                         'bg-red-100 text-red-800'
                       }`}>
@@ -600,7 +553,7 @@ const AdminMultipleChoiceTests = () => {
                     {/* Date and Actions */}
                     <div className="flex justify-between items-center">
                       <span className="text-xs text-gray-500">
-                        {new Date(test.created_at).toLocaleDateString('vi-VN')}
+                        Được tạo bởi: {test.created_by_full_name || test.created_by || (test.created_at ? new Date(test.created_at).toLocaleDateString('vi-VN') : '—')}
                       </span>
                       <div className="flex space-x-3">
                         <button

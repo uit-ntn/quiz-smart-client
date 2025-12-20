@@ -196,10 +196,30 @@ const VocabularyTestSettings = () => {
         </div>
 
         {/* Content */}
-        <div className="mt-4 sm:mt-6 grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Mode picker */}
-          <div className="lg:col-span-2 rounded-2xl border border-slate-200 bg-white shadow-sm p-4 sm:p-6">
-            <div className="flex items-center justify-between gap-3">
+        <div className="mt-4 sm:mt-6 grid grid-cols-1 lg:grid-cols-2 gap-3">
+          {/* Left: Test Info */}
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-3 sm:p-4">
+            <h2 className="text-base sm:text-lg font-extrabold text-slate-900 mb-3">Thông tin bài test</h2>
+            <div className="space-y-2">
+              <InfoLine icon="📝" label="Tiêu đề" value={testInfo?.test_title || "—"} />
+              <InfoLine icon="📖" label="Mô tả" value={testInfo?.description || "—"} />
+              <div className="grid grid-cols-2 gap-2">
+                <InfoLine icon="🏷️" label="Chủ đề chính" value={testInfo?.main_topic || "—"} />
+                <InfoLine icon="📂" label="Chủ đề phụ" value={testInfo?.sub_topic || "—"} />
+                <InfoLine icon="🔧" label="Loại test" value={testInfo?.test_type || "—"} />
+                <InfoLine icon="❓" label="Số từ" value={vocabularyCount || "—"} />
+                <InfoLine icon="⏱️" label="Thời gian" value={`${testInfo?.time_limit_minutes || 0} phút`} />
+                <InfoLine icon="📊" label="Độ khó" value={testInfo?.difficulty || "—"} />
+                <InfoLine icon="🔒" label="Trạng thái" value={testInfo?.status || "—"} />
+                <InfoLine icon="👁️" label="Hiển thị" value={testInfo?.visibility || "—"} />
+                <InfoLine icon="👤" label="Tạo bởi" value={testInfo?.created_by_full_name || "—"} />
+              </div>
+            </div>
+          </div>
+
+          {/* Right: Settings */}
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-3 sm:p-4">
+            <div className="flex items-center justify-between gap-3 mb-3">
               <div>
                 <h2 className="text-base sm:text-lg font-extrabold text-slate-900">Chế độ bài test</h2>
                 <p className="text-sm text-slate-600 mt-1">Chọn 1 chế độ. Hệ thống sẽ lưu lại cho lần sau.</p>
@@ -211,8 +231,8 @@ const VocabularyTestSettings = () => {
               </span>
             </div>
 
-            {/* ✅ EQUAL HEIGHT CARDS */}
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 items-stretch auto-rows-fr">
+            {/* Mode picker */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-stretch auto-rows-fr mb-4">
               {modes.map((m) => {
                 const active = mode === m.value;
 
@@ -228,7 +248,7 @@ const VocabularyTestSettings = () => {
                       );
                     }}
                     className={`
-                      h-full min-h-[190px] text-left rounded-2xl border p-4 transition
+                      h-full min-h-[160px] text-left rounded-2xl border p-3 transition
                       flex flex-col shadow-sm hover:shadow
                       ${active ? `border-transparent ring-2 ${m.ring} bg-white` : 'border-slate-200 bg-white hover:bg-slate-50'}
                     `}
@@ -236,57 +256,44 @@ const VocabularyTestSettings = () => {
                     {/* header */}
                     <div className="flex items-start justify-between gap-3">
                       <div
-                        className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br ${m.accent} text-white shadow-sm`}
+                        className={`inline-flex h-8 w-8 items-center justify-center rounded-2xl bg-gradient-to-br ${m.accent} text-white shadow-sm`}
                       >
                         {m.icon}
                       </div>
 
                       <div
-                        className={`h-6 w-6 rounded-full border flex items-center justify-center ${
+                        className={`h-5 w-5 rounded-full border flex items-center justify-center ${
                           active ? 'border-blue-500 bg-blue-50' : 'border-slate-200 bg-white'
                         }`}
                       >
-                        <span className={`h-2.5 w-2.5 rounded-full ${active ? 'bg-blue-600' : 'bg-slate-200'}`} />
+                        <span className={`h-2 w-2 rounded-full ${active ? 'bg-blue-600' : 'bg-slate-200'}`} />
                       </div>
                     </div>
 
                     {/* body */}
-                    <div className="mt-3 flex-1">
-                      <div className="font-extrabold text-slate-900">{m.title}</div>
+                    <div className="mt-2 flex-1">
+                      <div className="font-extrabold text-slate-900 text-sm">{m.title}</div>
                       <div className="mt-1 text-xs text-slate-600 leading-relaxed">{m.desc}</div>
                     </div>
 
-                    {/* footer: always render so height stays equal */}
-                    <div className="mt-4">
+                    {/* footer */}
+                    <div className="mt-3">
                       <span
-                        className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold
+                        className={`inline-flex items-center gap-2 rounded-full px-2 py-1 text-xs font-semibold
                           ${active ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-700'}
                         `}
                       >
-                        {active ? '✓ Đang chọn' : 'Chọn chế độ'}
+                        {active ? '✓ Đang chọn' : 'Chọn'}
                       </span>
                     </div>
                   </button>
                 );
               })}
             </div>
-          </div>
-
-          {/* Default settings */}
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4 sm:p-6">
-            <h2 className="text-base sm:text-lg font-extrabold text-slate-900">Thiết lập mặc định</h2>
-            <p className="text-sm text-slate-600 mt-1">Được tối ưu sẵn để bạn vào làm ngay.</p>
-
-            <div className="mt-4 space-y-3">
-              <InfoLine label="Số câu" value={`${effective.totalQuestions}`} icon="📝" />
-              <InfoLine label="Thời gian/câu" value={`${effective.timePerQuestion}s`} icon="⏱️" />
-              <InfoLine label="Đáp án" value="Kiểm tra mỗi câu" icon="✅" />
-              <InfoLine label="Giọng nói" value="Đổi khi làm bài" icon="🔊" />
-            </div>
 
             <button
               onClick={handleStartTest}
-              className="mt-5 w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3 text-sm font-bold text-white shadow-lg hover:opacity-95 active:opacity-90"
+              className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-3 py-2 text-sm font-bold text-white shadow-lg hover:opacity-95 active:opacity-90"
             >
               Bắt đầu bài test <span className="text-lg">→</span>
             </button>

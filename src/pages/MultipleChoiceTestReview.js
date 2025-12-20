@@ -22,6 +22,9 @@ const MultipleChoiceTestReview = () => {
   const [score, setScore] = useState(0);
   const [selectedQuestion, setSelectedQuestion] = useState(0);
 
+  const [questionPage, setQuestionPage] = useState(0);
+  const questionsPerPage = 24;
+
   const [draftResultId, setDraftResultId] = useState(null);
   const [isSaved, setIsSaved] = useState(false);
 
@@ -222,6 +225,11 @@ const MultipleChoiceTestReview = () => {
     ? userAnswers[currentQuestion._id]
     : [];
 
+  const totalQuestionPages = Math.ceil(questions.length / questionsPerPage);
+  const startIndex = questionPage * questionsPerPage;
+  const endIndex = startIndex + questionsPerPage;
+  const questionsToDisplay = questions.slice(startIndex, endIndex);
+
   const goPrev = useCallback(() => setSelectedQuestion((x) => Math.max(0, x - 1)), []);
   const goNext = useCallback(
     () => setSelectedQuestion((x) => Math.min(Math.max(questions.length - 1, 0), x + 1)),
@@ -267,20 +275,20 @@ const MultipleChoiceTestReview = () => {
   }
 
   return (
-    <div className="h-screen bg-slate-100 overflow-hidden">
+    <div className="min-h-screen bg-slate-100">
       {/* container */}
-      <div className="mx-auto max-w-7xl h-full px-3 sm:px-4 py-3 sm:py-4 flex flex-col">
+      <div className="w-full h-full px-2 sm:px-4 py-1 sm:py-2 flex flex-col">
         {/* top bar */}
-        <div className="mb-3 flex items-center justify-between gap-2 shrink-0">
+        <div className="mb-1 flex items-center justify-between gap-2 shrink-0">
           <button
-            onClick={() => navigate("/multiple-choice/topics")}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-md hover:bg-slate-50"
+            onClick={() => navigate("/topics")}
+            className="inline-flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-md hover:bg-slate-50"
           >
             <span className="text-lg leading-none">←</span>
             Về danh sách
           </button>
 
-          <div className="hidden sm:flex items-center gap-2">
+          <div className="hidden sm:flex items-center gap-3">
             <span className="text-xs text-slate-500">Câu hiện tại</span>
             <span className="rounded-lg bg-white border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-700 shadow-md">
               {selectedQuestion + 1}/{questions.length}
@@ -288,29 +296,29 @@ const MultipleChoiceTestReview = () => {
           </div>
         </div>
 
-        <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4">
+        <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-1 sm:gap-2">
           {/* MAIN */}
           <div className="lg:col-span-8 min-h-0 flex flex-col">
             <div className="flex-1 min-h-0 rounded-2xl border border-slate-200 bg-white shadow-md overflow-hidden flex flex-col">
               {/* header */}
-              <div className="px-3 sm:px-4 py-3 border-b border-slate-200 bg-slate-50 shrink-0">
+              <div className="px-3 sm:px-4 py-2 border-b border-slate-200 bg-slate-50 shrink-0">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-xs text-slate-500">Câu hỏi</p>
-                    <h3 className="text-sm sm:text-base font-bold text-slate-800">
+                    <h3 className="text-xs sm:text-sm font-bold text-slate-800">
                       Câu {selectedQuestion + 1} / {questions.length}
                     </h3>
                   </div>
 
                   <div
-                    className={`shrink-0 inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-semibold border ${
+                    className={`shrink-0 inline-flex items-center gap-3 rounded-xl px-3 py-1.5 text-xs font-semibold border ${
                       currentResult?.isCorrect
                         ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                         : "bg-rose-50 text-rose-700 border-rose-200"
                     }`}
                   >
                     <span
-                      className={`inline-flex h-6 w-6 items-center justify-center rounded-lg text-white ${
+                      className={`inline-flex h-8 w-8 items-center justify-center rounded-lg text-white font-bold text-lg border-2 border-white ${
                         currentResult?.isCorrect ? "bg-emerald-600" : "bg-rose-600"
                       }`}
                     >
@@ -322,8 +330,8 @@ const MultipleChoiceTestReview = () => {
               </div>
 
               {/* scrollable content */}
-              <div className="p-3 sm:p-4 flex-1 min-h-0 overflow-auto">
-                <h4 className="text-sm sm:text-base font-semibold text-slate-900 leading-relaxed">
+              <div className="p-3 sm:p-3 flex-1 min-h-0 overflow-auto">
+                <h4 className="text-xs sm:text-sm font-semibold text-slate-900 leading-relaxed pb-3">
                   {currentQuestion?.question_text}
                 </h4>
 
@@ -334,15 +342,15 @@ const MultipleChoiceTestReview = () => {
                     const isCorrectAnswer = (currentQuestion?.correct_answers || []).includes(option.label);
 
                     const tone = isCorrectAnswer
-                      ? "border-emerald-200 bg-emerald-50"
+                      ? "border-emerald-600 bg-emerald-600 text-white"
                       : isUserAnswer
-                      ? "border-rose-200 bg-rose-50"
+                      ? "border-rose-600 bg-rose-600 text-white"
                       : "border-slate-200 bg-white";
 
                     const badgeTone = isCorrectAnswer
-                      ? "border-emerald-200 text-emerald-700 bg-white"
+                      ? "border-emerald-700 text-white bg-emerald-700"
                       : isUserAnswer
-                      ? "border-rose-200 text-rose-700 bg-white"
+                      ? "border-rose-700 text-white bg-rose-700"
                       : "border-slate-200 text-slate-600 bg-white";
 
                     return (
@@ -358,21 +366,21 @@ const MultipleChoiceTestReview = () => {
                           </div>
 
                           <div className="flex-1">
-                            <p className="text-sm text-slate-800 leading-relaxed">{option.text}</p>
+                            <p className={`text-xs leading-relaxed ${isCorrectAnswer || isUserAnswer ? 'text-white' : 'text-slate-800'}`}>{option.text}</p>
 
                             <div className="mt-1.5 flex flex-wrap gap-1.5">
                               {isCorrectAnswer && (
-                                <span className="inline-flex items-center rounded-full bg-emerald-600 px-2 py-0.5 text-[11px] font-semibold text-white">
+                                <span className="inline-flex items-center rounded-full bg-emerald-600 px-1 py-0.5 text-[10px] font-semibold text-white">
                                   Đáp án đúng
                                 </span>
                               )}
                               {isUserAnswer && !isCorrectAnswer && (
-                                <span className="inline-flex items-center rounded-full bg-rose-600 px-2 py-0.5 text-[11px] font-semibold text-white">
+                                <span className="inline-flex items-center rounded-full bg-rose-600 px-1 py-0.5 text-[10px] font-semibold text-white">
                                   Bạn chọn
                                 </span>
                               )}
                               {isUserAnswer && isCorrectAnswer && (
-                                <span className="inline-flex items-center rounded-full bg-slate-900 px-2 py-0.5 text-[11px] font-semibold text-white">
+                                <span className="inline-flex items-center rounded-full bg-slate-900 px-1 py-0.5 text-[10px] font-semibold text-white">
                                   Bạn chọn đúng
                                 </span>
                               )}
@@ -399,11 +407,28 @@ const MultipleChoiceTestReview = () => {
                     );
                   })}
                 </div>
+
+                {/* Explanation */}
+                {currentQuestion?.explanation && (
+                  <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                    <h5 className="text-xs font-semibold text-blue-900 mb-2">Giải thích</h5>
+                    <p className="text-xs text-blue-800 mb-2">{currentQuestion.explanation.correct}</p>
+                    {currentQuestion.explanation.incorrect_choices && (
+                      <div className="space-y-1">
+                        {Object.entries(currentQuestion.explanation.incorrect_choices).map(([key, value]) => (
+                          <p key={key} className="text-xs text-blue-700">
+                            <span className="font-medium">{key}:</span> {value}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* bottom nav */}
-              <div className="shrink-0 px-3 sm:px-4 py-3 border-t border-slate-200 bg-white">
-                <div className="flex items-center justify-between gap-2">
+              <div className="shrink-0 px-1 sm:px-2 py-1 border-t border-slate-200 bg-white">
+                <div className="flex items-center justify-between gap-3">
                   <button
                     onClick={goPrev}
                     disabled={selectedQuestion === 0}
@@ -430,26 +455,26 @@ const MultipleChoiceTestReview = () => {
 
           {/* SIDEBAR */}
           <div className="lg:col-span-4 min-h-0">
-            <div className="lg:sticky lg:top-4 min-h-0 flex flex-col gap-3 lg:max-h-[calc(100vh-2rem)] lg:overflow-auto">
+            <div className="lg:sticky lg:top-4 min-h-0 flex flex-col gap-2 lg:max-h-[calc(100vh-2rem)] lg:overflow-auto">
               {/* score card */}
-              <div className="rounded-2xl border border-slate-200 bg-white shadow-md p-3 sm:p-4">
-                <div className="flex items-center justify-between gap-3">
+              <div className="rounded-2xl border border-slate-200 bg-white shadow-md p-3 sm:p-3">
+                <div className="flex items-center justify-between gap-2">
                   <div>
                     <p className="text-xs text-slate-500">Điểm số</p>
                     <p className="text-lg sm:text-xl font-extrabold text-slate-900">{score}%</p>
-                    <p className="text-sm font-semibold text-slate-700">{getScoreMessage(score)}</p>
+                    <p className="text-xs font-semibold text-slate-700">{getScoreMessage(score)}</p>
                   </div>
 
                   <Ring value={score} />
                 </div>
 
-                <div className="mt-3 grid grid-cols-3 gap-2">
+                <div className="mt-2 grid grid-cols-3 gap-2">
                   <StatMini label="Đúng" value={correctCount} tone="emerald" />
                   <StatMini label="Sai" value={incorrectCount} tone="rose" />
                   <StatMini label="Chưa làm" value={unansweredCount} tone="amber" />
                 </div>
 
-                <div className="mt-3 flex flex-col gap-2">
+                <div className="mt-2 flex flex-col gap-2">
                   {draftResultId && !isSaved && (
                     <button
                       onClick={saveResult}
@@ -476,7 +501,7 @@ const MultipleChoiceTestReview = () => {
                       Làm lại
                     </button>
                     <button
-                      onClick={() => navigate("/multiple-choice/topics")}
+                      onClick={() => navigate("/topics")}
                       className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-md hover:bg-slate-50"
                     >
                       Danh sách
@@ -489,33 +514,35 @@ const MultipleChoiceTestReview = () => {
                     </div>
                   )}
                 </div>
-              </div>
 
-              {/* test info */}
-              <div className="rounded-2xl border border-slate-200 bg-white shadow-md p-3 sm:p-4">
-                <h4 className="text-sm font-bold text-slate-900">Thông tin bài kiểm tra</h4>
-                <div className="mt-2 space-y-2 text-sm">
-                  <InfoRow label="Tiêu đề" value={testInfo?.test_title || test?.test_title || "—"} />
-                  <InfoRow
-                    label="Chủ đề"
-                    value={`${testInfo?.main_topic || test?.main_topic || "—"} - ${testInfo?.sub_topic || test?.sub_topic || "—"}`}
-                  />
-                  <InfoRow label="Độ khó" value={(test?.difficulty || "—").toString()} badge />
-                  <InfoRow label="Giới hạn" value={`${testInfo?.time_limit_minutes ?? test?.time_limit_minutes ?? "—"} phút`} />
+                {/* Test Info inside score card */}
+                <div className="mt-3 pt-3 border-t border-slate-200">
+                  <h4 className="text-xs font-bold text-slate-900 mb-2">Thông tin bài kiểm tra</h4>
+                  <div className="space-y-1 text-xs">
+                    <InfoRow label="Tiêu đề" value={testInfo?.test_title || test?.test_title || "—"} />
+                    <InfoRow
+                      label="Chủ đề"
+                      value={`${testInfo?.main_topic || test?.main_topic || "—"} - ${testInfo?.sub_topic || test?.sub_topic || "—"}`}
+                    />
+                    <InfoRow label="Độ khó" value={(test?.difficulty || "—").toString()} badge />
+                    <InfoRow label="Giới hạn" value={`${testInfo?.time_limit_minutes ?? test?.time_limit_minutes ?? "—"} phút`} />
+                  </div>
                 </div>
               </div>
 
               {/* question grid */}
               <div className="rounded-2xl border border-slate-200 bg-white shadow-md overflow-hidden">
-                <div className="px-3 sm:px-4 py-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
-                  <h4 className="text-sm font-bold text-slate-900">Danh sách câu</h4>
+                <div className="px-2 sm:px-2 py-1 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-slate-900">Danh sách câu</h4>
                   <span className="text-xs text-slate-500">{questions.length} câu</span>
                 </div>
 
-                <div className="p-3 sm:p-4">
-                  <div className="grid grid-cols-10 sm:grid-cols-12 lg:grid-cols-10 gap-1.5">
-                    {results.map((result, index) => {
-                      const isCurrent = index === selectedQuestion;
+                <div className="p-3 sm:p-3 max-h-64 overflow-y-auto">
+                  <div className="grid grid-cols-8 sm:grid-cols-10 lg:grid-cols-12 gap-1.5">
+                    {questionsToDisplay.map((question, i) => {
+                      const actualIndex = startIndex + i;
+                      const result = results[actualIndex];
+                      const isCurrent = actualIndex === selectedQuestion;
                       const answered = isAnswered(result.userAnswer);
 
                       let tone = "bg-amber-500";
@@ -524,24 +551,46 @@ const MultipleChoiceTestReview = () => {
 
                       return (
                         <button
-                          key={String(result.questionId)}
-                          onClick={() => setSelectedQuestion(index)}
+                          key={String(question._id)}
+                          onClick={() => setSelectedQuestion(actualIndex)}
                           className={`aspect-square rounded-xl text-white text-xs font-bold shadow-md transition hover:opacity-90 ${tone} ${
                             isCurrent ? "ring-2 ring-blue-500 ring-offset-2" : "ring-0"
                           }`}
-                          title={`Câu ${index + 1}`}
+                          title={`Câu ${actualIndex + 1}`}
                         >
-                          {index + 1}
+                          {actualIndex + 1}
                         </button>
                       );
                     })}
                   </div>
 
-                  <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-600">
+                  <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-600">
                     <LegendDot color="bg-emerald-600" label={`Đúng (${correctCount})`} />
                     <LegendDot color="bg-rose-600" label={`Sai (${incorrectCount})`} />
                     <LegendDot color="bg-amber-500" label={`Chưa làm (${unansweredCount})`} />
                   </div>
+
+                  {totalQuestionPages > 1 && (
+                    <div className="mt-3 flex items-center justify-between">
+                      <button
+                        onClick={() => setQuestionPage((p) => Math.max(0, p - 1))}
+                        disabled={questionPage === 0}
+                        className="px-3 py-1 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Trước
+                      </button>
+                      <span className="text-xs text-slate-500">
+                        Trang {questionPage + 1} / {totalQuestionPages}
+                      </span>
+                      <button
+                        onClick={() => setQuestionPage((p) => Math.min(totalQuestionPages - 1, p + 1))}
+                        disabled={questionPage === totalQuestionPages - 1}
+                        className="px-3 py-1 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Sau
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -609,7 +658,7 @@ function InfoRow({ label, value, badge }) {
 
 function LegendDot({ color, label }) {
   return (
-    <span className="inline-flex items-center gap-2">
+    <span className="inline-flex items-center gap-3">
       <span className={`h-2.5 w-2.5 rounded-full ${color}`} />
       {label}
     </span>

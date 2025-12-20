@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 const ProfileTestResultsList = ({ results, loading, error, onRetry, onViewDetail, onRetakeTest, onDelete }) => {
   const getScoreColor = (percentage) => {
@@ -53,7 +54,7 @@ const ProfileTestResultsList = ({ results, loading, error, onRetry, onViewDetail
 
   if (loading) {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-12">
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-8">
         <div className="flex items-center justify-center">
           <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
           <span className="ml-3 text-gray-600">Đang tải kết quả...</span>
@@ -64,14 +65,14 @@ const ProfileTestResultsList = ({ results, loading, error, onRetry, onViewDetail
 
   if (error) {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-12">
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-8">
         <div className="text-center">
-          <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
+          <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-3">
             <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <p className="text-gray-600 mb-4">{error}</p>
+          <p className="text-gray-600 mb-3">{error}</p>
           <button
             onClick={onRetry}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -84,32 +85,65 @@ const ProfileTestResultsList = ({ results, loading, error, onRetry, onViewDetail
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm relative pb-6">
       {!Array.isArray(results) || results.length === 0 ? (
-        <div className="p-12 text-center">
-          <div className="text-gray-400 mb-4">
-            <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
+        <div className="p-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+            <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 shadow-sm p-8 flex flex-col items-center justify-center">
+              <div className="text-gray-400 mb-3">
+                <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Chưa có kết quả nào</h3>
+              <p className="text-gray-600 mb-4 text-center max-w-xl">
+                Bạn chưa hoàn thành bài test nào. Dưới đây là một vài gợi ý để bắt đầu luyện tập — làm một bài test hoặc khám phá các chủ đề phù hợp với bạn.
+              </p>
+              <div className="flex gap-3 mt-3">
+                <Link to="/multiple-choice/topics" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Làm bài trắc nghiệm</Link>
+                <Link to="/vocabulary/topics" className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">Luyện từ vựng</Link>
+                <Link to="/grammar/topics" className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700">Học ngữ pháp</Link>
+              </div>
+            </div>
+
+            <aside className="bg-white rounded-xl border border-gray-200 shadow-sm p-3">
+              <h4 className="text-sm font-semibold text-gray-800 mb-3">Gợi ý nhanh</h4>
+              <ul className="space-y-3 text-sm text-gray-600">
+                <li className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 grid place-items-center">1</div>
+                  <div>
+                    <div className="font-medium text-gray-800">Bắt đầu với bài kiểm tra ngắn</div>
+                    <div className="text-xs">Chọn bài 10 câu để làm quen.</div>
+                  </div>
+                </li>
+                <li className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 grid place-items-center">2</div>
+                  <div>
+                    <div className="font-medium text-gray-800">Luyện theo chủ đề</div>
+                    <div className="text-xs">Tập trung vào chủ đề bạn yếu.</div>
+                  </div>
+                </li>
+                <li className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-violet-50 text-violet-600 grid place-items-center">3</div>
+                  <div>
+                    <div className="font-medium text-gray-800">Xem thống kê</div>
+                    <div className="text-xs">Theo dõi tiến bộ sau mỗi lần làm bài.</div>
+                  </div>
+                </li>
+              </ul>
+            </aside>
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Chưa có kết quả nào</h3>
-          <p className="text-gray-600 mb-6">
-            {!Array.isArray(results) 
-              ? 'Có lỗi xảy ra khi tải dữ liệu kết quả.' 
-              : 'Bạn chưa hoàn thành bài test nào. Hãy bắt đầu làm bài!'
-            }
-          </p>
         </div>
       ) : (
         <div className="divide-y divide-gray-200">
           {results.map((result) => (
-            <div key={result._id} className="p-6 hover:bg-gray-50 transition-colors">
+            <div key={result._id} className="p-4 hover:bg-gray-50 transition-colors">
               <div className="flex items-center justify-between">
                 <div className="flex-1">
                   <div className="flex items-center space-x-4">
                     {/* Score Badge */}
-                    <div className={`w-16 h-16 rounded-full flex items-center justify-center ${getScoreBg(result.percentage)}`}>
-                      <span className={`text-xl font-bold ${getScoreColor(result.percentage)}`}>
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center ${getScoreBg(result.percentage)}`}>
+                      <span className={`text-lg font-bold ${getScoreColor(result.percentage)}`}>
                         {result.percentage}%
                       </span>
                     </div>

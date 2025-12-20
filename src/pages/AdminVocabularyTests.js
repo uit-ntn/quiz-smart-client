@@ -19,7 +19,7 @@ const AdminVocabularyTests = () => {
   const [filterVisibility, setFilterVisibility] = useState('all');
   const [filterDifficulty, setFilterDifficulty] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [sortBy, setSortBy] = useState('created_at');
+  const [sortBy, setSortBy] = useState('created_by_full_name');
   const [sortOrder, setSortOrder] = useState('desc');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -58,7 +58,7 @@ const AdminVocabularyTests = () => {
 
   useEffect(() => {
     filterTests();
-  }, [tests, searchTerm, filterVisibility, filterDifficulty, filterStatus, sortBy, sortOrder, dateFrom, dateTo]);
+  }, [tests, searchTerm, filterVisibility, filterDifficulty, filterStatus, sortBy, sortOrder]);
 
   const fetchVocabularyTests = async () => {
     try {
@@ -133,14 +133,6 @@ const AdminVocabularyTests = () => {
       filtered = filtered.filter(test => test.status === filterStatus);
     }
 
-    // Filter by date range
-    if (dateFrom) {
-      filtered = filtered.filter(test => new Date(test.created_at) >= new Date(dateFrom));
-    }
-    if (dateTo) {
-      filtered = filtered.filter(test => new Date(test.created_at) <= new Date(dateTo + 'T23:59:59'));
-    }
-
     // Sort
     filtered.sort((a, b) => {
       let aValue = a[sortBy] || '';
@@ -173,7 +165,7 @@ const AdminVocabularyTests = () => {
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filterVisibility, filterDifficulty, filterStatus, sortBy, sortOrder, dateFrom, dateTo]);
+  }, [searchTerm, filterVisibility, filterDifficulty, filterStatus, sortBy, sortOrder]);
 
   const handleDeleteClick = (test) => {
     setTestToDelete(test);
@@ -222,85 +214,75 @@ const AdminVocabularyTests = () => {
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Quản Lý Bài Test Từ Vựng</h1>
-            <p className="text-gray-600 mt-1">Quản lý tất cả bài test từ vựng trong hệ thống</p>
-          </div>
-          <div className="flex space-x-3">
-            <CreateVocabularyWithAIButton />
-            <CreateVocabularyTestButton className="bg-blue-600 hover:bg-blue-700" />
-          </div>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="bg-white rounded-lg shadow p-6">
+      <div className="space-y-4">
+        {/* Stats Cards and Button */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex-1">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-2">
+          <div className="bg-blue-500 rounded-lg shadow-sm p-2">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="w-6 h-6 bg-white rounded-lg flex items-center justify-center">
+                  <svg className="w-3 h-3 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                 </div>
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Tổng số bài test</p>
-                <p className="text-2xl font-semibold text-gray-900">{tests.length}</p>
+              <div className="ml-3 flex items-center justify-between flex-1">
+                <p className="text-xs sm:text-sm font-medium text-white">Tổng số</p>
+                <p className="text-base sm:text-lg font-semibold text-white">{tests.length}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-green-500 rounded-lg shadow-sm p-2">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                  <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="w-6 h-6 bg-white rounded-lg flex items-center justify-center">
+                  <svg className="w-3 h-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Đã kích hoạt</p>
-                <p className="text-2xl font-semibold text-gray-900">
+              <div className="ml-3 flex items-center justify-between flex-1">
+                <p className="text-xs sm:text-sm font-medium text-white">Kích hoạt</p>
+                <p className="text-base sm:text-lg font-semibold text-white">
                   {tests.filter(test => test.status === 'active').length}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-yellow-500 rounded-lg shadow-sm p-2">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
-                  <svg className="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="w-6 h-6 bg-white rounded-lg flex items-center justify-center">
+                  <svg className="w-3 h-3 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
                   </svg>
                 </div>
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Tạm dừng</p>
-                <p className="text-2xl font-semibold text-gray-900">
+              <div className="ml-3 flex items-center justify-between flex-1">
+                <p className="text-xs sm:text-sm font-medium text-white">Tạm dừng</p>
+                <p className="text-base sm:text-lg font-semibold text-white">
                   {tests.filter(test => test.status === 'inactive').length}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-purple-500 rounded-lg shadow-sm p-2">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="w-6 h-6 bg-white rounded-lg flex items-center justify-center">
+                  <svg className="w-3 h-3 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Công khai</p>
-                <p className="text-2xl font-semibold text-gray-900">
+              <div className="ml-3 flex items-center justify-between flex-1">
+                <p className="text-xs sm:text-sm font-medium text-white">Công khai</p>
+                <p className="text-base sm:text-lg font-semibold text-white">
                   {tests.filter(test => test.visibility === 'public').length}
                 </p>
               </div>
@@ -308,112 +290,83 @@ const AdminVocabularyTests = () => {
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
-            {/* Search */}
-            <div className="lg:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tìm kiếm</label>
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Tìm theo tên, chủ đề..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
-              />
-            </div>
-
-            {/* Visibility Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Hiển thị</label>
-              <select
-                value={filterVisibility}
-                onChange={(e) => setFilterVisibility(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
-              >
-                <option value="all">Tất cả</option>
-                <option value="public">Công khai</option>
-                <option value="private">Riêng tư</option>
-              </select>
-            </div>
-
-            {/* Difficulty Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Độ khó</label>
-              <select
-                value={filterDifficulty}
-                onChange={(e) => setFilterDifficulty(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
-              >
-                <option value="all">Tất cả</option>
-                <option value="easy">Dễ</option>
-                <option value="medium">Trung bình</option>
-                <option value="hard">Khó</option>
-              </select>
-            </div>
-
-            {/* Status Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Trạng thái</label>
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
-              >
-                <option value="all">Tất cả</option>
-                <option value="active">Kích hoạt</option>
-                <option value="inactive">Tạm dừng</option>
-                <option value="deleted">Đã xóa</option>
-              </select>
-            </div>
-
-            {/* Sort */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Sắp xếp</label>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
-              >
-                <option value="created_at">Ngày tạo</option>
-                <option value="test_title">Tên test</option>
-                <option value="main_topic">Chủ đề chính</option>
-                <option value="total_questions">Số câu hỏi</option>
-              </select>
-            </div>
           </div>
 
-          {/* Date Range */}
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Từ ngày</label>
-              <input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Đến ngày</label>
-              <input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
-              />
+          <div className="flex-shrink-0">
+            <div className="flex space-x-3">
+              <CreateVocabularyWithAIButton className="min-w-[140px]" />
+              <CreateVocabularyTestButton className="bg-blue-600 hover:bg-blue-700 min-w-[140px]" />
             </div>
           </div>
         </div>
 
         {/* Tests Table */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
+          {/* Compact Filter Toolbar */}
+          <div className="px-4 py-3 border-b border-gray-100 bg-white">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex-1 mr-4">
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Tìm theo tên, chủ đề..."
+                  className="w-full px-2 py-1 border border-gray-200 rounded-md bg-white text-sm"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <select
+                  value={filterVisibility}
+                  onChange={(e) => setFilterVisibility(e.target.value)}
+                  className="px-2 py-1 border border-gray-200 rounded-md text-sm bg-white"
+                >
+                  <option value="all">Tất cả</option>
+                  <option value="public">Công khai</option>
+                  <option value="private">Riêng tư</option>
+                </select>
+
+                <select
+                  value={filterDifficulty}
+                  onChange={(e) => setFilterDifficulty(e.target.value)}
+                  className="px-2 py-1 border border-gray-200 rounded-md text-sm bg-white"
+                >
+                  <option value="all">Tất cả</option>
+                  <option value="easy">Dễ</option>
+                  <option value="medium">Trung bình</option>
+                  <option value="hard">Khó</option>
+                </select>
+
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="px-2 py-1 border border-gray-200 rounded-md text-sm bg-white"
+                >
+                  <option value="all">Tất cả</option>
+                  <option value="active">Kích hoạt</option>
+                  <option value="inactive">Tạm dừng</option>
+                  <option value="deleted">Đã xóa</option>
+                </select>
+
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="px-2 py-1 border border-gray-200 rounded-md text-sm bg-white"
+                >
+                  <option value="created_by_full_name">Được tạo bởi</option>
+                  <option value="test_title">Tên test</option>
+                  <option value="main_topic">Chủ đề chính</option>
+                  <option value="total_questions">Số câu hỏi</option>
+                </select>
+              </div>
+            </div>
+          </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
                   <th 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                     onClick={() => handleSort('test_title')}
                   >
                     <div className="flex items-center space-x-1">
@@ -422,7 +375,7 @@ const AdminVocabularyTests = () => {
                     </div>
                   </th>
                   <th 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                     onClick={() => handleSort('main_topic')}
                   >
                     <div className="flex items-center space-x-1">
@@ -431,7 +384,7 @@ const AdminVocabularyTests = () => {
                     </div>
                   </th>
                   <th 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                     onClick={() => handleSort('total_questions')}
                   >
                     <div className="flex items-center space-x-1">
@@ -439,25 +392,25 @@ const AdminVocabularyTests = () => {
                       <SortIcon field="total_questions" />
                     </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Độ khó
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Hiển thị
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Trạng thái
                   </th>
                   <th 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleSort('created_at')}
+                    className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort('created_by_full_name')}
                   >
                     <div className="flex items-center space-x-1">
-                      <span>Ngày tạo</span>
-                      <SortIcon field="created_at" />
+                      <span>Được tạo bởi</span>
+                      <SortIcon field="created_by_full_name" />
                     </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Hành động
                   </th>
                 </tr>
@@ -466,19 +419,19 @@ const AdminVocabularyTests = () => {
                 {paginatedTests.length > 0 ? (
                   paginatedTests.map((test) => (
                     <tr key={test._id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-2 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="text-sm font-medium text-gray-900">{test.test_title}</div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-2 whitespace-nowrap">
                         <div className="text-sm text-gray-900">{test.main_topic}</div>
                         <div className="text-sm text-gray-500">{test.sub_topic}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
                         {test.total_questions}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-2 whitespace-nowrap">
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                           test.difficulty === 'easy' ? 'bg-green-100 text-green-800' :
                           test.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-800' :
@@ -487,14 +440,14 @@ const AdminVocabularyTests = () => {
                           {test.difficulty === 'easy' ? 'Dễ' : test.difficulty === 'medium' ? 'Trung bình' : 'Khó'}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-2 whitespace-nowrap">
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                           test.visibility === 'public' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
                         }`}>
                           {test.visibility === 'public' ? '🌍 Công khai' : '🔒 Riêng tư'}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-2 whitespace-nowrap">
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                           test.status === 'active' ? 'bg-green-100 text-green-800' :
                           test.status === 'inactive' ? 'bg-yellow-100 text-yellow-800' :
@@ -503,10 +456,10 @@ const AdminVocabularyTests = () => {
                           {test.status === 'active' ? 'Kích hoạt' : test.status === 'inactive' ? 'Tạm dừng' : 'Đã xóa'}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(test.created_at).toLocaleDateString('vi-VN')}
+                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                        {test.created_by_full_name || test.created_by || (test.created_at ? new Date(test.created_at).toLocaleDateString('vi-VN') : '—')}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <td className="px-3 py-2 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
                           <button
                             onClick={() => handleDetailClick(test._id)}

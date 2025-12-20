@@ -40,7 +40,7 @@ const Pagination = ({
     <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
       {/* Items info */}
       <div className="text-sm text-gray-600">
-        Hiển thị <span className="font-medium">{startIndex}</span> đến{' '}
+        Trang <span className="font-medium">{currentPage}</span> trên <span className="font-medium">{totalPages}</span> | Hiển thị <span className="font-medium">{startIndex}</span> đến{' '}
         <span className="font-medium">{endIndex}</span> trong tổng số{' '}
         <span className="font-medium">{totalItems}</span> mục
       </div>
