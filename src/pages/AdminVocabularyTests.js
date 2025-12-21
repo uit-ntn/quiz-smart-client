@@ -21,8 +21,6 @@ const AdminVocabularyTests = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [sortBy, setSortBy] = useState('created_by_full_name');
   const [sortOrder, setSortOrder] = useState('desc');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedTestId, setSelectedTestId] = useState(null);

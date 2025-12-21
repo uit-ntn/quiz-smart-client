@@ -1073,7 +1073,7 @@ const MultipleChoiceTestTake = () => {
 
   const isLastQuestion = currentQuestionIndex === questions.length - 1;
   const canGoPrev = settings.testMode === "flexible" && currentQuestionIndex > 0;
-  const canGoNext = settings.testMode === "flexible" && currentQuestionIndex < questions.length - 1;
+  const canGoNext = currentQuestionIndex < questions.length - 1;
 
   const currentHighlights = highlights[qid] || { question: [], options: {} };
 
@@ -1404,28 +1404,28 @@ const MultipleChoiceTestTake = () => {
       {/* BOTTOM ACTION BAR */}
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-300 bg-white/95 backdrop-blur-sm">
         <div className="max-w-6xl mx-auto px-3 sm:px-4 py-2.5">
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-            {settings.testMode === "flexible" && (
-              <button
-                type="button"
-                onClick={handlePrev}
-                disabled={!canGoPrev}
-                className={`hidden sm:block w-full sm:w-auto px-3 py-2 rounded-lg text-sm border ${
-                  !canGoPrev
-                    ? "bg-gray-100 text-gray-400 border-slate-300 cursor-not-allowed"
-                    : "bg-white text-gray-800 border-gray-300 hover:bg-gray-50"
-                }`}
-              >
-                Câu trước
-              </button>
-            )}
+          <div className="flex flex-row sm:flex-row gap-2 sm:gap-3">
+            <div className="flex w-full flex-row gap-2 sm:gap-3">
+              {settings.testMode === "flexible" && (
+                <button
+                  type="button"
+                  onClick={handlePrev}
+                  disabled={!canGoPrev}
+                  className={`block w-1/3 sm:w-1/3 md:w-1/3 px-3 py-2 rounded-lg text-sm border ${
+                    !canGoPrev
+                      ? "bg-gray-100 text-gray-400 border-slate-300 cursor-not-allowed"
+                      : "bg-white text-gray-800 border-gray-300 hover:bg-gray-50"
+                  }`}
+                >
+                  Câu trước
+                </button>
+              )}
 
-            <div className="flex-1 flex flex-col sm:flex-row gap-2 sm:gap-3">
               {!currentComputed && selectedForQ.length > 0 && (
                 <button
                   type="button"
                   onClick={handleCheckAnswer}
-                  className="flex-1 px-3 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700"
+                  className="block md:block w-1/3 px-3 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700"
                 >
                   Kiểm tra đáp án
                 </button>
@@ -1436,7 +1436,7 @@ const MultipleChoiceTestTake = () => {
                 type="button"
                 onClick={handleSubmitClick}
                 disabled={answeredCount === 0}
-                className={`block md:hidden flex-1 px-3 py-2 rounded-lg text-sm font-semibold ${
+                className={`block md:hidden w-1/3 px-3 py-2 rounded-lg text-sm font-semibold ${
                   answeredCount === 0
                     ? "bg-gray-200 text-gray-400 cursor-not-allowed"
                     : "bg-red-600 text-white hover:bg-red-700"
@@ -1445,28 +1445,13 @@ const MultipleChoiceTestTake = () => {
                 Nộp bài ({answeredCount}/{questions.length})
               </button>
 
-              {canGoNext && (
+              {canGoNext && !(selectedForQ.length > 0 && !currentComputed) && (
                 <button
                   type="button"
                   onClick={handleNext}
-                  className="hidden sm:block flex-1 px-3 py-2 rounded-lg bg-purple-600 text-white text-sm font-semibold hover:bg-purple-700"
+                  className="block w-1/3 sm:w-1/3 md:w-1/3 px-3 py-2 rounded-lg bg-purple-600 text-white text-sm font-semibold hover:bg-purple-700"
                 >
                   Câu tiếp theo
-                </button>
-              )}
-
-              {isLastQuestion && (
-                <button
-                  type="button"
-                  onClick={handleSubmitClick}
-                  disabled={answeredCount === 0}
-                  className={`flex-1 px-3 py-2 rounded-lg text-sm font-semibold ${
-                    answeredCount === 0
-                      ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                      : "bg-green-600 text-white hover:bg-green-700"
-                  }`}
-                >
-                  Nộp bài
                 </button>
               )}
             </div>

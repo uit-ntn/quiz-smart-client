@@ -174,6 +174,10 @@ const AdminTestResults = () => {
   const [userCache, setUserCache] = useState({});
   const [allUsers, setAllUsers] = useState([]);
 
+  // bulk selection / delete
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+
   const { user } = useAuth(); // (không bắt buộc dùng)
 
   useEffect(() => {
@@ -279,6 +283,20 @@ const AdminTestResults = () => {
     setShowDeleteModal(true);
   };
 
+  const toggleSelectId = (id) => {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const handleSelectAllOnPage = (checked) => {
+    if (checked) {
+      const ids = paginatedResults.map((r) => r._id).filter(Boolean);
+      setSelectedIds((prev) => Array.from(new Set([...prev, ...ids])));
+    } else {
+      const idsOnPage = new Set(paginatedResults.map((r) => r._id));
+      setSelectedIds((prev) => prev.filter((id) => !idsOnPage.has(id)));
+    }
+  };
+
   const handleDetailClick = async (result) => {
     try {
       // nếu bạn muốn detail luôn "fresh"
@@ -324,6 +342,23 @@ const AdminTestResults = () => {
     } catch (err) {
       console.error("Error updating status:", err);
       alert("Không thể cập nhật trạng thái.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBulkDeleteConfirm = async () => {
+    if (!selectedIds || selectedIds.length === 0) return;
+
+    try {
+      setLoading(true);
+      await Promise.all(selectedIds.map((id) => testResultService.softDeleteTestResult(id)));
+      setResults((prev) => prev.filter((r) => !selectedIds.includes(r._id)));
+      setSelectedIds([]);
+      setShowBulkDeleteModal(false);
+    } catch (err) {
+      console.error("Error bulk deleting results:", err);
+      alert("Không thể xóa một vài kết quả. Vui lòng thử lại!");
     } finally {
       setLoading(false);
     }
@@ -676,6 +711,41 @@ const AdminTestResults = () => {
     </div>
   );
 
+  const BulkDeleteModal = () => (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl max-w-md w-full p-6">
+        <div className="flex items-center space-x-3 mb-4">
+          <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+            <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+              />
+            </svg>
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">Xác nhận xóa nhiều</h3>
+            <p className="text-sm text-gray-600">Hành động này sẽ xóa <strong>{selectedIds.length}</strong> kết quả đã chọn. Không thể hoàn tác.</p>
+          </div>
+        </div>
+        <div className="text-gray-700 mb-6">Bạn có chắc chắn muốn tiếp tục?</div>
+        <div className="flex space-x-3">
+          <button
+            onClick={() => setShowBulkDeleteModal(false)}
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            Hủy
+          </button>
+          <button
+            onClick={handleBulkDeleteConfirm}
+            className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Xóa ({selectedIds.length})
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   if (loading) {
     return (
       <AdminLayout>
@@ -703,6 +773,17 @@ const AdminTestResults = () => {
               />
             </svg>
             <span>Làm mới</span>
+          </button>
+          <button
+            onClick={() => setShowBulkDeleteModal(true)}
+            disabled={selectedIds.length === 0}
+            className="mt-4 md:mt-0 ml-3 flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 11v6m4-6v6M9 7h6" />
+            </svg>
+            <span>Xóa chọn ({selectedIds.length})</span>
           </button>
         </div>
 
@@ -747,7 +828,14 @@ const AdminTestResults = () => {
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <input
+                        type="checkbox"
+                        onChange={(e) => handleSelectAllOnPage(e.target.checked)}
+                        checked={paginatedResults.length > 0 && paginatedResults.every((r) => selectedIds.includes(r._id))}
+                      />
+                    </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     User
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -765,7 +853,7 @@ const AdminTestResults = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Ngày làm
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Thao tác
                   </th>
                 </tr>
@@ -774,7 +862,7 @@ const AdminTestResults = () => {
               <tbody className="divide-y divide-gray-200">
                 {filteredResults.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="px-6 py-12 text-center text-gray-500">
+                    <td colSpan="8" className="px-4 py-8 text-center text-gray-500">
                       {searchTerm || filterStatus !== "all"
                         ? "Không tìm thấy kết quả nào phù hợp"
                         : "Chưa có kết quả nào"}
@@ -788,8 +876,15 @@ const AdminTestResults = () => {
 
                     return (
                       <tr key={result._id} className="hover:bg-gray-50 transition-colors">
-                        {/* USER */}
-                        <td className="px-6 py-4">
+                            <td className="px-4 py-2 text-center">
+                              <input
+                                type="checkbox"
+                                checked={selectedIds.includes(result._id)}
+                                onChange={() => toggleSelectId(result._id)}
+                              />
+                            </td>
+                            {/* USER */}
+                            <td className="px-4 py-2">
                           <div className="flex items-center">
                             <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
                               {(() => {
@@ -827,7 +922,7 @@ const AdminTestResults = () => {
                         </td>
 
                         {/* TEST */}
-                        <td className="px-6 py-4">
+                        <td className="px-4 py-2">
                           <div className="text-sm font-medium text-gray-900">{getTestTitle(result)}</div>
                           <div className="text-xs text-gray-500">
                             {getTestType(result) === "vocabulary"
@@ -840,7 +935,7 @@ const AdminTestResults = () => {
                         </td>
 
                         {/* SCORE */}
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-4 py-2 whitespace-nowrap">
                           <div className={`text-2xl font-bold ${getScoreColor(pct)}`}>{pct}%</div>
                           <div className="text-xs text-gray-500">
                             {correct}/{totalQ}
@@ -848,22 +943,22 @@ const AdminTestResults = () => {
                         </td>
 
                         {/* TIME */}
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
                           {msToMMSS(getDurationMs(result))}
                         </td>
 
                         {/* STATUS */}
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-4 py-2 whitespace-nowrap">
                           <StatusBadge status={result.status} />
                         </td>
 
                         {/* DATE */}
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
                           {fmtDateVI(getCreatedAt(result))}
                         </td>
 
                         {/* ACTIONS */}
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <td className="px-4 py-2 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex items-center justify-end space-x-2">
                             <button
                               onClick={() => handleDetailClick(result)}
@@ -983,6 +1078,8 @@ const AdminTestResults = () => {
 
       {/* Delete Modal */}
       {showDeleteModal && <DeleteModal />}
+      {/* Bulk Delete Modal */}
+      {showBulkDeleteModal && <BulkDeleteModal />}
     </AdminLayout>
   );
 };
