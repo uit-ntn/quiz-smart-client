@@ -1,8 +1,7 @@
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 
-import Picker from "@emoji-mart/react";
-import data from "@emoji-mart/data";
+import { Picker } from "emoji-mart";
 
 const cx = (...a) => a.filter(Boolean).join(" ");
 
@@ -512,7 +511,6 @@ const ReviewSection = ({
                   <div ref={emojiPickerRef} className="absolute right-0 bottom-10 z-50">
                     <div className="rounded-xl overflow-hidden border bg-white shadow-xl">
                       <Picker
-                        data={data}
                         onEmojiSelect={handleEmojiSelect}
                         theme="light"
                         previewPosition="none"
