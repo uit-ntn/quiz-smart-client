@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import AdminLayout from "../layout/AdminLayout";
 import testResultService from "../services/testResultService";
 import userService from "../services/userService";
+import { getCorrectAnswerLabels, isCorrectAnswer } from "../utils/correctAnswerHelpers";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
 
@@ -130,7 +131,7 @@ const normalizeAnswerValue = (answer, field = 'user_answer') => {
 
   // Multiple choice uses arrays, others use strings
   if (answer?.question_collection === 'multiple_choices') {
-    v = field === 'user_answer' ? answer?.user_answers : answer?.correct_answers;
+    v = field === 'user_answer' ? answer?.user_answers : getCorrectAnswerLabels(answer?.correct_answers);
   } else {
     v = field === 'user_answer' ? answer?.user_answer : answer?.correct_answer;
   }
@@ -162,6 +163,9 @@ const AdminTestResults = () => {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [filterTestId, setFilterTestId] = useState("");
+  const [filterUserId, setFilterUserId] = useState("");
+  const [filterScoreMax, setFilterScoreMax] = useState("");
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -189,11 +193,11 @@ const AdminTestResults = () => {
   useEffect(() => {
     filterResults();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [results, searchTerm, filterStatus]);
+  }, [results, searchTerm, filterStatus, filterTestId, filterUserId, filterScoreMax]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filterStatus, itemsPerPage]);
+  }, [searchTerm, filterStatus, filterTestId, filterUserId, filterScoreMax, itemsPerPage]);
 
   const fetchResults = async () => {
     try {
@@ -265,6 +269,24 @@ const AdminTestResults = () => {
       filtered = filtered.filter((r) => (r?.status || "") === filterStatus);
     }
 
+    // test filter
+    if (filterTestId) {
+      filtered = filtered.filter((r) => (r?.test_snapshot?._id || r?.test_id) === filterTestId);
+    }
+
+    // user filter
+    if (filterUserId) {
+      filtered = filtered.filter((r) => getUserId(r) === filterUserId);
+    }
+
+    // score max filter
+    if (filterScoreMax !== "") {
+      const maxScore = parseFloat(filterScoreMax);
+      if (!isNaN(maxScore)) {
+        filtered = filtered.filter((r) => getPercentage(r) <= maxScore);
+      }
+    }
+
     setFilteredResults(filtered);
   };
 
@@ -314,7 +336,7 @@ const AdminTestResults = () => {
     if (!resultToDelete?._id) return;
 
     try {
-      await testResultService.softDeleteTestResult(resultToDelete._id); // ✅ service mới
+      await testResultService.hardDeleteTestResult(resultToDelete._id); // Hard delete for admin
       setResults((prev) => prev.filter((r) => r._id !== resultToDelete._id));
       setShowDeleteModal(false);
       setResultToDelete(null);
@@ -352,7 +374,7 @@ const AdminTestResults = () => {
 
     try {
       setLoading(true);
-      await Promise.all(selectedIds.map((id) => testResultService.softDeleteTestResult(id)));
+      await Promise.all(selectedIds.map((id) => testResultService.hardDeleteTestResult(id))); // Hard delete for admin
       setResults((prev) => prev.filter((r) => !selectedIds.includes(r._id)));
       setSelectedIds([]);
       setShowBulkDeleteModal(false);
@@ -604,7 +626,7 @@ const AdminTestResults = () => {
                             {isMultipleChoice && answer?.options && (
                               <div className="mt-2 grid grid-cols-2 gap-2">
                                 {answer.options.map((opt) => {
-                                  const isCorrect = answer.correct_answers?.includes(opt.label);
+                                  const isCorrect = isCorrectAnswer(answer.correct_answers, opt.label);
                                   const isUserChoice = answer.user_answers?.includes(opt.label);
                                   return (
                                     <div
@@ -688,11 +710,11 @@ const AdminTestResults = () => {
             </svg>
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">Xác nhận xóa</h3>
-            <p className="text-sm text-gray-600">Hành động này không thể hoàn tác</p>
+            <h3 className="text-lg font-semibold text-gray-900">Xác nhận xóa vĩnh viễn</h3>
+            <p className="text-sm text-red-600 font-medium">⚠️ Hành động này sẽ xóa vĩnh viễn và không thể hoàn tác</p>
           </div>
         </div>
-        <p className="text-gray-700 mb-6">Bạn có chắc chắn muốn xóa kết quả test này?</p>
+        <p className="text-gray-700 mb-6">Bạn có chắc chắn muốn xóa vĩnh viễn kết quả test này? Dữ liệu sẽ bị xóa hoàn toàn khỏi hệ thống.</p>
         <div className="flex space-x-3">
           <button
             onClick={() => setShowDeleteModal(false)}
@@ -723,11 +745,11 @@ const AdminTestResults = () => {
             </svg>
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">Xác nhận xóa nhiều</h3>
-            <p className="text-sm text-gray-600">Hành động này sẽ xóa <strong>{selectedIds.length}</strong> kết quả đã chọn. Không thể hoàn tác.</p>
+            <h3 className="text-lg font-semibold text-gray-900">Xác nhận xóa vĩnh viễn nhiều</h3>
+            <p className="text-sm text-red-600 font-medium">⚠️ Hành động này sẽ xóa vĩnh viễn <strong>{selectedIds.length}</strong> kết quả đã chọn. Không thể hoàn tác.</p>
           </div>
         </div>
-        <div className="text-gray-700 mb-6">Bạn có chắc chắn muốn tiếp tục?</div>
+        <div className="text-gray-700 mb-6">Bạn có chắc chắn muốn xóa vĩnh viễn tất cả các kết quả đã chọn? Dữ liệu sẽ bị xóa hoàn toàn khỏi hệ thống.</div>
         <div className="flex space-x-3">
           <button
             onClick={() => setShowBulkDeleteModal(false)}
@@ -757,73 +779,139 @@ const AdminTestResults = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Kết quả Test</h1>
-            <p className="text-gray-600 mt-1">Tổng số: {filteredResults.length} kết quả</p>
-          </div>
-          <button
-            onClick={fetchResults}
-            className="mt-4 md:mt-0 flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
-                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-              />
-            </svg>
-            <span>Làm mới</span>
-          </button>
-          <button
-            onClick={() => setShowBulkDeleteModal(true)}
-            disabled={selectedIds.length === 0}
-            className="mt-4 md:mt-0 ml-3 flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 11v6m4-6v6M9 7h6" />
-            </svg>
-            <span>Xóa chọn ({selectedIds.length})</span>
-          </button>
-        </div>
-
         {error && <ErrorMessage message={error} />}
 
-        {/* Filters */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Search */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Tìm kiếm</label>
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Tìm theo tên test / chủ đề / user..."
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-              />
+        {/* Compact header with total count */}
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          {/* Search bar with buttons */}
+          <div className="px-4 py-3 border-b border-gray-100 bg-white">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex-1 mr-4">
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Tìm theo tên test / chủ đề / user..."
+                  className="w-full px-2 py-1 border border-gray-200 rounded-md bg-white text-sm"
+                />
+              </div>
+
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={fetchResults}
+                  className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                    />
+                  </svg>
+                  <span className="hidden sm:inline">Làm mới</span>
+                </button>
+                <button
+                  onClick={() => setShowBulkDeleteModal(true)}
+                  disabled={selectedIds.length === 0}
+                  className="bg-red-600 hover:bg-red-700 text-white h-9 px-3 text-sm rounded-lg inline-flex items-center gap-2 disabled:opacity-50"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 11v6m4-6v6M9 7h6" />
+                  </svg>
+                  <span>Xóa chọn ({selectedIds.length})</span>
+                </button>
+              </div>
             </div>
 
-            {/* Filter Status */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Trạng thái</label>
+            {/* Filters row below search */}
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <select
+                value={filterTestId}
+                onChange={(e) => setFilterTestId(e.target.value)}
+                className="px-2 py-1 border border-gray-200 rounded-md text-sm bg-white"
+              >
+                <option value="">Tất cả Bài Test</option>
+                {Array.from(new Set(results.map(r => ({ 
+                  id: r?.test_snapshot?._id || r?.test_id, 
+                  title: getTestTitle(r) 
+                })).filter(t => t.id).map(t => JSON.stringify(t)))).map(testStr => {
+                  const test = JSON.parse(testStr);
+                  return (
+                    <option key={test.id} value={test.id}>
+                      {test.title}
+                    </option>
+                  );
+                })}
+              </select>
+
+              <select
+                value={filterUserId}
+                onChange={(e) => setFilterUserId(e.target.value)}
+                className="px-2 py-1 border border-gray-200 rounded-md text-sm bg-white"
+              >
+                <option value="">Tất cả User</option>
+                {allUsers.map(user => (
+                  <option key={user._id} value={user._id}>
+                    {user.full_name || user.email || user._id}
+                  </option>
+                ))}
+              </select>
+
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="px-2 py-1 border border-gray-200 rounded-md text-sm bg-white"
               >
-                <option value="all">Tất cả</option>
+                <option value="all">Tất cả Trạng thái</option>
                 <option value="draft">Nháp</option>
                 <option value="active">Hoàn thành</option>
                 <option value="archived">Lưu trữ</option>
                 <option value="deleted">Đã xóa</option>
               </select>
+
+              <div className="flex items-center gap-1">
+                <label className="text-xs text-gray-600">Điểm ≤</label>
+                <input
+                  type="number"
+                  value={filterScoreMax}
+                  onChange={(e) => setFilterScoreMax(e.target.value)}
+                  placeholder="100"
+                  min="0"
+                  max="100"
+                  className="w-16 px-2 py-1 border border-gray-200 rounded-md text-sm bg-white"
+                />
+              </div>
+
+              {(searchTerm || filterStatus !== "all" || filterTestId || filterUserId || filterScoreMax) && (
+                <button
+                  onClick={() => {
+                    setSearchTerm("");
+                    setFilterStatus("all");
+                    setFilterTestId("");
+                    setFilterUserId("");
+                    setFilterScoreMax("");
+                  }}
+                  className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50"
+                >
+                  Xóa lọc
+                </button>
+              )}
+            </div>
+
+            <div className="mt-2 text-sm text-gray-600">
+              Tổng số: {filteredResults.length} kết quả
+              {(searchTerm || filterStatus !== "all" || filterTestId || filterUserId || filterScoreMax) && (
+                <span className="ml-2 text-xs">
+                  (Đã lọc: {searchTerm && `từ khóa "${searchTerm}"`}
+                  {filterStatus !== "all" && `, trạng thái "${filterStatus}"`}
+                  {filterTestId && ", có test cụ thể"}
+                  {filterUserId && ", có user cụ thể"}
+                  {filterScoreMax && `, điểm ≤ ${filterScoreMax}%`})
+                </span>
+              )}
             </div>
           </div>
-        </div>
 
-        {/* Results Table */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          {/* Results Table */}
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
@@ -863,8 +951,8 @@ const AdminTestResults = () => {
                 {filteredResults.length === 0 ? (
                   <tr>
                     <td colSpan="8" className="px-4 py-8 text-center text-gray-500">
-                      {searchTerm || filterStatus !== "all"
-                        ? "Không tìm thấy kết quả nào phù hợp"
+                      {searchTerm || filterStatus !== "all" || filterTestId || filterUserId || filterScoreMax
+                        ? "Không tìm thấy kết quả nào phù hợp với bộ lọc"
                         : "Chưa có kết quả nào"}
                     </td>
                   </tr>

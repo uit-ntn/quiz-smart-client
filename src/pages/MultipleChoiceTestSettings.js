@@ -182,7 +182,7 @@ const MultipleChoiceTestSettings = () => {
         {/* Content */}
         <div className="mt-2 sm:mt-4 grid grid-cols-1 lg:grid-cols-2 gap-3">
           {/* Left: Test Info */}
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-2 sm:p-4">
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-3 sm:p-5">
             <h2 className="text-base sm:text-lg font-extrabold text-slate-900 mb-3">Thông tin bài test</h2>
             <div className="space-y-2">
               <InfoLine icon="📝" label="Tiêu đề" value={test?.test_title || "—"} />
@@ -202,7 +202,7 @@ const MultipleChoiceTestSettings = () => {
           </div>
 
           {/* Right: Settings */}
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-2 sm:p-4">
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-3 sm:p-5">
             <div className="flex items-start justify-between gap-3 mb-3">
               <div>
                 <h2 className="text-base sm:text-lg font-extrabold text-slate-900">Tùy chọn hiển thị</h2>
@@ -216,30 +216,30 @@ const MultipleChoiceTestSettings = () => {
               </span>
             </div>
 
-            <div className="grid grid-cols-1 gap-2 mb-4">
+            <div className="grid grid-cols-1 gap-1 mb-3">
               {displayOptions.map((item) => (
                 <label
                   key={item.id}
                   htmlFor={item.id}
-                  className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm hover:bg-slate-50 transition cursor-pointer"
+                  className="flex items-start gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5 shadow-sm hover:bg-slate-50 transition cursor-pointer"
                 >
                   <input
                     id={item.id}
                     type="checkbox"
                     checked={!!settings[item.key]}
                     onChange={(e) => handleSettingChange(item.key, e.target.checked)}
-                    className="mt-1 w-3 h-3 accent-blue-600 rounded border-slate-300"
+                    className="mt-1 w-3.5 h-3.5 accent-blue-600 rounded border-slate-300"
                   />
                   <div className="min-w-0">
                     <div className="text-sm font-extrabold text-slate-900">{item.label}</div>
-                    <div className="mt-1 text-xs text-slate-600 leading-relaxed">{item.desc}</div>
+                    <div className="mt-0.5 text-xs text-slate-600 leading-tight">{item.desc}</div>
                   </div>
                 </label>
               ))}
             </div>
 
             {/* optional: per-question time limit */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-3">
+            <div className="rounded-lg border border-slate-200 bg-white p-2">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h3 className="text-sm font-extrabold text-slate-900">Giới hạn thời gian mỗi câu</h3>
@@ -263,14 +263,14 @@ const MultipleChoiceTestSettings = () => {
                     handleSettingChange("questionTimeLimit", v === "" ? null : Number(v));
                   }}
                   placeholder="Ví dụ: 30"
-                  className="w-40 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500"
+                  className="w-28 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-blue-500"
                 />
                 <span className="text-sm text-slate-600">giây</span>
 
                 <button
                   type="button"
                   onClick={() => handleSettingChange("questionTimeLimit", null)}
-                  className="ml-auto inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                  className="ml-auto inline-flex items-center rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
                 >
                   Reset
                 </button>

@@ -104,6 +104,19 @@ const MultipleChoiceService = {
     const data = await handle(res);
     return data.question || data || { success: true };
   },
+
+  // =========================
+  // 🔄 Move Question (JWT, admin/creator)
+  // =========================
+  async moveQuestion(questionId, targetTestId) {
+    const res = await fetch(`${API_BASE_URL}/multiple-choices/${questionId}/move`, {
+      method: 'PATCH',
+      headers: authHeaders(),
+      body: JSON.stringify({ target_test_id: targetTestId }),
+    });
+    const data = await handle(res);
+    return data;
+  },
 };
 
 export default MultipleChoiceService;

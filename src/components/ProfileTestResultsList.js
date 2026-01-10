@@ -1,43 +1,74 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+// src/components/ProfileTestResultsList.jsx
+import React from "react";
 
-const ProfileTestResultsList = ({ results, loading, error, onRetry, onViewDetail, onRetakeTest, onDelete }) => {
-  const getScoreColor = (percentage) => {
-    if (percentage >= 80) return 'text-green-600';
-    if (percentage >= 60) return 'text-yellow-600';
-    return 'text-red-600';
+const cx = (...a) => a.filter(Boolean).join(" ");
+
+const ProfileTestResultsList = ({
+  results = [],
+  loading,
+  error,
+  onRetry,
+  onViewDetail,
+  onDelete,
+}) => {
+  const safeResults = Array.isArray(results) ? results : [];
+
+  const getScoreColor = (percentage = 0) => {
+    if (percentage >= 80) return "text-green-600";
+    if (percentage >= 60) return "text-yellow-600";
+    return "text-red-600";
   };
 
-  const getScoreBg = (percentage) => {
-    if (percentage >= 80) return 'bg-green-100';
-    if (percentage >= 60) return 'bg-yellow-100';
-    return 'bg-red-100';
+  const getScoreBg = (percentage = 0) => {
+    if (percentage >= 80) return "bg-green-100";
+    if (percentage >= 60) return "bg-yellow-100";
+    return "bg-red-100";
   };
 
   const getTestTypeIcon = (testType) => {
     switch (testType) {
-      case 'vocabulary':
+      case "vocabulary":
         return (
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+            />
           </svg>
         );
-      case 'multiple_choice':
+      case "multiple_choice":
         return (
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+          <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+            />
           </svg>
         );
-      case 'grammar':
+      case "grammar":
         return (
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+            />
           </svg>
         );
       default:
         return (
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            />
           </svg>
         );
     }
@@ -45,19 +76,37 @@ const ProfileTestResultsList = ({ results, loading, error, onRetry, onViewDetail
 
   const getTestTypeName = (testType) => {
     switch (testType) {
-      case 'vocabulary': return 'Từ vựng';
-      case 'multiple_choice': return 'Trắc nghiệm';
-      case 'grammar': return 'Ngữ pháp';
-      default: return testType;
+      case "vocabulary":
+        return "Từ vựng";
+      case "multiple_choice":
+        return "Trắc nghiệm";
+      case "grammar":
+        return "Ngữ pháp";
+      default:
+        return "Bài test";
     }
   };
 
+  const formatDate = (iso) => {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "—";
+    return d.toLocaleDateString("vi-VN");
+  };
+
+  const formatDuration = (ms) => {
+    const s = Math.max(0, Math.round((ms || 0) / 1000));
+    return `${s}s`;
+  };
+
+  // ---------- UI states ----------
   if (loading) {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-8">
-        <div className="flex items-center justify-center">
-          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-          <span className="ml-3 text-gray-600">Đang tải kết quả...</span>
+      <div className="bg-white rounded-xl border border-slate-100 p-4">
+        <div className="animate-pulse space-y-3">
+          <div className="h-4 w-40 bg-slate-100 rounded" />
+          <div className="h-16 bg-slate-100 rounded" />
+          <div className="h-16 bg-slate-100 rounded" />
         </div>
       </div>
     );
@@ -65,170 +114,162 @@ const ProfileTestResultsList = ({ results, loading, error, onRetry, onViewDetail
 
   if (error) {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-8">
-        <div className="text-center">
-          <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-3">
-            <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+      <div className="bg-white rounded-xl border border-rose-100 p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-rose-700">Không tải được kết quả</p>
+            <p className="text-xs text-rose-600 mt-1">{String(error)}</p>
           </div>
-          <p className="text-gray-600 mb-3">{error}</p>
-          <button
-            onClick={onRetry}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Thử lại
-          </button>
+          {onRetry && (
+            <button
+              onClick={onRetry}
+              className="px-3 py-2 rounded-lg text-xs font-medium bg-rose-600 text-white hover:bg-rose-700"
+            >
+              Thử lại
+            </button>
+          )}
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm relative pb-6">
-      {!Array.isArray(results) || results.length === 0 ? (
-        <div className="p-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-            <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 shadow-sm p-8 flex flex-col items-center justify-center">
-              <div className="text-gray-400 mb-3">
-                <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Chưa có kết quả nào</h3>
-              <p className="text-gray-600 mb-4 text-center max-w-xl">
-                Bạn chưa hoàn thành bài test nào. Dưới đây là một vài gợi ý để bắt đầu luyện tập — làm một bài test hoặc khám phá các chủ đề phù hợp với bạn.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-3 mt-3">
-                <Link to="/multiple-choice/topics" className="px-3 py-2 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-center">Làm bài trắc nghiệm</Link>
-                <Link to="/vocabulary/topics" className="px-3 py-2 sm:px-4 sm:py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-center">Luyện từ vựng</Link>
-                <Link to="/grammar/topics" className="px-3 py-2 sm:px-4 sm:py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 text-center">Học ngữ pháp</Link>
-              </div>
-            </div>
+  if (!safeResults.length) {
+    return (
+      <div className="bg-white rounded-xl border border-slate-100 p-6 text-center">
+        <p className="text-sm font-semibold text-slate-900">Chưa có kết quả nào</p>
+        <p className="text-xs text-slate-500 mt-1">Làm một bài test để xem lịch sử kết quả ở đây.</p>
+      </div>
+    );
+  }
 
-            <aside className="bg-white rounded-xl border border-gray-200 shadow-sm p-3">
-              <h4 className="text-sm font-semibold text-gray-800 mb-3">Gợi ý nhanh</h4>
-              <ul className="space-y-3 text-sm text-gray-600">
-                <li className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 grid place-items-center">1</div>
-                  <div>
-                    <div className="font-medium text-gray-800">Bắt đầu với bài kiểm tra ngắn</div>
-                    <div className="text-xs">Chọn bài 10 câu để làm quen.</div>
-                  </div>
-                </li>
-                <li className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 grid place-items-center">2</div>
-                  <div>
-                    <div className="font-medium text-gray-800">Luyện theo chủ đề</div>
-                    <div className="text-xs">Tập trung vào chủ đề bạn yếu.</div>
-                  </div>
-                </li>
-                <li className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-violet-50 text-violet-600 grid place-items-center">3</div>
-                  <div>
-                    <div className="font-medium text-gray-800">Xem thống kê</div>
-                    <div className="text-xs">Theo dõi tiến bộ sau mỗi lần làm bài.</div>
-                  </div>
-                </li>
-              </ul>
-            </aside>
-          </div>
-        </div>
-      ) : (
-        <div className="divide-y divide-gray-200">
-          {results.map((result) => (
-            <div key={result._id} className="p-4 hover:bg-gray-50 transition-colors">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+  // ---------- List ----------
+  return (
+    <div className="bg-white rounded-xl border border-slate-100 overflow-hidden">
+      <div className="divide-y divide-slate-100">
+        {safeResults.map((result) => {
+          const id = result?._id ?? `${result?.created_at ?? ""}-${Math.random()}`;
+          const percentage = Number(result?.percentage ?? 0);
+          const total = Number(result?.total_questions ?? 0);
+          const correct = Number(result?.correct_count ?? 0);
+
+          const testType = result?.test_id?.test_type;
+          const title = result?.test_id?.test_title || "Bài test";
+          const mainTopic = result?.test_id?.main_topic;
+          const subTopic = result?.test_id?.sub_topic;
+
+          return (
+            <div key={id} className="p-3 sm:p-4 hover:bg-slate-50 transition-colors">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                {/* Left */}
                 <div className="flex-1">
-                  <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
-                    {/* Score Badge */}
-                    <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center ${getScoreBg(result.percentage)}`}>
-                      <span className={`text-sm sm:text-lg font-bold ${getScoreColor(result.percentage)}`}>
-                        {result.percentage}%
+                  <div className="flex items-start gap-3">
+                    {/* Score */}
+                    <div
+                      className={cx(
+                        "w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shrink-0",
+                        getScoreBg(percentage)
+                      )}
+                    >
+                      <span className={cx("text-sm sm:text-lg font-bold", getScoreColor(percentage))}>
+                        {percentage}%
                       </span>
                     </div>
-                    
-                    {/* Test Info */}
-                    <div className="flex-1">
-                      <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-3 mb-2">
-                        <div className="w-6 h-6 sm:w-8 sm:h-8 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600">
-                          {getTestTypeIcon(result.test_id?.test_type)}
-                        </div>
-                        <h3 className="text-sm sm:text-lg font-semibold text-gray-900">
-                          {result.test_id?.test_title || 'Bài test'}
+
+                    {/* Info */}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <span className="w-7 h-7 sm:w-8 sm:h-8 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600">
+                          {getTestTypeIcon(testType)}
+                        </span>
+
+                        <h3 className="text-sm sm:text-base font-semibold text-slate-900 truncate">
+                          {title}
                         </h3>
-                        <span className="inline-flex items-center px-2 py-0.5 sm:px-2.5 sm:py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          {getTestTypeName(result.test_id?.test_type)}
+
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          {getTestTypeName(testType)}
                         </span>
                       </div>
-                      
-                      <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-600">
+
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs sm:text-sm text-slate-600">
                         <span className="flex items-center">
-                          <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                            />
                           </svg>
-                          {result.correct_count}/{result.total_questions} câu đúng
+                          {correct}/{total} câu đúng
                         </span>
+
                         <span className="flex items-center">
-                          <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
-                          {Math.round(result.duration_ms / 1000)}s
+                          {formatDuration(result?.duration_ms)}
                         </span>
+
                         <span className="flex items-center">
-                          <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m4 4a2 2 0 00-2-2h-2a2 2 0 00-2 2m0 0a2 2 0 002 2h2a2 2 0 002-2m0 0v6a2 2 0 01-2 2H6a2 2 0 01-2-2v-6m0 0V9a2 2 0 012-2h8a2 2 0 012 2v6z" />
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m4 4a2 2 0 00-2-2h-2a2 2 0 00-2 2m0 0a2 2 0 002 2h2a2 2 0 002-2m0 0v6a2 2 0 01-2 2H6a2 2 0 01-2-2v-6m0 0V9a2 2 0 012-2h8a2 2 0 012 2v6z"
+                            />
                           </svg>
-                          {new Date(result.created_at).toLocaleDateString('vi-VN')}
+                          {formatDate(result?.created_at)}
                         </span>
                       </div>
-                      
-                      {result.test_id?.main_topic && (
+
+                      {mainTopic && (
                         <div className="mt-2">
-                          <span className="inline-flex items-center px-2 py-0.5 sm:px-2.5 sm:py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                            {result.test_id.main_topic}
-                            {result.test_id?.sub_topic && ` › ${result.test_id.sub_topic}`}
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+                            {mainTopic}
+                            {subTopic ? ` › ${subTopic}` : ""}
                           </span>
                         </div>
                       )}
                     </div>
                   </div>
                 </div>
-                
+
                 {/* Actions */}
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 sm:ml-6">
+                <div className="flex flex-row sm:flex-col items-stretch sm:items-end gap-2 sm:gap-2 sm:ml-4">
                   <button
-                    onClick={() => onViewDetail(result)}
-                    className="px-3 py-2 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs sm:text-sm"
+                    onClick={() => onViewDetail?.(result)}
+                    className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs sm:text-sm"
                   >
-                    Xem chi tiết
+                    Xem
                   </button>
+
                   
-                  <button
-                    onClick={() => onRetakeTest(result)}
-                    className="px-3 py-2 sm:px-4 sm:py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-xs sm:text-sm"
-                  >
-                    Làm lại
-                  </button>
-                  
+
                   {onDelete && (
                     <button
                       onClick={() => onDelete(result)}
-                      className="px-3 py-2 sm:px-4 sm:py-2 bg-rose-600 text-white rounded-lg hover:bg-rose-700 transition-colors text-xs sm:text-sm flex items-center justify-center gap-1"
+                      className="px-3 py-2 bg-rose-600 text-white rounded-lg hover:bg-rose-700 transition-colors text-xs sm:text-sm flex items-center justify-center gap-1"
                       title="Xóa kết quả"
                     >
-                      <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                        />
                       </svg>
-                      Xóa
+                      <span className="hidden sm:inline">Xóa</span>
                     </button>
                   )}
                 </div>
               </div>
             </div>
-          ))}
-        </div>
-      )}
+          );
+        })}
+      </div>
     </div>
   );
 };

@@ -51,8 +51,24 @@ const OTPVerificationPage = () => {
       const result = await authService.verifyRegistrationOTP(email, otp);
       setSuccess('Xác thực thành công! Đang chuyển hướng...');
       
+      // Dispatch event to notify AuthContext to update
+      if (result?.user) {
+        window.dispatchEvent(new CustomEvent('profileUpdated', { 
+          detail: { user: result.user } 
+        }));
+      } else {
+        // If user not in result, get from authService
+        const userData = authService.getCurrentUserData();
+        if (userData) {
+          window.dispatchEvent(new CustomEvent('profileUpdated', { 
+            detail: { user: userData } 
+          }));
+        }
+      }
+      
       // Get the return URL from localStorage if it exists
-      const returnTo = localStorage.getItem('authReturnTo') || '/';
+      // Default to /topics for successful registration (if no return path specified)
+      const returnTo = localStorage.getItem('authReturnTo') || '/topics';
       localStorage.removeItem('authReturnTo');
       
       setTimeout(() => {
@@ -96,30 +112,59 @@ const OTPVerificationPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="flex justify-center mb-6">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white grid place-items-center shadow-xl">
-            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 7.89a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
-          </div>
-        </div>
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">QuizSmart</h1>
-          <p className="text-sm text-gray-600 mb-6">Học thông minh mỗi ngày</p>
-        </div>
-        <h2 className="text-center text-2xl font-bold tracking-tight text-gray-900 mb-2">
-          Xác thực email
-        </h2>
-        <p className="text-center text-sm text-gray-600">
-          Chúng tôi đã gửi mã OTP đến email{' '}
-          <span className="font-semibold text-blue-600">{email}</span>
-        </p>
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 flex flex-col justify-center py-8 sm:px-6 lg:px-8 relative overflow-hidden">
+      {/* Background decorations */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-gradient-to-br from-blue-400/20 to-indigo-600/20 blur-3xl"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 rounded-full bg-gradient-to-tr from-cyan-400/20 to-blue-600/20 blur-3xl"></div>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white/90 backdrop-blur-lg py-8 px-6 shadow-2xl rounded-2xl border border-white/20 sm:px-10">
+      <div className="relative z-10 sm:mx-auto sm:w-full sm:max-w-md">
+        {/* Logo and branding */}
+        <div className="text-center mb-8">
+          <div className="flex justify-center mb-6">
+            <div className="relative">
+              <div className="w-20 h-20 rounded-3xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white grid place-items-center shadow-2xl transform rotate-3 hover:rotate-0 transition-transform duration-300">
+                <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 7.89a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+              </div>
+            </div>
+          </div>
+          <h1 className="text-3xl font-black text-gray-900 mb-2 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+            QuizSmart
+          </h1>
+          <p className="text-sm text-gray-500 font-medium">Học thông minh mỗi ngày</p>
+        </div>
+
+        {/* Main heading */}
+        <div className="text-center mb-8">
+          <h2 className="text-2xl font-bold tracking-tight text-gray-900 mb-3">
+            Xác thực email của bạn
+          </h2>
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-4">
+            <p className="text-sm text-blue-800 font-medium">
+              📧 Mã OTP đã được gửi đến
+            </p>
+            <p className="text-base font-bold text-blue-900 mt-1 break-all">
+              {email}
+            </p>
+          </div>
+          <p className="text-xs text-gray-500">
+            Kiểm tra cả hộp thư spam nếu không thấy email
+          </p>
+        </div>
+      </div>
+
+      <div className="relative z-10 mt-4 sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="bg-white/95 backdrop-blur-xl py-8 px-6 shadow-2xl rounded-3xl border border-white/30 sm:px-10 relative overflow-hidden">
+          {/* Card decoration */}
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"></div>
           {error && (
             <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-400 rounded-r-xl">
               <div className="flex">
@@ -150,10 +195,10 @@ const OTPVerificationPage = () => {
             </div>
           )}
 
-          <form className="space-y-6" onSubmit={handleSubmit}>
+          <form className="space-y-8" onSubmit={handleSubmit}>
             <div>
-              <label htmlFor="otp" className="block text-sm font-semibold text-gray-700 mb-2">
-                Mã xác thực (OTP)
+              <label htmlFor="otp" className="block text-sm font-bold text-gray-800 mb-4 text-center">
+                🔐 Nhập mã xác thực
               </label>
               <div className="relative">
                 <input
@@ -166,64 +211,111 @@ const OTPVerificationPage = () => {
                   required
                   value={otp}
                   onChange={handleOtpChange}
-                  className="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-sm bg-gray-50/50 text-center text-2xl font-mono tracking-widest"
-                  placeholder="000000"
+                  className="appearance-none block w-full px-6 py-5 border-2 border-gray-200 rounded-2xl placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-300 text-center text-3xl font-bold tracking-[0.5em] bg-gradient-to-r from-gray-50 to-blue-50/30 hover:from-blue-50/50 hover:to-indigo-50/50"
+                  placeholder="● ● ● ● ● ●"
                   maxLength="6"
-                  style={{ letterSpacing: '0.5em' }}
                 />
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                  <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
+                <div className="absolute inset-y-0 right-0 pr-4 flex items-center">
+                  <div className={`w-3 h-3 rounded-full transition-colors duration-300 ${otp.length === 6 ? 'bg-green-500' : 'bg-gray-300'}`}></div>
                 </div>
               </div>
-              <p className="mt-2 text-sm text-gray-500">
-                Nhập mã 6 số được gửi đến email của bạn
-              </p>
+              <div className="mt-4 text-center">
+                <div className="flex justify-center space-x-1 mb-2">
+                  {[...Array(6)].map((_, i) => (
+                    <div
+                      key={i}
+                      className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                        i < otp.length 
+                          ? 'bg-blue-500 scale-110' 
+                          : 'bg-gray-200'
+                      }`}
+                    ></div>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500 font-medium">
+                  {otp.length}/6 ký tự đã nhập
+                </p>
+              </div>
             </div>
 
             <div>
               <button
                 type="submit"
                 disabled={loading || otp.length !== 6}
-                className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-semibold rounded-xl text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transform transition-all duration-200 hover:scale-[1.02] shadow-lg"
+                className="group relative w-full flex justify-center py-4 px-6 border border-transparent text-base font-bold rounded-2xl text-white bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-700 hover:via-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-4 focus:ring-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed transform transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl shadow-xl disabled:hover:scale-100"
               >
-                {loading ? (
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                ) : null}
-                {loading ? 'Đang xác thực...' : 'Xác thực'}
+                <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl blur opacity-30 group-hover:opacity-50 transition-opacity duration-300"></span>
+                <span className="relative flex items-center">
+                  {loading ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Đang xác thực...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Xác thực ngay
+                    </>
+                  )}
+                </span>
               </button>
             </div>
 
-            <div className="text-center">
-              <p className="text-sm text-gray-600 mb-2">
-                Không nhận được mã?
+            <div className="text-center bg-gray-50 rounded-2xl p-4">
+              <p className="text-sm text-gray-600 mb-3 font-medium">
+                Chưa nhận được mã?
               </p>
               <button
                 type="button"
                 onClick={handleResendOTP}
                 disabled={resendLoading || countdown > 0}
-                className="font-medium text-blue-600 hover:text-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center px-4 py-2 text-sm font-semibold text-blue-600 bg-blue-50 rounded-xl hover:bg-blue-100 hover:text-blue-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed border border-blue-200"
               >
-                {resendLoading ? 'Đang gửi...' : 
-                 countdown > 0 ? `Gửi lại sau ${countdown}s` : 'Gửi lại mã OTP'}
+                {resendLoading ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Đang gửi...
+                  </>
+                ) : countdown > 0 ? (
+                  <>
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Gửi lại sau {countdown}s
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Gửi lại mã OTP
+                  </>
+                )}
               </button>
             </div>
           </form>
 
-          <div className="text-center mt-8">
-            <p className="text-sm text-gray-600">
-              Sai email?{' '}
-              <Link
-                to="/register"
-                className="font-semibold text-blue-600 hover:text-blue-500 transition-colors hover:underline"
-              >
-                Đăng ký lại
-              </Link>
+          <div className="text-center mt-8 pt-6 border-t border-gray-100">
+            <p className="text-sm text-gray-500 mb-3">
+              Email không đúng?
             </p>
+            <Link
+              to="/register"
+              className="inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 hover:text-gray-700 transition-all duration-200"
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              Đăng ký lại với email khác
+            </Link>
           </div>
         </div>
       </div>

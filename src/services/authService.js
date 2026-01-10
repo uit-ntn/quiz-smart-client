@@ -218,6 +218,10 @@ class AuthService {
     // BE có thể trả user trực tiếp hoặc { user }
     const user = data.user || data;
     this._persistAuth({ user });
+    
+    // Dispatch custom event to notify AuthContext to update
+    window.dispatchEvent(new CustomEvent('profileUpdated', { detail: { user } }));
+    
     return user;
   }
 

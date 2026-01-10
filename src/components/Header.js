@@ -109,24 +109,42 @@ export default function Header() {
               {openUser && (
                 <div className="absolute right-0 mt-2 w-52 rounded-xl border border-white/10 bg-[#0B1328] overflow-hidden">
                   <Link
-                    to="/profile"
+                    to="/profile/info"
                     onClick={() => setOpenUser(false)}
                     className="block px-4 py-2 text-sm text-white/80 hover:bg-white/10"
                   >
-                    Hồ sơ cá nhân
+                    Thông tin cá nhân
+                  </Link>
+                  <Link
+                    to="/profile/results"
+                    onClick={() => setOpenUser(false)}
+                    className="block px-4 py-2 text-sm text-white/80 hover:bg-white/10"
+                  >
+                    Kết quả bài test
+                  </Link>
+                  <Link
+                    to="/profile/tests"
+                    onClick={() => setOpenUser(false)}
+                    className="block px-4 py-2 text-sm text-white/80 hover:bg-white/10"
+                  >
+                    Bài test của tôi
                   </Link>
 
                   {/* ADMIN ONLY */}
                   {user?.role === "admin" && (
-                    <Link
-                      to="/admin"
-                      onClick={() => setOpenUser(false)}
-                      className="block px-4 py-2 text-sm font-semibold text-cyan-300 hover:bg-cyan-400/10"
-                    >
-                      Admin Dashboard
-                    </Link>
+                    <>
+                      <div className="border-t border-white/10 my-1"></div>
+                      <Link
+                        to="/admin"
+                        onClick={() => setOpenUser(false)}
+                        className="block px-4 py-2 text-sm font-semibold text-cyan-300 hover:bg-cyan-400/10"
+                      >
+                        Admin Dashboard
+                      </Link>
+                    </>
                   )}
 
+                  <div className="border-t border-white/10 my-1"></div>
                   <button
                     onClick={async () => {
                       setOpenUser(false);

@@ -39,6 +39,78 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, []);
 
+  // Listen for profile updates via custom event
+  useEffect(() => {
+    const handleProfileUpdate = (e) => {
+      if (e.detail && e.detail.user) {
+        setUser(e.detail.user);
+      }
+    };
+
+    // Listen for custom event when profile is updated
+    window.addEventListener('profileUpdated', handleProfileUpdate);
+
+    // Also listen for storage events (from other tabs/windows)
+    const handleStorageChange = (e) => {
+      if (e.key === 'user' && e.newValue) {
+        try {
+          const newUser = JSON.parse(e.newValue);
+          if (newUser && newUser._id) {
+            setUser(newUser);
+          }
+        } catch (error) {
+          console.error('Error parsing user from localStorage:', error);
+        }
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('profileUpdated', handleProfileUpdate);
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
+  // Listen for localStorage changes to update user automatically
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === 'user' && e.newValue) {
+        try {
+          const newUser = JSON.parse(e.newValue);
+          if (newUser && newUser._id) {
+            setUser(newUser);
+          }
+        } catch (error) {
+          console.error('Error parsing user from localStorage:', error);
+        }
+      }
+    };
+
+    // Listen for storage events (from other tabs/windows)
+    window.addEventListener('storage', handleStorageChange);
+
+    // Also check localStorage periodically for same-tab updates
+    const intervalId = setInterval(() => {
+      try {
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          const parsedUser = JSON.parse(storedUser);
+          // Only update if user ID matches and data is different
+          if (parsedUser && parsedUser._id && (!user || user._id !== parsedUser._id || JSON.stringify(user) !== storedUser)) {
+            setUser(parsedUser);
+          }
+        }
+      } catch (error) {
+        // Ignore errors
+      }
+    }, 1000); // Check every second
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(intervalId);
+    };
+  }, [user]);
+
   const login = async (credentials) => {
     try {
       const response = await authService.login(credentials);
