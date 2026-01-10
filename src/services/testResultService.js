@@ -248,6 +248,20 @@ const testResultService = {
     const data = await handle(res);
     return data.result;
   },
+
+  // Get top test takers (users who completed the most tests)
+  async getTopTestTakers(limit = 5) {
+    const res = await fetch(
+      `${API_BASE_URL}/test-results/top-test-takers?limit=${limit}`,
+      {
+        method: 'GET',
+        headers: authHeaders(),
+      }
+    );
+
+    const data = await handle(res);
+    return data.users || [];
+  },
 };
 
 export default testResultService;

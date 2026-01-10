@@ -6,7 +6,7 @@ import CreateMultipleChoiceTestButton from '../components/CreateMultipleChoiceTe
 import LoadingSpinner from '../components/LoadingSpinner';
 import Toast from '../components/Toast';
 import DeleteTestModal from '../components/AdminDeleteTestModal';
-import TestDetailModal from '../components/AdminTestDetailModal';
+import AdminMCPTestDetailModal from '../components/AdminMCPTestDetailModal';
 
 const AdminMultipleChoiceTests = () => {
   const { user } = useAuth();
@@ -23,8 +23,14 @@ const AdminMultipleChoiceTests = () => {
   const [filterCreator, setFilterCreator] = useState('all');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+  const [showMergeModal, setShowMergeModal] = useState(false);
   const [selectedTestId, setSelectedTestId] = useState(null);
   const [testToDelete, setTestToDelete] = useState(null);
+
+  // Bulk selection state
+  const [selectedTests, setSelectedTests] = useState([]);
+  const [selectAll, setSelectAll] = useState(false);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -176,6 +182,103 @@ const AdminMultipleChoiceTests = () => {
     setCurrentPage(1);
   }, [searchTerm, filterVisibility, filterDifficulty, filterStatus, sortBy, sortOrder, filterCreator]);
 
+  // Clear selection when filters change
+  useEffect(() => {
+    setSelectedTests([]);
+    setSelectAll(false);
+  }, [searchTerm, filterVisibility, filterDifficulty, filterStatus, sortBy, sortOrder, filterCreator]);
+
+  // Bulk selection functions
+  const handleSelectAll = (checked) => {
+    setSelectAll(checked);
+    if (checked) {
+      setSelectedTests(paginatedTests.map(test => test._id));
+    } else {
+      setSelectedTests([]);
+    }
+  };
+
+  const handleSelectTest = (testId, checked) => {
+    if (checked) {
+      const newSelected = [...selectedTests, testId];
+      setSelectedTests(newSelected);
+      if (newSelected.length === paginatedTests.length) {
+        setSelectAll(true);
+      }
+    } else {
+      const newSelected = selectedTests.filter(id => id !== testId);
+      setSelectedTests(newSelected);
+      setSelectAll(false);
+    }
+  };
+
+  const openBulkDelete = () => {
+    if (selectedTests.length > 0) {
+      setShowBulkDeleteModal(true);
+    }
+  };
+
+  const openBulkMerge = () => {
+    if (selectedTests.length >= 2) {
+      setShowMergeModal(true);
+    }
+  };
+
+  const handleMergeConfirm = async (targetTestId) => {
+    if (selectedTests.length < 2 || !targetTestId) return;
+
+    const sourceTestIds = selectedTests.filter(id => id !== targetTestId);
+    
+    if (sourceTestIds.length === 0) {
+      showToast('Vui lòng chọn ít nhất 2 bài test để gộp', 'error');
+      return;
+    }
+
+    try {
+      const response = await testService.mergeTests(targetTestId, sourceTestIds);
+      
+      showToast(
+        `Đã gộp ${response.moved_questions} câu hỏi từ ${sourceTestIds.length} bài test. Tổng câu hỏi: ${response.target_total_questions}`,
+        'success'
+      );
+      
+      // Clear selection and refresh data
+      setSelectedTests([]);
+      setSelectAll(false);
+      setShowMergeModal(false);
+      await fetchMultipleChoiceTests();
+      
+    } catch (err) {
+      console.error('Error merging tests:', err);
+      showToast(`Không thể gộp bài test: ${err.message}`, 'error');
+    }
+  };
+
+  const handleBulkDeleteConfirm = async (deleteType) => {
+    if (selectedTests.length === 0) return;
+
+    try {
+      // Delete all selected tests
+      if (deleteType === 'soft') {
+        await Promise.all(selectedTests.map(id => testService.softDeleteTest(id)));
+        showToast(`Đã xóa mềm ${selectedTests.length} bài test`, 'success');
+      } else {
+        await Promise.all(selectedTests.map(id => testService.hardDeleteTest(id)));
+        showToast(`Đã xóa vĩnh viễn ${selectedTests.length} bài test`, 'success');
+      }
+      
+      // Clear selection and refresh data
+      setSelectedTests([]);
+      setSelectAll(false);
+      setShowBulkDeleteModal(false);
+      await fetchMultipleChoiceTests();
+      
+    } catch (err) {
+      console.error('Error bulk deleting tests:', err);
+      showToast('Không thể xóa một số bài test. Vui lòng thử lại!', 'error');
+    }
+  };
+
   const handleDeleteClick = (test) => {
     setTestToDelete(test);
     setShowDeleteModal(true);
@@ -302,7 +405,7 @@ const AdminMultipleChoiceTests = () => {
           </div>
 
           <div className="flex-shrink-0">
-            <CreateMultipleChoiceTestButton label="Tạo Test" />
+            <CreateMultipleChoiceTestButton label="Tạo Test" className="h-10 px-3.5" />
           </div>
         </div>
 
@@ -325,12 +428,36 @@ const AdminMultipleChoiceTests = () => {
               </div>
 
               <div className="flex items-center gap-2">
+                {selectedTests.length > 0 && (
+                  <>
+                    {selectedTests.length >= 2 && (
+                      <button
+                        onClick={openBulkMerge}
+                        className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg bg-green-500 hover:bg-green-600 text-white"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                        <span>Gộp ({selectedTests.length})</span>
+                      </button>
+                    )}
+                    <button
+                      onClick={openBulkDelete}
+                      className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg bg-red-500 hover:bg-red-600 text-white"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      <span>Xóa ({selectedTests.length})</span>
+                    </button>
+                  </>
+                )}
                 <select
                   value={filterVisibility}
                   onChange={(e) => setFilterVisibility(e.target.value)}
                   className="px-2 py-1 border border-gray-200 rounded-md text-sm bg-white"
                 >
-                  <option value="all">Tất cả</option>
+                  <option value="all">Tất cả Trạng Thái</option>
                   <option value="public">Công khai</option>
                   <option value="private">Riêng tư</option>
                 </select>
@@ -340,7 +467,7 @@ const AdminMultipleChoiceTests = () => {
                   onChange={(e) => setFilterDifficulty(e.target.value)}
                   className="px-2 py-1 border border-gray-200 rounded-md text-sm bg-white"
                 >
-                  <option value="all">Tất cả</option>
+                  <option value="all">Tất cả Độ Khó</option>
                   <option value="easy">Dễ</option>
                   <option value="medium">Trung bình</option>
                   <option value="hard">Khó</option>
@@ -351,7 +478,7 @@ const AdminMultipleChoiceTests = () => {
                   onChange={(e) => setFilterStatus(e.target.value)}
                   className="px-2 py-1 border border-gray-200 rounded-md text-sm bg-white"
                 >
-                  <option value="all">Tất cả</option>
+                  <option value="all">Tất cả Trạng Thái</option>
                   <option value="active">Kích hoạt</option>
                   <option value="inactive">Tạm dừng</option>
                   <option value="deleted">Đã xóa</option>
@@ -362,7 +489,7 @@ const AdminMultipleChoiceTests = () => {
                   onChange={(e) => setSortBy(e.target.value)}
                   className="px-2 py-1 border border-gray-200 rounded-md text-sm bg-white"
                 >
-                  <option value="created_by_full_name">Được tạo bởi</option>
+                  <option value="all">Mặc định</option>
                   <option value="test_title">Tên test</option>
                   <option value="main_topic">Chủ đề</option>
                   <option value="total_questions">Số câu hỏi</option>
@@ -387,6 +514,14 @@ const AdminMultipleChoiceTests = () => {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
+                    <th className="px-3 py-2 text-left">
+                      <input
+                        type="checkbox"
+                        checked={selectAll}
+                        onChange={(e) => handleSelectAll(e.target.checked)}
+                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                    </th>
                     <th 
                       className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                       onClick={() => handleSort('test_title')}
@@ -438,6 +573,14 @@ const AdminMultipleChoiceTests = () => {
                   {paginatedTests.length > 0 ? (
                     paginatedTests.map((test) => (
                       <tr key={test._id} className="hover:bg-gray-50">
+                        <td className="px-3 py-2 whitespace-nowrap">
+                          <input
+                            type="checkbox"
+                            checked={selectedTests.includes(test._id)}
+                            onChange={(e) => handleSelectTest(test._id, e.target.checked)}
+                            className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                          />
+                        </td>
                         <td className="px-3 py-2">
                           <div className="max-w-xs">
                             <div className="text-sm font-medium text-gray-900 truncate">{test.test_title}</div>
@@ -500,7 +643,7 @@ const AdminMultipleChoiceTests = () => {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="7" className="px-4 py-8 text-center text-sm text-gray-500">
+                      <td colSpan="8" className="px-4 py-8 text-center text-sm text-gray-500">
                         Không tìm thấy bài test nào
                       </td>
                     </tr>
@@ -613,6 +756,47 @@ const AdminMultipleChoiceTests = () => {
       </div>
 
       {/* Modals */}
+      {/* Bulk Delete Modal */}
+      {showBulkDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowBulkDeleteModal(false)} />
+          <div className="relative bg-white rounded-lg p-6 max-w-md w-full">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-9 h-9 rounded-lg bg-rose-50 flex items-center justify-center">
+                <svg className="w-5 h-5 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                </svg>
+              </div>
+              <div>
+                <h4 className="text-lg font-semibold text-black">Xác nhận xóa nhiều</h4>
+                <p className="text-sm text-indigo-900/70">Hành động này không thể hoàn tác</p>
+              </div>
+            </div>
+            <p className="text-black mb-6">Bạn có chắc chắn muốn xóa <span className="font-semibold">{selectedTests.length} bài test</span> đã chọn?</p>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => handleBulkDeleteConfirm('soft')}
+                className="w-full px-4 py-2 rounded-lg bg-yellow-600 text-white hover:bg-yellow-700"
+              >
+                Xóa mềm {selectedTests.length} bài test
+              </button>
+              <button
+                onClick={() => handleBulkDeleteConfirm('hard')}
+                className="w-full px-4 py-2 rounded-lg bg-rose-600 text-white hover:bg-rose-700"
+              >
+                Xóa vĩnh viễn {selectedTests.length} bài test
+              </button>
+              <button
+                onClick={() => setShowBulkDeleteModal(false)}
+                className="w-full px-4 py-2 rounded-lg border border-indigo-200 bg-white text-indigo-900 hover:bg-indigo-50"
+              >
+                Hủy
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <DeleteTestModal
         isOpen={showDeleteModal}
         onClose={() => setShowDeleteModal(false)}
@@ -620,12 +804,61 @@ const AdminMultipleChoiceTests = () => {
         onDeleteConfirmed={handleDeleteConfirm}
       />
 
-      <TestDetailModal
+      <AdminMCPTestDetailModal
         isOpen={showDetailModal}
         onClose={() => setShowDetailModal(false)}
         testId={selectedTestId}
         onTestUpdated={handleTestUpdated}
       />
+
+      {/* Merge Tests Modal */}
+      {showMergeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowMergeModal(false)} />
+          <div className="relative bg-white rounded-lg p-6 max-w-md w-full">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-9 h-9 rounded-lg bg-green-50 flex items-center justify-center">
+                <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div>
+                <h4 className="text-lg font-semibold text-black">Gộp bài test</h4>
+                <p className="text-sm text-indigo-900/70">Chọn bài test đích</p>
+              </div>
+            </div>
+            <p className="text-black mb-4">Chọn bài test sẽ nhận tất cả câu hỏi từ {selectedTests.length - 1} bài test khác:</p>
+            <select 
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg mb-4"
+              onChange={(e) => e.target.value && handleMergeConfirm(e.target.value)}
+              defaultValue=""
+            >
+              <option value="">-- Chọn bài test đích --</option>
+              {selectedTests.map(testId => {
+                const test = tests.find(t => t._id === testId);
+                return test ? (
+                  <option key={testId} value={testId}>
+                    {test.test_title} ({test.total_questions || 0} câu hỏi)
+                  </option>
+                ) : null;
+              })}
+            </select>
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+              <p className="text-sm text-yellow-800">
+                <strong>Lưu ý:</strong> Các bài test nguồn sẽ bị xóa mềm sau khi gộp. Hành động này không thể hoàn tác.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowMergeModal(false)}
+                className="flex-1 px-4 py-2 rounded-lg border border-indigo-200 bg-white text-indigo-900 hover:bg-indigo-50"
+              >
+                Hủy
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Toast */}
       <Toast

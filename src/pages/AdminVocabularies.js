@@ -4,6 +4,8 @@ import vocabularyService from "../services/vocabularyService";
 import testService from "../services/testService";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
+import AdminVocabularyQuestionModal from "../components/AdminVocabularyQuestionModal";
+import Toast from "../components/Toast";
 
 /* =========================
    Small UI helpers
@@ -80,92 +82,8 @@ const ModalShell = ({ title, subtitle, onClose, children, maxWidth = "max-w-2xl"
 };
 
 /* =========================
-   Vocab Form (compact, modern)
+   Main Component
 ========================= */
-const VocabForm = ({ onSubmit, buttonText, formData, setFormData, allTests, onCancel }) => {
-  const update = (k) => (e) => setFormData((p) => ({ ...p, [k]: e.target.value }));
-
-  return (
-    <form onSubmit={onSubmit} className="space-y-3">
-      <div>
-        <label className="block text-xs font-medium text-slate-700 mb-1">
-          Bài kiểm tra <span className="text-rose-500">*</span>
-        </label>
-        <select
-          value={formData.test_id}
-          onChange={update("test_id")}
-          required
-          className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-        >
-          <option value="">Chọn bài kiểm tra...</option>
-          {allTests.map((t) => (
-            <option key={t._id} value={t._id}>
-              {t.test_title} {t.main_topic ? `- ${t.main_topic}` : ""}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs font-medium text-slate-700 mb-1">
-            Từ vựng <span className="text-rose-500">*</span>
-          </label>
-          <input
-            type="text"
-            value={formData.word}
-            onChange={update("word")}
-            required
-            className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            placeholder="Nhập từ vựng..."
-          />
-        </div>
-      </div>
-
-      <div>
-        <label className="block text-xs font-medium text-slate-700 mb-1">
-          Nghĩa <span className="text-rose-500">*</span>
-        </label>
-        <input
-          type="text"
-          value={formData.meaning}
-          onChange={update("meaning")}
-          required
-          className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-          placeholder="Nghĩa của từ..."
-        />
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs font-medium text-slate-700 mb-1">Ví dụ</label>
-          <textarea
-            value={formData.example_sentence}
-            onChange={update("example_sentence")}
-            rows={2}
-            className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            placeholder="Câu ví dụ..."
-          />
-        </div>
-      </div>
-      <div className="pt-1 flex gap-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50"
-        >
-          Hủy
-        </button>
-        <button
-          type="submit"
-          className="flex-1 px-3 py-2 text-sm rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
-        >
-          {buttonText}
-        </button>
-      </div>
-    </form>
-  );
-};
 
 const AdminVocabularies = () => {
   const [vocabularies, setVocabularies] = useState([]);
@@ -176,23 +94,57 @@ const AdminVocabularies = () => {
   const [error, setError] = useState(null);
 
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedTestId, setSelectedTestId] = useState("");
+  const [selectedMainTopic, setSelectedMainTopic] = useState("");
+  const [selectedSubTopic, setSelectedSubTopic] = useState("");
+  const [selectedLevel, setSelectedLevel] = useState("");
+  const [duplicateFilter, setDuplicateFilter] = useState("");
+  const [mainTopics, setMainTopics] = useState([]);
+  const [subTopics, setSubTopics] = useState([]);
+
+  const filteredSubTopics = useMemo(() => {
+    if (!selectedMainTopic) return subTopics;
+    return [...new Set(allTests.filter(t => t.main_topic === selectedMainTopic).map(t => t.sub_topic).filter(Boolean))];
+  }, [allTests, selectedMainTopic, subTopics]);
+
+  // Map of word -> count to detect duplicates
+  const duplicatesMap = useMemo(() => {
+    const map = {};
+    (vocabularies || []).forEach((v) => {
+      const key = (v.word || "").toString().trim().toLowerCase();
+      if (!key) return;
+      map[key] = (map[key] || 0) + 1;
+    });
+    return map;
+  }, [vocabularies]);
+
+  const filteredTests = useMemo(() => {
+    let filtered = [...allTests];
+    
+    if (selectedMainTopic) {
+      filtered = filtered.filter(t => t.main_topic === selectedMainTopic);
+    }
+    
+    if (selectedSubTopic) {
+      filtered = filtered.filter(t => t.sub_topic === selectedSubTopic);
+    }
+    
+    return filtered;
+  }, [allTests, selectedMainTopic, selectedSubTopic]);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+  
+  // Bulk selection state
+  const [selectedVocabs, setSelectedVocabs] = useState([]);
+  const [selectAll, setSelectAll] = useState(false);
 
   const [selectedVocab, setSelectedVocab] = useState(null);
-
-  const [formData, setFormData] = useState({
-    word: "",
-    meaning: "",
-    example_sentence: "",
-    example_meaning: "",
-    phonetic: "",
-    image_url: "",
-    audio_url: "",
-    test_id: "",
-  });
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState("success");
 
   const normalizeTests = (data) => {
     if (Array.isArray(data)) return data;
@@ -216,6 +168,10 @@ const AdminVocabularies = () => {
       const vocabularyTests = testsArray.filter((t) => t.test_type === "vocabulary" || t.test_type === "vocab");
       setAllTests(vocabularyTests);
 
+      // Extract unique main topics and sub topics
+      setMainTopics([...new Set(vocabularyTests.map(t => t.main_topic).filter(Boolean))]);
+      setSubTopics([...new Set(vocabularyTests.map(t => t.sub_topic).filter(Boolean))]);
+
       // Map tests by id for quick lookup in table/cards
       const map = {};
       testsArray.forEach((t) => {
@@ -237,76 +193,143 @@ const AdminVocabularies = () => {
   }, [loadPageData]);
 
   const filteredVocabs = useMemo(() => {
+    let filtered = vocabularies;
     const q = searchTerm.trim().toLowerCase();
-    if (!q) return vocabularies;
+    if (q) {
+      filtered = filtered.filter((v) => {
+        const w = (v.word || "").toLowerCase();
+        const m = (v.meaning || "").toLowerCase();
+        return w.includes(q) || m.includes(q);
+      });
+    }
+    if (selectedTestId) {
+      filtered = filtered.filter((v) => v.test_id === selectedTestId);
+    }
+    if (selectedMainTopic) {
+      filtered = filtered.filter((v) => {
+        const t = testsById[v.test_id];
+        return t?.main_topic === selectedMainTopic;
+      });
+    }
+    if (selectedSubTopic) {
+      filtered = filtered.filter((v) => {
+        const t = testsById[v.test_id];
+        return t?.sub_topic === selectedSubTopic;
+      });
+    }
 
-    return vocabularies.filter((v) => {
-      const w = (v.word || "").toLowerCase();
-      const m = (v.meaning || "").toLowerCase();
-      return w.includes(q) || m.includes(q);
-    });
-  }, [vocabularies, searchTerm]);
+    // Filter by CEFR level
+    if (selectedLevel) {
+      filtered = filtered.filter((v) => (v.cefr_level || "").toUpperCase() === selectedLevel.toUpperCase());
+    }
+
+    
+
+    // Filter duplicates / unique words
+    if (duplicateFilter === 'unique') {
+      filtered = filtered.filter((v) => {
+        const key = (v.word || "").toString().trim().toLowerCase();
+        return (duplicatesMap[key] || 0) === 1;
+      });
+    } else if (duplicateFilter === 'duplicate') {
+      filtered = filtered.filter((v) => {
+        const key = (v.word || "").toString().trim().toLowerCase();
+        return (duplicatesMap[key] || 0) > 1;
+      });
+    }
+    return filtered;
+  }, [vocabularies, searchTerm, selectedTestId, selectedMainTopic, selectedSubTopic, selectedLevel, testsById, duplicateFilter, duplicatesMap]);
+
+  // Reset sub topic when main topic changes
+  useEffect(() => {
+    if (selectedMainTopic && !filteredSubTopics.includes(selectedSubTopic)) {
+      setSelectedSubTopic("");
+    }
+  }, [selectedMainTopic, filteredSubTopics, selectedSubTopic]);
+
+  // Reset test when main topic or sub topic changes
+  useEffect(() => {
+    if ((selectedMainTopic || selectedSubTopic) && !filteredTests.some(t => t._id === selectedTestId)) {
+      setSelectedTestId("");
+    }
+  }, [selectedMainTopic, selectedSubTopic, filteredTests, selectedTestId]);
+
+  // Clear selection when filters change
+  useEffect(() => {
+    setSelectedVocabs([]);
+    setSelectAll(false);
+  }, [searchTerm, selectedTestId, selectedMainTopic, selectedSubTopic, selectedLevel, duplicateFilter]);
+
+  // Bulk selection functions
+  const handleSelectAll = (checked) => {
+    setSelectAll(checked);
+    if (checked) {
+      setSelectedVocabs(filteredVocabs.map(v => v._id));
+    } else {
+      setSelectedVocabs([]);
+    }
+  };
+
+  const handleSelectVocab = (vocabId, checked) => {
+    if (checked) {
+      const newSelected = [...selectedVocabs, vocabId];
+      setSelectedVocabs(newSelected);
+      if (newSelected.length === filteredVocabs.length) {
+        setSelectAll(true);
+      }
+    } else {
+      const newSelected = selectedVocabs.filter(id => id !== vocabId);
+      setSelectedVocabs(newSelected);
+      setSelectAll(false);
+    }
+  };
+
+  const openBulkDelete = () => {
+    if (selectedVocabs.length > 0) {
+      setShowBulkDeleteModal(true);
+    }
+  };
+
+  const handleBulkDeleteConfirm = async () => {
+    if (selectedVocabs.length === 0) return;
+
+    try {
+      // Delete all selected vocabularies
+      await Promise.all(selectedVocabs.map(id => vocabularyService.deleteVocabulary(id)));
+      
+      // Remove deleted items from state
+      setVocabularies(prev => prev.filter(v => !selectedVocabs.includes(v._id)));
+      
+      // Clear selection
+      setSelectedVocabs([]);
+      setSelectAll(false);
+      setShowBulkDeleteModal(false);
+      
+      // Show success message
+      setToastMessage(`Đã xóa ${selectedVocabs.length} từ vựng`);
+      setToastType('success');
+      setShowToast(true);
+    } catch (err) {
+      console.error('Error bulk deleting vocabularies:', err);
+      setToastMessage('Không thể xóa một số từ vựng. Vui lòng thử lại!');
+      setToastType('error');
+      setShowToast(true);
+    }
+  };
 
   const openCreate = () => {
     setSelectedVocab(null);
-    setFormData({
-      word: "",
-      meaning: "",
-      example_sentence: "",
-      example_meaning: "",
-      phonetic: "",
-      image_url: "",
-      audio_url: "",
-      test_id: "",
-    });
     setShowCreateModal(true);
   };
 
   const openEdit = (vocab) => {
     setSelectedVocab(vocab);
-    setFormData({
-      word: vocab.word || "",
-      meaning: vocab.meaning || "",
-      example_sentence: vocab.example_sentence || "",
-      example_meaning: vocab.example_meaning || "",
-      phonetic: vocab.phonetic || "",
-      image_url: vocab.image_url || "",
-      audio_url: vocab.audio_url || "",
-      test_id: vocab.test_id || "",
-    });
     setShowEditModal(true);
   };
 
   const openDelete = (vocab) => {
     setSelectedVocab(vocab);
     setShowDeleteModal(true);
-  };
-
-  const handleCreateSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const newVocab = await vocabularyService.createVocabulary(formData);
-      setVocabularies((prev) => [newVocab, ...prev]);
-      setShowCreateModal(false);
-    } catch (err) {
-      console.error("Error creating vocabulary:", err);
-      alert("Không thể tạo từ vựng. Vui lòng thử lại!");
-    }
-  };
-
-  const handleEditSubmit = async (e) => {
-    e.preventDefault();
-    if (!selectedVocab) return;
-
-    try {
-      const updated = await vocabularyService.updateVocabulary(selectedVocab._id, formData);
-      setVocabularies((prev) => prev.map((v) => (v._id === selectedVocab._id ? updated : v)));
-      setShowEditModal(false);
-      setSelectedVocab(null);
-    } catch (err) {
-      console.error("Error updating vocabulary:", err);
-      alert("Không thể cập nhật từ vựng. Vui lòng thử lại!");
-    }
   };
 
   const handleDeleteConfirm = async () => {
@@ -323,6 +346,27 @@ const AdminVocabularies = () => {
     }
   };
 
+  const handleVocabSaved = (response, action, message) => {
+    // Refresh vocabularies list
+    loadPageData();
+    // Close modals
+    setShowCreateModal(false);
+    setShowEditModal(false);
+    setSelectedVocab(null);
+    // Show toast
+    if (action === 'error') {
+      setToastMessage(message || 'Có lỗi khi lưu từ vựng');
+      setToastType('error');
+      setShowToast(true);
+      return;
+    }
+
+    const msg = action === 'update' ? 'Cập nhật từ vựng thành công' : 'Tạo từ vựng thành công';
+    setToastMessage(msg);
+    setToastType('success');
+    setShowToast(true);
+  };
+
   if (loading) {
     return (
       <AdminLayout>
@@ -333,56 +377,116 @@ const AdminVocabularies = () => {
 
   return (
     <AdminLayout>
-      <div className="max-w-7xl mx-auto px-3 sm:px-5 lg:px-8 py-5 space-y-4">
-        {/* Top header / toolbar */}
-        <div className="bg-white border border-slate-200 rounded-xl shadow-sm">
-          <div className="px-4 py-3 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="min-w-0">
-              <h1 className="text-lg sm:text-xl font-semibold text-slate-900 truncate">Quản lý Từ vựng</h1>
-              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-                Tổng số: <span className="font-medium text-slate-700">{filteredVocabs.length}</span> từ
-              </p>
-            </div>
-
-            <div className="flex gap-2">
-              <button
-                onClick={loadPageData}
-                className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50"
-              >
-                <Icon.Refresh className="w-4 h-4" />
-                <span className="hidden sm:inline">Làm mới</span>
-              </button>
-
-              <button
-                onClick={openCreate}
-                className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
-              >
-                <Icon.Plus className="w-4 h-4" />
-                <span>Thêm từ</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="px-4 py-3">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-              <div className="relative flex-1">
-                <Icon.Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+      <div className="max-w-7xl mx-auto px-2 sm:px-5 lg:px-8 py-2 space-y-4">
+        {/* Content */}
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          {/* Compact Filter Toolbar */}
+          <div className="px-4 py-3 border-b border-gray-100 bg-white">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex-1 mr-4">
                 <input
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Tìm theo từ vựng hoặc nghĩa..."
-                  className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-full px-2 py-1 border border-gray-200 rounded-md bg-white text-sm"
                 />
               </div>
 
-              {searchTerm ? (
+              <div className="flex items-center space-x-3">
+                {selectedVocabs.length > 0 && (
+                  <button
+                    onClick={openBulkDelete}
+                    className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg bg-red-500 hover:bg-red-600 text-white"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    <span>Xóa ({selectedVocabs.length})</span>
+                  </button>
+                )}
                 <button
-                  onClick={() => setSearchTerm("")}
-                  className="px-3 py-2 text-sm rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50"
+                  onClick={loadPageData}
+                  className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50"
                 >
-                  Xóa lọc
+                  <Icon.Refresh className="w-4 h-4" />
+                  <span className="hidden sm:inline">Làm mới</span>
                 </button>
-              ) : null}
+                <button
+                  onClick={openCreate}
+                  className="bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white h-9 px-3 text-sm rounded-lg inline-flex items-center gap-2"
+                >
+                  <Icon.Plus className="w-4 h-4" />
+                  <span>Thêm từ</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <select
+                value={duplicateFilter}
+                onChange={(e) => setDuplicateFilter(e.target.value)}
+                className="px-2 py-1 border border-gray-200 rounded-md text-sm bg-white"
+                title="Lọc trùng lặp"
+              >
+                <option value="">Tất cả</option>
+                <option value="unique">Chỉ từ không trùng</option>
+                <option value="duplicate">Chỉ từ trùng</option>
+              </select>
+
+              <select
+                value={selectedTestId}
+                onChange={(e) => setSelectedTestId(e.target.value)}
+                className="px-2 py-1 border border-gray-200 rounded-md text-sm bg-white"
+              >
+                <option value="">Tất cả Bài Test</option>
+                {filteredTests.map((t) => (
+                  <option key={t._id} value={t._id}>
+                    {t.test_title}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={selectedMainTopic}
+                onChange={(e) => setSelectedMainTopic(e.target.value)}
+                className="px-2 py-1 border border-gray-200 rounded-md text-sm bg-white"
+              >
+                <option value="">Tất cả Chủ Đề</option>
+                {mainTopics.map((topic) => (
+                  <option key={topic} value={topic}>
+                    {topic}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={selectedSubTopic}
+                onChange={(e) => setSelectedSubTopic(e.target.value)}
+                className="px-2 py-1 border border-gray-200 rounded-md text-sm bg-white"
+              >
+                <option value="">Tất cả Chủ Đề Phụ</option>
+                {filteredSubTopics.map((topic) => (
+                  <option key={topic} value={topic}>
+                    {topic}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={selectedLevel}
+                onChange={(e) => setSelectedLevel(e.target.value)}
+                className="px-2 py-1 border border-gray-200 rounded-md text-sm bg-white"
+              >
+                <option value="">Tất cả CEFR Level</option>
+                <option value="A1">A1</option>
+                <option value="A2">A2</option>
+                <option value="B1">B1</option>
+                <option value="B2">B2</option>
+                <option value="C1">C1</option>
+                <option value="C2">C2</option>
+              </select>
+
+              {/* removed updated-from date filter */}
             </div>
 
             {error ? (
@@ -391,49 +495,58 @@ const AdminVocabularies = () => {
               </div>
             ) : null}
           </div>
-        </div>
-
-        {/* Content */}
-        <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
           {/* Desktop table */}
           <div className="hidden lg:block">
             <div className="overflow-x-auto">
-              <table className="min-w-full">
-                <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
-                  <tr className="text-xs uppercase tracking-wide text-slate-500">
-                    <th className="px-4 py-3 text-left">Từ vựng</th>
-                    <th className="px-4 py-3 text-left">Nghĩa</th>
-                    <th className="px-4 py-3 text-left">Ví dụ</th>
-                    <th className="px-4 py-3 text-left">Bài kiểm tra</th>
-                    <th className="px-4 py-3 text-left">Chủ đề</th>
-                    <th className="px-4 py-3 text-right">Thao tác</th>
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-3 py-2 text-left">
+                      <input
+                        type="checkbox"
+                        checked={selectAll}
+                        onChange={(e) => handleSelectAll(e.target.checked)}
+                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                    </th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Từ vựng</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nghĩa</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ví dụ</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Loại từ</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CEFR</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bài kiểm tra</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Chủ đề</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hành động</th>
                   </tr>
                 </thead>
 
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="bg-white divide-y divide-gray-200">
                   {filteredVocabs.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-4 py-10 text-center">
-                        <div className="text-sm font-medium text-slate-700">
-                          {searchTerm ? "Không tìm thấy từ vựng phù hợp" : "Chưa có từ vựng nào"}
-                        </div>
-                        <div className="text-xs text-slate-500 mt-1">
-                          {searchTerm ? "Thử từ khóa khác hoặc xóa lọc." : "Bấm “Thêm từ” để tạo từ vựng mới."}
-                        </div>
+                      <td colSpan={9} className="px-6 py-4 text-center text-sm text-gray-500">
+                        {searchTerm ? "Không tìm thấy từ vựng phù hợp" : "Chưa có từ vựng nào"}
                       </td>
                     </tr>
                   ) : (
                     filteredVocabs.map((v) => {
                       const t = testsById[v.test_id];
                       return (
-                        <tr key={v._id} className="hover:bg-slate-50">
-                          <td className="px-4 py-3">
-                            <div className="text-sm font-medium text-slate-900">{v.word}</div>
-                            {v.phonetic ? <div className="text-xs text-slate-500 mt-0.5">/{v.phonetic}/</div> : null}
+                        <tr key={v._id} className="hover:bg-gray-50">
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            <input
+                              type="checkbox"
+                              checked={selectedVocabs.includes(v._id)}
+                              onChange={(e) => handleSelectVocab(v._id, e.target.checked)}
+                              className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                            />
+                          </td>
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">{v.word}</div>
+                            {v.phonetic ? <div className="text-xs text-gray-500 mt-0.5">/{v.phonetic}/</div> : null}
                           </td>
 
-                          <td className="px-4 py-3">
-                            <div className="text-sm text-slate-800">
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">
                               {v.meaning?.length > 40 ? `${v.meaning.slice(0, 40)}...` : v.meaning || "—"}
                             </div>
                           </td>
@@ -457,8 +570,48 @@ const AdminVocabularies = () => {
                             </div>
                           </td>
 
-                          <td className="px-4 py-3">
-                            <div className="text-sm text-slate-800 truncate max-w-[220px]" title={t?.test_title}>
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">
+                              {v.part_of_speech ? (
+                                <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                                  {v.part_of_speech === 'noun' ? 'Danh từ' :
+                                   v.part_of_speech === 'verb' ? 'Động từ' :
+                                   v.part_of_speech === 'adjective' ? 'Tính từ' :
+                                   v.part_of_speech === 'adverb' ? 'Trạng từ' :
+                                   v.part_of_speech === 'preposition' ? 'Giới từ' :
+                                   v.part_of_speech === 'conjunction' ? 'Liên từ' :
+                                   v.part_of_speech === 'pronoun' ? 'Đại từ' :
+                                   v.part_of_speech === 'interjection' ? 'Thán từ' :
+                                   v.part_of_speech}
+                                </span>
+                              ) : (
+                                <span className="text-gray-400">—</span>
+                              )}
+                            </div>
+                          </td>
+
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">
+                              {v.cefr_level ? (
+                                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                  v.cefr_level === 'A1' ? 'bg-green-100 text-green-800' :
+                                  v.cefr_level === 'A2' ? 'bg-green-100 text-green-800' :
+                                  v.cefr_level === 'B1' ? 'bg-yellow-100 text-yellow-800' :
+                                  v.cefr_level === 'B2' ? 'bg-yellow-100 text-yellow-800' :
+                                  v.cefr_level === 'C1' ? 'bg-red-100 text-red-800' :
+                                  v.cefr_level === 'C2' ? 'bg-red-100 text-red-800' :
+                                  'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {v.cefr_level}
+                                </span>
+                              ) : (
+                                <span className="text-gray-400">—</span>
+                              )}
+                            </div>
+                          </td>
+
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            <div className="text-sm text-gray-900 truncate max-w-[220px]" title={t?.test_title}>
                               {t?.test_title || "—"}
                             </div>
                           </td>
@@ -500,7 +653,29 @@ const AdminVocabularies = () => {
           </div>
 
           {/* Mobile cards */}
-          <div className="lg:hidden p-3 space-y-3">
+          <div className="lg:hidden">
+            {filteredVocabs.length > 0 && (
+              <div className="px-3 py-2 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
+                <label className="flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={selectAll}
+                    onChange={(e) => handleSelectAll(e.target.checked)}
+                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  Chọn tất cả ({filteredVocabs.length})
+                </label>
+                {selectedVocabs.length > 0 && (
+                  <button
+                    onClick={openBulkDelete}
+                    className="px-3 py-1.5 text-xs rounded-lg bg-red-500 hover:bg-red-600 text-white"
+                  >
+                    Xóa ({selectedVocabs.length})
+                  </button>
+                )}
+              </div>
+            )}
+            <div className="p-3 space-y-3">
             {filteredVocabs.length === 0 ? (
               <div className="text-center py-10">
                 <div className="text-sm font-medium text-slate-700">
@@ -515,13 +690,42 @@ const AdminVocabularies = () => {
                 const t = testsById[v.test_id];
                 return (
                   <div key={v._id} className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
+                    <div className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedVocabs.includes(v._id)}
+                        onChange={(e) => handleSelectVocab(v._id, e.target.checked)}
+                        className="mt-0.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <div className="flex-1 min-w-0">
                         <div className="text-sm font-semibold text-slate-900">{v.word}</div>
                         <div className="text-xs text-slate-500 mt-0.5">
                           {v.phonetic ? `/${v.phonetic}/ • ` : ""}
                           {v.meaning || "—"}
                         </div>
+                        {(v.part_of_speech || v.cefr_level) && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {v.part_of_speech && (
+                              <span className="inline-flex px-1.5 py-0.5 text-[10px] font-medium rounded bg-blue-50 text-blue-700">
+                                {v.part_of_speech === 'noun' ? 'Danh từ' :
+                                 v.part_of_speech === 'verb' ? 'Động từ' :
+                                 v.part_of_speech === 'adjective' ? 'Tính từ' :
+                                 v.part_of_speech === 'adverb' ? 'Trạng từ' :
+                                 v.part_of_speech}
+                              </span>
+                            )}
+                            {v.cefr_level && (
+                              <span className={`inline-flex px-1.5 py-0.5 text-[10px] font-medium rounded ${
+                                v.cefr_level === 'A1' || v.cefr_level === 'A2' ? 'bg-green-50 text-green-700' :
+                                v.cefr_level === 'B1' || v.cefr_level === 'B2' ? 'bg-yellow-50 text-yellow-700' :
+                                v.cefr_level === 'C1' || v.cefr_level === 'C2' ? 'bg-red-50 text-red-700' :
+                                'bg-gray-50 text-gray-700'
+                              }`}>
+                                {v.cefr_level}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       <div className="flex gap-1">
@@ -565,45 +769,74 @@ const AdminVocabularies = () => {
                 );
               })
             )}
+            </div>
           </div>
         </div>
       </div>
 
+
       {/* Create Modal */}
-      {showCreateModal && (
-        <ModalShell
-          title="Thêm từ vựng"
-          subtitle="Tạo một từ vựng mới cho bài kiểm tra"
-          onClose={() => setShowCreateModal(false)}
-          maxWidth="max-w-2xl"
-        >
-          <VocabForm
-            onSubmit={handleCreateSubmit}
-            buttonText="Tạo mới"
-            formData={formData}
-            setFormData={setFormData}
-            allTests={allTests}
-            onCancel={() => setShowCreateModal(false)}
-          />
-        </ModalShell>
-      )}
+      <AdminVocabularyQuestionModal
+        isOpen={showCreateModal}
+        onClose={() => {
+          setShowCreateModal(false);
+        }}
+        testId={null}
+        question={null}
+        onQuestionSaved={handleVocabSaved}
+        allTests={allTests}
+      />
 
       {/* Edit Modal */}
-      {showEditModal && (
+      <AdminVocabularyQuestionModal
+        isOpen={showEditModal}
+        onClose={() => {
+          setShowEditModal(false);
+          setSelectedVocab(null);
+        }}
+        testId={selectedVocab?.test_id}
+        question={selectedVocab}
+        onQuestionSaved={handleVocabSaved}
+        allTests={allTests}
+      />
+
+      {/* Toast */}
+      <Toast isVisible={showToast} message={toastMessage} type={toastType} onClose={() => setShowToast(false)} />
+
+      {/* Bulk Delete Modal */}
+      {showBulkDeleteModal && (
         <ModalShell
-          title="Chỉnh sửa từ vựng"
-          subtitle={selectedVocab?.word ? `Đang sửa: ${selectedVocab.word}` : ""}
-          onClose={() => setShowEditModal(false)}
-          maxWidth="max-w-2xl"
+          title="Xác nhận xóa nhiều"
+          subtitle="Hành động này không thể hoàn tác"
+          onClose={() => setShowBulkDeleteModal(false)}
+          maxWidth="max-w-md"
         >
-          <VocabForm
-            onSubmit={handleEditSubmit}
-            buttonText="Cập nhật"
-            formData={formData}
-            setFormData={setFormData}
-            allTests={allTests}
-            onCancel={() => setShowEditModal(false)}
-          />
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-lg bg-rose-50 flex items-center justify-center">
+              <Icon.Warning className="w-5 h-5 text-rose-600" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-sm text-slate-800">
+                Bạn có chắc chắn muốn xóa <span className="font-semibold">{selectedVocabs.length} từ vựng</span> đã chọn?
+              </div>
+              <div className="text-xs text-slate-500 mt-1">Tất cả từ vựng được chọn sẽ bị xóa khỏi hệ thống.</div>
+            </div>
+          </div>
+
+          <div className="mt-4 flex gap-2">
+            <button
+              onClick={() => setShowBulkDeleteModal(false)}
+              className="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50"
+            >
+              Hủy
+            </button>
+            <button
+              onClick={handleBulkDeleteConfirm}
+              className="flex-1 px-3 py-2 text-sm rounded-lg bg-rose-600 text-white hover:bg-rose-700"
+            >
+              Xóa {selectedVocabs.length} từ
+            </button>
+          </div>
         </ModalShell>
       )}
 

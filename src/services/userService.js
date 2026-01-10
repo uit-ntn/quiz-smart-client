@@ -54,6 +54,17 @@ const userService = {
   },
 
   // Admin only
+  async createUser(userData) {
+    const res = await fetch(`${API_BASE_URL}/users`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(userData),
+    });
+    const data = await handleResponse(res);
+    return data.user || data;
+  },
+
+  // Admin only
   async searchUsers(q) {
     const res = await fetch(`${API_BASE_URL}/users/search?q=${encodeURIComponent(q)}`, {
       method: 'GET',
@@ -91,7 +102,16 @@ const userService = {
       body: JSON.stringify(updateData),
     });
     const data = await handleResponse(res);
-    return data.user || data;
+    const user = data.user || data;
+    
+    // Update localStorage
+    if (user) {
+      localStorage.setItem('user', JSON.stringify(user));
+      // Dispatch custom event to notify AuthContext to update
+      window.dispatchEvent(new CustomEvent('profileUpdated', { detail: { user } }));
+    }
+    
+    return user;
   },
 
   // Me
@@ -124,13 +144,63 @@ const userService = {
     return handleResponse(res); // { message: 'User deleted successfully' }
   },
 
-  // Admin only: hard delete (controller có hardDeleteUser)
+  // Admin only: delete user only (giữ lại tests - SAFE)
   async hardDeleteUser(userId) {
-    const res = await fetch(`${API_BASE_URL}/users/${userId}/hard-delete`, {
+    const res = await fetch(`${API_BASE_URL}/users/${userId}`, {
       method: 'DELETE',
       headers: getAuthHeaders(),
     });
-    return handleResponse(res); // { message: 'User deleted successfully' }
+    return handleResponse(res); // { message: 'User deleted successfully (tests preserved)' }
+  },
+
+  // Admin only: update user password
+  async adminUpdatePassword(userId, newPassword) {
+    const res = await fetch(`${API_BASE_URL}/users/${userId}/password`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ newPassword }),
+    });
+    return handleResponse(res); // { message: 'Password updated successfully' }
+  },
+
+  // Public: Get system overview statistics
+  async getSystemOverview() {
+    const res = await fetch(`${API_BASE_URL}/users/stats/overview`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    const data = await handleResponse(res);
+    return data.stats || data;
+  },
+
+  // Public: Get top performers
+  async getTopPerformers(limit = 5) {
+    const res = await fetch(`${API_BASE_URL}/test-results/top-performers?limit=${limit}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    const data = await handleResponse(res);
+    return data.performers || (Array.isArray(data) ? data : []);
+  },
+
+  // Public: Get latest users
+  async getLatestUsers(limit = 5) {
+    const res = await fetch(`${API_BASE_URL}/users/latest?limit=${limit}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    const data = await handleResponse(res);
+    return data.users || (Array.isArray(data) ? data : []);
+  },
+
+  // Public: Get top contributors
+  async getTopContributors(limit = 5) {
+    const res = await fetch(`${API_BASE_URL}/users/top-contributors?limit=${limit}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    const data = await handleResponse(res);
+    return data.contributors || (Array.isArray(data) ? data : []);
   },
 };
 

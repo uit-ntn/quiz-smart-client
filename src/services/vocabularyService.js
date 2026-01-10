@@ -145,14 +145,17 @@ export default VocabularyService;
 
 
 /*
-Vocaburaly Schema sample:
+Vocabulary Schema sample:
 {
   _id: ObjectId(),
   test_id: ObjectId("670abcd123456789..."),
   word: "curriculum",
   meaning: "chương trình học",
   example_sentence: "Our school has introduced a new curriculum.",
+  part_of_speech: "noun",
+  cefr_level: "B2",
   created_by: ObjectId("adminId"),
+  updated_by: ObjectId("adminId"),
   created_at: ISODate(),
   updated_at: ISODate()
 }

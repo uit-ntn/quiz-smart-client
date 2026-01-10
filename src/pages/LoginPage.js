@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import authService from "../services/authService";
 import Toast from "../components/Toast";
@@ -14,6 +14,26 @@ const LoginPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Check if user is already authenticated on mount and redirect if needed
+  useEffect(() => {
+    // Only check if not currently logging in (to avoid redirect during login process)
+    const isLoggingIn = sessionStorage.getItem('isLoggingIn') === 'true';
+    
+    if (!isLoggingIn && authService.isAuthenticated()) {
+      const authReturnTo = localStorage.getItem('authReturnTo');
+      const from = location.state?.from?.pathname;
+      const redirectTo = authReturnTo || from || '/topics';
+      if (authReturnTo) localStorage.removeItem('authReturnTo');
+      navigate(redirectTo, { replace: true });
+      return;
+    }
+    
+    console.log('🔍 LoginPage mounted:');
+    console.log('- location.state:', location.state);
+    console.log('- location.pathname:', location.pathname);
+    console.log('- authReturnTo in localStorage:', localStorage.getItem('authReturnTo'));
+  }, [location, navigate]);
+
   const showToast = (message, type = 'success') => {
     setToast({ message, type, isVisible: true });
   };
@@ -25,6 +45,7 @@ const LoginPage = () => {
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     if (error) setError("");
+    if (toast.isVisible) hideToast();
   };
 
   const handleSubmit = async (e) => {
@@ -33,26 +54,56 @@ const LoginPage = () => {
     setError("");
 
     try {
-      await authService.login(formData.email, formData.password);
-      const returnTo =
-        localStorage.getItem("authReturnTo") ||
-        location.state?.from?.pathname ||
-        "/";
+      const result = await authService.login(formData.email, formData.password);
+      
+      // Debug logs to check redirect logic
+      const authReturnTo = localStorage.getItem("authReturnTo");
+      const fromState = location.state?.from?.pathname;
+      console.log("🔍 Login redirect debug:");
+      console.log("- authReturnTo from localStorage:", authReturnTo);
+      console.log("- location.state?.from?.pathname:", fromState);
+      console.log("- location.state:", location.state);
+      
+      // Default to /topics for successful login (if no return path specified)
+      const returnTo = authReturnTo || fromState || "/topics";
+      console.log("- Final returnTo:", returnTo);
+      
+      // Remove authReturnTo immediately to prevent ProtectedRoute from using it
       localStorage.removeItem("authReturnTo");
-      navigate(returnTo, { replace: true });
+      
+      // Dispatch events to notify AuthContext and ProtectedRoute to update
+      window.dispatchEvent(new CustomEvent('profileUpdated', { 
+        detail: { user: result.user || authService.getCurrentUserData() } 
+      }));
+      window.dispatchEvent(new CustomEvent('authStateChanged'));
+      
+      // Show success toast
+      showToast("Đăng nhập thành công!", "success");
+      
+      // Navigate after a short delay to ensure toast is visible
+      setTimeout(() => {
+        console.log("🚀 Navigating to:", returnTo);
+        navigate(returnTo, { replace: true });
+      }, 800);
     } catch (error) {
       setError(error.message);
-    } finally {
+      showToast("Đăng nhập thất bại: " + error.message, "error");
       setLoading(false);
     }
   };
 
   const handleGoogleLogin = async () => {
     try {
-      const returnTo =
-        localStorage.getItem("authReturnTo") ||
-        location.state?.from?.pathname ||
-        "/";
+      const authReturnTo = localStorage.getItem("authReturnTo");
+      const fromState = location.state?.from?.pathname;
+      
+      console.log("🔍 Google login redirect debug:");
+      console.log("- authReturnTo from localStorage:", authReturnTo);
+      console.log("- location.state?.from?.pathname:", fromState);
+      
+      const returnTo = authReturnTo || fromState || "/";
+      console.log("- Final returnTo for Google:", returnTo);
+      
       localStorage.setItem("authReturnTo", returnTo);
       await authService.initiateGoogleLogin();
     } catch (error) {

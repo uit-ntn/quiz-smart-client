@@ -85,7 +85,7 @@ const RegisterPage = () => {
       {/* LEFT: Branding */}
       <div className="hidden md:flex md:w-1/2 bg-gradient-to-br from-blue-600 via-indigo-600 to-indigo-800 text-white items-center justify-center relative overflow-hidden">
         <div className="absolute inset-0 opacity-10" />
-        <div className="z-10 p-8 text-center">
+          <div className="z-10 p-8 text-center">
           <div className="w-16 h-16 mx-auto rounded-2xl bg-white/10 backdrop-blur-sm flex items-center justify-center mb-6 border border-white/20">
             <svg
               className="w-8 h-8 text-white"
@@ -105,7 +105,7 @@ const RegisterPage = () => {
           <p className="text-indigo-100 font-medium text-sm">
             Học thông minh mỗi ngày, mở khóa tiềm năng của bạn
           </p>
-          <div className="mt-8 text-sm text-indigo-100/80 leading-relaxed max-w-md mx-auto">
+          <div className="mt-6 text-sm text-indigo-100/80 leading-relaxed max-w-md mx-auto">
             <p>
               Tạo tài khoản để bắt đầu hành trình học tập hiệu quả với hệ thống
               bài luyện tập, test, và từ vựng được cá nhân hóa.
@@ -116,7 +116,7 @@ const RegisterPage = () => {
 
       {/* RIGHT: Register Form */}
       <div className="flex-1 flex items-center justify-center bg-neutral-50 px-4 md:px-6">
-        <div className="w-full max-w-md bg-white shadow-xl rounded-2xl border border-neutral-200 p-6 md:p-7 max-h-[90vh] flex flex-col">
+        <div className="w-full max-w-md bg-white shadow-xl rounded-2xl border border-neutral-200 p-4 md:p-6 max-h-screen justify-center flex flex-col">
           {/* Header */}
           <div className="text-center mb-4">
             <h2 className="text-xl md:text-2xl font-bold text-neutral-900 mb-1">
@@ -140,8 +140,8 @@ const RegisterPage = () => {
           )}
 
           {/* FORM: scroll nội bộ nếu cần */}
-          <div className="flex-1 overflow-y-auto pr-1">
-            <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="pr-1">
+            <form onSubmit={handleSubmit} className="space-y-3">
               {/* Full Name */}
               <div>
                 <label
@@ -157,7 +157,7 @@ const RegisterPage = () => {
                   autoComplete="name"
                   value={formData.full_name}
                   onChange={handleChange}
-                  className="w-full px-3 py-2.5 border border-neutral-300 rounded-lg text-sm placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-neutral-50 focus:bg-white transition-all"
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-neutral-50 focus:bg-white transition-all"
                   placeholder="Nhập họ và tên của bạn"
                 />
               </div>
@@ -177,7 +177,7 @@ const RegisterPage = () => {
                   autoComplete="email"
                   value={formData.email}
                   onChange={handleChange}
-                  className="w-full px-3 py-2.5 border border-neutral-300 rounded-lg text-sm placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-neutral-50 focus:bg-white transition-all"
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-neutral-50 focus:bg-white transition-all"
                   placeholder="Nhập email của bạn"
                 />
               </div>
@@ -197,7 +197,7 @@ const RegisterPage = () => {
                   autoComplete="new-password"
                   value={formData.password}
                   onChange={handleChange}
-                  className="w-full px-3 py-2.5 border border-neutral-300 rounded-lg text-sm placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-neutral-50 focus:bg-white transition-all"
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-neutral-50 focus:bg-white transition-all"
                   placeholder="Nhập mật khẩu (ít nhất 6 ký tự)"
                 />
               </div>
@@ -217,7 +217,7 @@ const RegisterPage = () => {
                   autoComplete="new-password"
                   value={formData.confirmPassword}
                   onChange={handleChange}
-                  className="w-full px-3 py-2.5 border border-neutral-300 rounded-lg text-sm placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-neutral-50 focus:bg-white transition-all"
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-neutral-50 focus:bg-white transition-all"
                   placeholder="Nhập lại mật khẩu"
                 />
               </div>
@@ -226,13 +226,13 @@ const RegisterPage = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shadow-md hover:shadow-lg disabled:opacity-50"
+                className="w-full py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shadow-md hover:shadow-lg disabled:opacity-50"
               >
                 {loading ? "Đang tạo tài khoản..." : "Tạo tài khoản"}
               </button>
 
               {/* Divider */}
-              <div className="flex items-center my-3">
+              <div className="flex items-center my-2">
                 <div className="flex-grow border-t border-neutral-300" />
                 <span className="mx-2 text-neutral-500 text-[11px] font-medium">
                   HOẶC
@@ -244,7 +244,7 @@ const RegisterPage = () => {
               <button
                 type="button"
                 onClick={handleGoogleLogin}
-                className="w-full inline-flex items-center justify-center py-2.5 px-3 border border-neutral-300 rounded-lg bg-white text-sm font-semibold text-neutral-700 hover:bg-neutral-50 transition-all shadow-sm hover:shadow-md"
+                className="w-full inline-flex items-center justify-center py-2 px-3 border border-neutral-300 rounded-lg bg-white text-sm font-semibold text-neutral-700 hover:bg-neutral-50 transition-all shadow-sm hover:shadow-md"
               >
                 <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
                   <path
@@ -270,7 +270,7 @@ const RegisterPage = () => {
           </div>
 
           {/* Terms */}
-          <p className="text-[11px] md:text-xs text-neutral-500 text-center mt-4">
+          <p className="text-[11px] md:text-xs text-neutral-500 text-center mt-3">
             Bằng việc tạo tài khoản, bạn đồng ý với{" "}
             <Link
               to="/terms"

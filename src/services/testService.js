@@ -59,12 +59,6 @@ const asArray = (x) => (Array.isArray(x) ? x : []);
 const pickTests = (data) => asArray(data?.tests || (Array.isArray(data) ? data : []));
 const pickTest = (data) => data?.test || data;
 
-const pickMainTopics = (data) =>
-  asArray(data?.mainTopics || (Array.isArray(data) ? data : []));
-
-const pickSubTopics = (data) =>
-  asArray(data?.subTopics || (Array.isArray(data) ? data : []));
-
 /* =========================
    Service
 ========================= */
@@ -83,6 +77,7 @@ const TestService = {
 
   /* ---------- READ ---------- */
   async getAllTests(filters = {}) {
+    // ✅ Support both old (main_topic/sub_topic) and new (topic_id/subtopic_id) filters
     const res = await fetch(`${API_BASE_URL}/tests${toQuery(filters)}`, {
       headers: authHeaders(),
     });
@@ -164,6 +159,25 @@ const TestService = {
     return pickTests(data);
   },
 
+  // ✅ NEW: Get tests by topic_id and subtopic_id (using new Topic model)
+  async getTestsByTopicId(topicId, subtopicId = null, filters = {}) {
+    const queryParams = {
+      topic_id: topicId,
+      ...filters
+    };
+    
+    if (subtopicId) {
+      queryParams.subtopic_id = subtopicId;
+    }
+
+    const res = await fetch(`${API_BASE_URL}/tests${toQuery(queryParams)}`, {
+      headers: authHeaders(),
+    });
+    const data = await handle(res);
+    return pickTests(data);
+  },
+
+
   /* =====================================================
      MULTIPLE CHOICE
   ===================================================== */
@@ -173,23 +187,6 @@ const TestService = {
     });
     const data = await handle(res);
     return pickTests(data);
-  },
-
-  async getAllMultipleChoiceMainTopics() {
-    const res = await fetch(`${API_BASE_URL}/tests/multiple-choices/main-topics`, {
-      headers: authHeaders(),
-    });
-    const data = await handle(res);
-    return pickMainTopics(data);
-  },
-
-  async getMultipleChoiceSubTopicsByMainTopic(mainTopic) {
-    const res = await fetch(
-      `${API_BASE_URL}/tests/multiple-choices/sub-topics/${encodeURIComponent(mainTopic)}`,
-      { headers: authHeaders() }
-    );
-    const data = await handle(res);
-    return pickSubTopics(data);
   },
 
   /* =====================================================
@@ -203,23 +200,6 @@ const TestService = {
     return pickTests(data);
   },
 
-  async getAllGrammarsMainTopics() {
-    const res = await fetch(`${API_BASE_URL}/tests/grammars/main-topics`, {
-      headers: authHeaders(),
-    });
-    const data = await handle(res);
-    return pickMainTopics(data);
-  },
-
-  async getGrammarSubTopicsByMainTopic(mainTopic) {
-    const res = await fetch(
-      `${API_BASE_URL}/tests/grammars/sub-topics/${encodeURIComponent(mainTopic)}`,
-      { headers: authHeaders() }
-    );
-    const data = await handle(res);
-    return pickSubTopics(data);
-  },
-
   /* =====================================================
      VOCABULARY
   ===================================================== */
@@ -231,21 +211,104 @@ const TestService = {
     return pickTests(data);
   },
 
-  async getAllVocabulariesMainTopics() {
-    const res = await fetch(addCacheBuster(`${API_BASE_URL}/tests/vocabularies/main-topics`), {
+  /* =====================================================
+     STATISTICS & ANALYTICS
+  ===================================================== */
+  async getTopTakenTests(filters = {}) {
+    const queryString = toQuery(filters);
+    const url = `${API_BASE_URL}/tests/top-taken${queryString}`;
+    
+    const res = await fetch(url, {
+      method: 'GET',
       headers: authHeaders(),
     });
+    
     const data = await handle(res);
-    return pickMainTopics(data);
+    return data.tests || (Array.isArray(data) ? data : []);
   },
 
-  async getVocabularySubTopicsByMainTopic(mainTopic) {
-    const res = await fetch(
-      `${API_BASE_URL}/tests/vocabularies/sub-topics/${encodeURIComponent(mainTopic)}`,
-      { headers: authHeaders() }
-    );
+  // Get top scoring tests (highest average scores)
+  async getTopScoringTests(filters = {}) {
+    const queryString = toQuery(filters);
+    const url = `${API_BASE_URL}/tests/top-scoring${queryString}`;
+    
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: authHeaders(),
+    });
+    
     const data = await handle(res);
-    return pickSubTopics(data);
+    return data.tests || (Array.isArray(data) ? data : []);
+  },
+
+  // Get newest tests (most recently created)
+  async getNewestTests(filters = {}) {
+    const queryString = toQuery(filters);
+    const url = `${API_BASE_URL}/tests/newest${queryString}`;
+    
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: authHeaders(),
+    });
+    
+    const data = await handle(res);
+    return data.tests || (Array.isArray(data) ? data : []);
+  },
+
+  // Get test attempt count
+  async getTestAttemptCount(testId) {
+    const res = await fetch(`${API_BASE_URL}/tests/${testId}/attempt-count`, {
+      method: 'GET',
+      headers: authHeaders(),
+    });
+    
+    const data = await handle(res);
+    return data;
+  },
+
+  // Get topic attempt count
+  async getTopicAttemptCount(mainTopic, testType = null) {
+    const queryString = testType ? `?test_type=${encodeURIComponent(testType)}` : '';
+    const url = `${API_BASE_URL}/tests/topic/${encodeURIComponent(mainTopic)}/attempt-count${queryString}`;
+    
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: authHeaders(),
+    });
+    
+    const data = await handle(res);
+    return data;
+  },
+
+
+  /* =====================================================
+     TEST MANAGEMENT
+  ===================================================== */
+  // Merge multiple tests into one target test
+  async mergeTests(targetTestId, sourceTestIds) {
+    const res = await fetch(`${API_BASE_URL}/tests/merge`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({
+        targetTestId,
+        sourceTestIds
+      }),
+    });
+    
+    return handle(res);
+  },
+
+  // Move a multiple choice question to another test
+  async moveMultipleChoiceQuestion(questionId, targetTestId) {
+    const res = await fetch(`${API_BASE_URL}/multiple-choices/${questionId}/move`, {
+      method: 'PATCH',
+      headers: authHeaders(),
+      body: JSON.stringify({
+        target_test_id: targetTestId
+      }),
+    });
+    
+    return handle(res);
   },
 };
 

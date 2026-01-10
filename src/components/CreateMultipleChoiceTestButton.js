@@ -3,58 +3,54 @@ import { createPortal } from 'react-dom';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import testService from '../services/testService';
+import topicService from '../services/topicService';
 import MultipleChoiceService from '../services/multipleChoiceService';
+import { getCorrectAnswerLabels } from '../utils/correctAnswerHelpers';
 
 /** Ví dụ mẫu cho multiple choice */
 const SAMPLE_QUESTIONS = `What is the capital of France?
-London: The capital of United Kingdom
-Berlin: The capital of Germany  
-Paris: The capital of France
-Madrid: The capital of Spain
+London; The capital of United Kingdom
+Berlin; The capital of Germany  
+Paris; The capital of France
+Madrid; The capital of Spain
 C
 
 Which programming language is known for 'write once, run anywhere'?
-Python: A general-purpose programming language
-Java: Known for platform independence
-C++: A systems programming language
-JavaScript: A web programming language
+Python; A general-purpose programming language
+Java; Known for platform independence
+C++; A systems programming language
+JavaScript; A web programming language
 B
 
 What does HTML stand for?
-Hyper Text Markup Language: The correct definition
-High Tech Modern Language: Not correct
-Home Tool Markup Language: Not correct
-Hyperlink and Text Markup Language: Not correct
+Hyper Text Markup Language; The correct definition
+High Tech Modern Language; Not correct
+Home Tool Markup Language; Not correct
+Hyperlink and Text Markup Language; Not correct
 A`;
 
 /** Chiều cao đồng nhất cho 2 panel bước 1 (px) */
 const PANEL_HEIGHT = 520;
 
-const PlusIcon = () => (
-  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+const PlusIcon = (props) => (
+  <svg {...props} className={`w-4 h-4 ${props.className || ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
   </svg>
 );
 
-export default function CreateMultipleChoiceTestButton({ label = "Tạo Multiple Choice" }) {
+export default function CreateMultipleChoiceTestButton({ label = "Tạo bài test trắc nghiệm", className = '' }) {
   const { user } = useAuth();
   const navigate = useNavigate();
   
   // Modal state
   const [open, setOpen] = useState(false);
   
-  // Steps: 'questions' -> 'test-info' -> 'review' -> 'creating' -> 'success'
-  const [currentStep, setCurrentStep] = useState('questions');
+  // Steps: 'test-info' -> 'questions' -> 'review' -> 'creating' -> 'success'
+  const [currentStep, setCurrentStep] = useState('test-info');
   const [loading, setLoading] = useState(false);
   const [errMsg, setErrMsg] = useState('');
 
-  // Step 1
-  const [questionsText, setQuestionsText] = useState('');
-  const [parsedQuestions, setParsedQuestions] = useState([]);
-  const [hasSeededSample, setHasSeededSample] = useState(false);
-  const [isSampleActive, setIsSampleActive] = useState(false);
-
-  // Step 2
+  // Step 1: Test Info
   const [testInfo, setTestInfo] = useState({
     test_title: '',
     description: '',
@@ -64,6 +60,21 @@ export default function CreateMultipleChoiceTestButton({ label = "Tạo Multiple
     time_limit_minutes: 15,
     visibility: 'public',
   });
+  
+  // Topics data
+  const [mainTopics, setMainTopics] = useState([]);
+  const [subTopics, setSubTopics] = useState([]);
+  const [loadingTopics, setLoadingTopics] = useState(false);
+  const [customMainTopic, setCustomMainTopic] = useState('');
+  const [customSubTopic, setCustomSubTopic] = useState('');
+  const [showCustomMainTopic, setShowCustomMainTopic] = useState(false);
+  const [showCustomSubTopic, setShowCustomSubTopic] = useState(false);
+
+  // Step 2: Questions
+  const [questionsText, setQuestionsText] = useState('');
+  const [parsedQuestions, setParsedQuestions] = useState([]);
+  const [hasSeededSample, setHasSeededSample] = useState(false);
+  const [isSampleActive, setIsSampleActive] = useState(false);
 
   // Created test
   const [createdTest, setCreatedTest] = useState(null);
@@ -83,14 +94,35 @@ export default function CreateMultipleChoiceTestButton({ label = "Tạo Multiple
     };
   }, []);
 
-  // Seed sample đúng 1 lần khi mở modal
+  // Load main topics when modal opens
   useEffect(() => {
-    if (open && !hasSeededSample) {
+    if (open && mainTopics.length === 0) {
+      loadMainTopics();
+    }
+  }, [open]);
+
+  // Load sub topics when main topic changes
+  useEffect(() => {
+    if (testInfo.main_topic && testInfo.main_topic !== 'other') {
+      loadSubTopics(testInfo.main_topic);
+      setShowCustomSubTopic(false);
+    } else {
+      setSubTopics([]);
+      if (showCustomMainTopic) {
+        setShowCustomSubTopic(true);
+        setTestInfo(p => ({ ...p, sub_topic: '' }));
+      }
+    }
+  }, [testInfo.main_topic, showCustomMainTopic]);
+
+  // Seed sample when entering questions step
+  useEffect(() => {
+    if (currentStep === 'questions' && !hasSeededSample) {
       setQuestionsText(SAMPLE_QUESTIONS);
       setHasSeededSample(true);
       setIsSampleActive(true);
     }
-  }, [open, hasSeededSample]);
+  }, [currentStep, hasSeededSample]);
 
   // ESC to close
   useEffect(() => {
@@ -104,9 +136,65 @@ export default function CreateMultipleChoiceTestButton({ label = "Tạo Multiple
     return () => window.removeEventListener('keydown', onKey);
   }, [open, loading]);
 
+  // Load main topics
+  const loadMainTopics = async () => {
+    try {
+      setLoadingTopics(true);
+      const topics = await topicService.getAllTopics({ include_inactive: true });
+      // Ensure topics is an array
+      const topicsArray = Array.isArray(topics) ? topics : [];
+      // Transform to format expected by component
+      const formattedTopics = topicsArray.map(topic => {
+        const topicId = topic._id || topic.id || null;
+        return {
+          id: topicId,
+          _id: topicId, // Keep both for compatibility
+          mainTopic: topic.name || '',
+          total_tests: topic.total_tests || 0,
+          total_questions: topic.total_questions || 0,
+          total_subtopics: topic.total_subtopics || 0
+        };
+      });
+      setMainTopics(formattedTopics);
+    } catch (error) {
+      console.error('Error loading main topics:', error);
+      setErrMsg('Lỗi tải danh sách chủ đề chính: ' + (error.message || 'Lỗi không xác định'));
+    } finally {
+      setLoadingTopics(false);
+    }
+  };
+
+  // Load sub topics
+  const loadSubTopics = async (mainTopic) => {
+    try {
+      setLoadingTopics(true);
+      const subtopics = await topicService.getSubTopicsByMainTopic(mainTopic);
+      // Ensure subtopics is an array
+      const subtopicsArray = Array.isArray(subtopics) ? subtopics : [];
+      // Transform to format expected by component
+      const formattedSubtopics = subtopicsArray.map(st => {
+        const subtopicId = st._id || st.id || null;
+        return {
+          id: subtopicId,
+          _id: subtopicId, // Keep both for compatibility
+          subTopic: st.name || '',
+          main_topic: mainTopic,
+          total_tests: st.total_tests || 0,
+          total_questions: st.total_questions || 0
+        };
+      });
+      setSubTopics(formattedSubtopics);
+    } catch (error) {
+      console.error('Error loading sub topics:', error);
+      setErrMsg('Lỗi tải danh sách phân mục: ' + (error.message || 'Lỗi không xác định'));
+    } finally {
+      setLoadingTopics(false);
+    }
+  };
+
   // Reset + close
   const handleClose = () => {
-    setCurrentStep('questions');
+    setCurrentStep('test-info');
     setQuestionsText('');
     setParsedQuestions([]);
     setTestInfo({
@@ -118,6 +206,12 @@ export default function CreateMultipleChoiceTestButton({ label = "Tạo Multiple
       time_limit_minutes: 15,
       visibility: 'public',
     });
+    setMainTopics([]);
+    setSubTopics([]);
+    setCustomMainTopic('');
+    setCustomSubTopic('');
+    setShowCustomMainTopic(false);
+    setShowCustomSubTopic(false);
     setErrMsg('');
     setLoading(false);
     setHasSeededSample(false);
@@ -150,14 +244,14 @@ export default function CreateMultipleChoiceTestButton({ label = "Tạo Multiple
         const explanations = [];
         
         answerLines.forEach((line, idx) => {
-          const parts = line.split(':');
+          const parts = line.split(';');
           if (parts.length < 2) {
-            errors.push(`Đoạn ${sectionIdx + 1}, đáp án ${idx + 1}: Cần có dấu ':' để ngăn cách đáp án và giải thích`);
+            errors.push(`Đoạn ${sectionIdx + 1}, đáp án ${idx + 1}: Cần có dấu ';' để ngăn cách đáp án và giải thích`);
             return;
           }
           
           const answer = parts[0].trim();
-          const explanation = parts.slice(1).join(':').trim(); // Cho phép nhiều dấu : trong giải thích
+          const explanation = parts.slice(1).join(';').trim(); // Cho phép nhiều dấu ; trong giải thích
           
           options.push(answer);
           explanations.push(explanation);
@@ -215,7 +309,36 @@ export default function CreateMultipleChoiceTestButton({ label = "Tạo Multiple
   }, [questionsText]);
 
   // Step handlers
-  const handleContinueToTestInfo = () => {
+  const handleContinueToQuestions = () => {
+    if (!testInfo.test_title.trim()) {
+      setErrMsg('Vui lòng nhập tiêu đề bài test');
+      return;
+    }
+    
+    const finalMainTopic = showCustomMainTopic ? customMainTopic.trim() : testInfo.main_topic;
+    const finalSubTopic = showCustomSubTopic ? customSubTopic.trim() : testInfo.sub_topic;
+    
+    if (!finalMainTopic) {
+      setErrMsg('Vui lòng chọn hoặc nhập chủ đề chính');
+      return;
+    }
+    if (!finalSubTopic) {
+      setErrMsg('Vui lòng chọn hoặc nhập phân mục');
+      return;
+    }
+    
+    // Update testInfo with final values
+    setTestInfo(prev => ({
+      ...prev,
+      main_topic: finalMainTopic,
+      sub_topic: finalSubTopic
+    }));
+    
+    setErrMsg('');
+    setCurrentStep('questions');
+  };
+
+  const handleContinueToReview = () => {
     if (!questionsText.trim()) {
       setErrMsg('Vui lòng nhập danh sách câu hỏi');
       return;
@@ -234,24 +357,6 @@ export default function CreateMultipleChoiceTestButton({ label = "Tạo Multiple
 
     setParsedQuestions(questions);
     setErrMsg('');
-    setCurrentStep('test-info');
-  };
-
-  const handleContinueToReview = () => {
-    if (!testInfo.test_title.trim()) {
-      setErrMsg('Vui lòng nhập tiêu đề bài test');
-      return;
-    }
-    if (!testInfo.main_topic.trim()) {
-      setErrMsg('Vui lòng nhập chủ đề chính');
-      return;
-    }
-    if (!testInfo.sub_topic.trim()) {
-      setErrMsg('Vui lòng nhập phân mục');
-      return;
-    }
-    
-    setErrMsg('');
     setCurrentStep('review');
   };
 
@@ -261,19 +366,158 @@ export default function CreateMultipleChoiceTestButton({ label = "Tạo Multiple
     setCurrentStep('creating');
 
     try {
-      // Step 1: Create test metadata
+      // Step: Get or create topic and subtopic IDs
+      let topicId = null;
+      let subtopicId = null;
+
+      // Handle main topic
+      if (showCustomMainTopic && customMainTopic.trim()) {
+        // Create new main topic
+        try {
+          const newTopic = await topicService.createTopic({
+            name: customMainTopic.trim(),
+            active: true
+          });
+          topicId = newTopic._id || newTopic.id;
+          if (!topicId) {
+            throw new Error('Không nhận được ID từ chủ đề chính mới tạo');
+          }
+        } catch (error) {
+          console.error('Error creating main topic:', error);
+          throw new Error('Không thể tạo chủ đề chính mới: ' + (error.message || 'Lỗi không xác định'));
+        }
+      } else {
+        // Find existing main topic ID from loaded data first
+        const existingTopic = mainTopics.find(topic => topic.mainTopic === testInfo.main_topic);
+        if (existingTopic && (existingTopic.id || existingTopic._id)) {
+          topicId = existingTopic.id || existingTopic._id;
+        } else {
+          // Fallback: Fetch topic by name to get ID
+          try {
+            console.log('Fetching topic by name:', testInfo.main_topic);
+            const topicData = await topicService.getTopicByName(testInfo.main_topic);
+            topicId = topicData._id || topicData.id;
+            if (!topicId) {
+              throw new Error('Không tìm thấy ID của chủ đề chính: ' + testInfo.main_topic);
+            }
+          } catch (error) {
+            console.error('Error fetching topic by name:', error);
+            throw new Error('Không thể tìm chủ đề chính: ' + testInfo.main_topic);
+          }
+        }
+      }
+
+      // Handle sub topic
+      if (showCustomSubTopic && customSubTopic.trim()) {
+        // Create new subtopic using addSubTopic
+        try {
+          if (!topicId) {
+            throw new Error('Cần ID chủ đề chính để tạo phân mục mới');
+          }
+          // addSubTopic returns the updated topic with sub_topics array
+          const response = await topicService.addSubTopic(testInfo.main_topic, {
+            name: customSubTopic.trim(),
+            active: true
+          });
+          
+          // Response format from service: { success: true, data: topic } or just topic object
+          // Topic has sub_topics array, find the newly created one by name
+          const topicData = response.data || response;
+          const subTopicsArray = topicData.sub_topics || [];
+          
+          // Find the newly created subtopic from the response
+          const newSubtopic = subTopicsArray.find(st => {
+            const stName = String(st.name || '').trim();
+            const searchName = customSubTopic.trim();
+            return stName.toLowerCase() === searchName.toLowerCase();
+          });
+          
+          if (newSubtopic) {
+            subtopicId = newSubtopic._id || newSubtopic.id || newSubtopic.subtopic_id;
+          }
+          
+          // Fallback: If not found in response, fetch subtopics using API
+          if (!subtopicId) {
+            console.log('Subtopic ID not found in response, fetching from API...');
+            const updatedSubtopics = await topicService.getSubTopicsByMainTopic(testInfo.main_topic);
+            const foundSubtopic = updatedSubtopics.find(st => {
+              const stName = String(st.name || '').trim();
+              const searchName = customSubTopic.trim();
+              return stName.toLowerCase() === searchName.toLowerCase();
+            });
+            if (foundSubtopic) {
+              // getSubTopicsByMainTopic returns format: { subtopic_id, name, ... }
+              subtopicId = foundSubtopic.subtopic_id || foundSubtopic._id || foundSubtopic.id;
+            }
+          }
+          
+          if (!subtopicId) {
+            throw new Error('Không nhận được ID từ phân mục mới tạo. Vui lòng thử lại.');
+          }
+        } catch (error) {
+          console.error('Error creating subtopic:', error);
+          throw new Error('Không thể tạo phân mục mới: ' + (error.message || 'Lỗi không xác định'));
+        }
+      } else {
+        // Find existing subtopic ID from loaded data first
+        const searchName = String(testInfo.sub_topic || '').trim().toLowerCase();
+        const existingSubtopic = subTopics.find(st => {
+          const stName = String(st.subTopic || st.name || '').trim().toLowerCase();
+          return stName === searchName;
+        });
+        
+        if (existingSubtopic) {
+          // Check multiple possible ID fields
+          subtopicId = existingSubtopic.subtopic_id || existingSubtopic.id || existingSubtopic._id;
+        }
+        
+        // Fallback: If not found in loaded data, fetch from API
+        if (!subtopicId) {
+          try {
+            console.log('Subtopic not found in loaded data, fetching from API:', testInfo.sub_topic, 'in topic:', testInfo.main_topic);
+            const subtopicsData = await topicService.getSubTopicsByMainTopic(testInfo.main_topic);
+            const foundSubtopic = subtopicsData.find(st => {
+              const stName = String(st.name || '').trim().toLowerCase();
+              return stName === searchName;
+            });
+            if (foundSubtopic) {
+              // getSubTopicsByMainTopic returns format: { subtopic_id, name, ... }
+              subtopicId = foundSubtopic.subtopic_id || foundSubtopic._id || foundSubtopic.id;
+            }
+            
+            if (!subtopicId) {
+              throw new Error('Không tìm thấy phân mục "' + testInfo.sub_topic + '" trong chủ đề "' + testInfo.main_topic + '"');
+            }
+          } catch (error) {
+            console.error('Error fetching subtopic:', error);
+            throw new Error('Không thể tìm phân mục "' + testInfo.sub_topic + '": ' + (error.message || 'Lỗi không xác định'));
+          }
+        }
+      }
+
+      // Validate that we have both IDs
+      if (!topicId) {
+        throw new Error('Thiếu ID chủ đề chính. Vui lòng thử lại.');
+      }
+      if (!subtopicId) {
+        throw new Error('Thiếu ID phân mục. Vui lòng thử lại.');
+      }
+
+      // Step: Create test metadata
       const testMetadata = {
         test_title: testInfo.test_title,
-        description: testInfo.description,
+        description: testInfo.description || '',
         test_type: 'multiple_choice',
-        main_topic: testInfo.main_topic,
-        sub_topic: testInfo.sub_topic,
+        topic_id: topicId,
+        subtopic_id: subtopicId,
+        main_topic: testInfo.main_topic, // Keep for backward compatibility
+        sub_topic: testInfo.sub_topic, // Keep for backward compatibility
         difficulty: testInfo.difficulty,
         time_limit_minutes: testInfo.time_limit_minutes,
         visibility: testInfo.visibility,
         total_questions: parsedQuestions.length,
         status: 'active',
-        created_by: user.id
+        created_by: user.id || user._id
       };
 
       console.log('Creating test metadata:', testMetadata);
@@ -290,7 +534,7 @@ export default function CreateMultipleChoiceTestButton({ label = "Tạo Multiple
 
       setCreatedTest(newTest);
 
-      // Step 2: Create individual questions
+      // Step 1: Create individual questions
       const questionPromises = parsedQuestions.map((q, index) => {
         const questionData = {
           test_id: testId,
@@ -299,15 +543,42 @@ export default function CreateMultipleChoiceTestButton({ label = "Tạo Multiple
             label: String.fromCharCode(65 + idx), // A, B, C, D...
             text: text
           })),
-          correct_answers: Array.isArray(q.multiple_correct) && q.multiple_correct.length > 0
-            ? q.multiple_correct.map(idx => String.fromCharCode(65 + idx)) // Convert indices to letters
-            : [String.fromCharCode(65 + q.correct_answer)], // Single answer as array
+          // Convert to Map format: {"A": true, "B": false, "C": false, "D": false}
+          correct_answers: (() => {
+            const correctMap = {};
+            q.options.forEach((_, idx) => {
+              const optionLetter = String.fromCharCode(65 + idx);
+              const isCorrect = Array.isArray(q.multiple_correct) && q.multiple_correct.length > 0
+                ? q.multiple_correct.includes(idx)
+                : q.correct_answer === idx;
+              correctMap[optionLetter] = isCorrect;
+            });
+            return correctMap;
+          })(),
           explanation: {
-            correct: q.explanations && q.explanations[q.correct_answer] 
-              ? q.explanations[q.correct_answer] 
-              : `Đáp án đúng là ${String.fromCharCode(65 + q.correct_answer)}`,
+            // explanation.correct is now an object like incorrect_choices
+            correct: (() => {
+              const correctObj = {};
+              const correctIndices = Array.isArray(q.multiple_correct) && q.multiple_correct.length > 0
+                ? q.multiple_correct
+                : [q.correct_answer];
+              
+              correctIndices.forEach(idx => {
+                const optionLetter = String.fromCharCode(65 + idx);
+                const explanationText = q.explanations && q.explanations[idx] 
+                  ? q.explanations[idx]
+                  : `Đáp án đúng là ${optionLetter}`;
+                correctObj[optionLetter] = explanationText;
+              });
+              
+              return correctObj;
+            })(),
             incorrect_choices: q.explanations ? q.options.reduce((acc, _, idx) => {
-              if (idx !== q.correct_answer && q.explanations[idx]) {
+              const isCorrectAnswer = Array.isArray(q.multiple_correct) && q.multiple_correct.length > 0
+                ? q.multiple_correct.includes(idx)
+                : q.correct_answer === idx;
+              
+              if (!isCorrectAnswer && q.explanations[idx]) {
                 acc[String.fromCharCode(65 + idx)] = q.explanations[idx];
               }
               return acc;
@@ -331,7 +602,18 @@ export default function CreateMultipleChoiceTestButton({ label = "Tạo Multiple
       if (!mountedRef.current) return;
       console.error('Error creating test:', err);
       setCurrentStep('review');
-      setErrMsg('Lỗi tạo bài test: ' + (err.response?.data?.message || err.message));
+      
+      // Handle specific error messages
+      const errorMessage = err.response?.data?.message || err.message || 'Lỗi không xác định';
+      
+      if (errorMessage.includes('already exists') || errorMessage.includes('duplicate')) {
+        setErrMsg(
+          `Tên bài test "${testInfo.test_title}" đã tồn tại trong chủ đề "${testInfo.main_topic}" - "${testInfo.sub_topic}".\n\n` +
+          `Vui lòng đổi tên bài test hoặc xóa bài test cũ nếu muốn tạo mới.`
+        );
+      } else {
+        setErrMsg('Lỗi tạo bài test: ' + errorMessage);
+      }
     } finally {
       if (mountedRef.current) {
         setLoading(false);
@@ -341,8 +623,8 @@ export default function CreateMultipleChoiceTestButton({ label = "Tạo Multiple
 
   const totalSteps = 3;
   const progressPct =
-    currentStep === 'questions' ? (100 / totalSteps) * 1 :
-      currentStep === 'test-info' ? (100 / totalSteps) * 2 :
+    currentStep === 'test-info' ? (100 / totalSteps) * 1 :
+      currentStep === 'questions' ? (100 / totalSteps) * 2 :
         100;
 
   const modal = open ? createPortal(
@@ -365,15 +647,15 @@ export default function CreateMultipleChoiceTestButton({ label = "Tạo Multiple
             </div>
             <div>
               <h2 className="text-lg font-semibold text-neutral-900">
-                {currentStep === 'questions' && 'Nhập Danh Sách Câu Hỏi'}
                 {currentStep === 'test-info' && 'Thông Tin Bài Test'}
+                {currentStep === 'questions' && 'Nhập Danh Sách Câu Hỏi'}
                 {currentStep === 'review' && 'Xem Lại Thông Tin'}
                 {currentStep === 'creating' && 'Đang Tạo Bài Test'}
                 {currentStep === 'success' && 'Hoàn Thành!'}
               </h2>
               <p className="text-xs text-neutral-600">
-                {currentStep === 'questions' && 'Bước 1/3 - Chuẩn bị câu hỏi trắc nghiệm'}
-                {currentStep === 'test-info' && 'Bước 2/3 - Cấu hình bài test'}
+                {currentStep === 'test-info' && 'Bước 1/3 - Cấu hình bài test'}
+                {currentStep === 'questions' && 'Bước 2/3 - Chuẩn bị câu hỏi trắc nghiệm'}
                 {currentStep === 'review' && 'Bước 3/3 - Kiểm tra thông tin'}
                 {currentStep === 'creating' && 'Đang xử lý...'}
                 {currentStep === 'success' && 'Bài test đã được tạo thành công'}
@@ -394,7 +676,7 @@ export default function CreateMultipleChoiceTestButton({ label = "Tạo Multiple
         </div>
 
         {/* Progress */}
-        {(currentStep === 'questions' || currentStep === 'test-info' || currentStep === 'review') && (
+        {(currentStep === 'test-info' || currentStep === 'questions' || currentStep === 'review') && (
           <div className="px-6 py-3 bg-neutral-50 border-b border-neutral-200">
             <div className="flex items-center gap-2">
               <div className="flex-1 bg-neutral-200 rounded-full h-2">
@@ -404,180 +686,22 @@ export default function CreateMultipleChoiceTestButton({ label = "Tạo Multiple
                 />
               </div>
               <span className="text-xs font-medium text-neutral-700">
-                {currentStep === 'questions' ? '1/3' : currentStep === 'test-info' ? '2/3' : '3/3'}
+                {currentStep === 'test-info' ? '1/3' : currentStep === 'questions' ? '2/3' : '3/3'}
               </span>
             </div>
           </div>
         )}
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto bg-neutral-50">
-          <div className="p-6 space-y-6">
-            {/* STEP 1 */}
-            {currentStep === 'questions' && (
-              <div className="space-y-6">
-                {/* Tips */}
-                <div className="bg-white border border-neutral-200 rounded-lg p-4">
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-md bg-neutral-200 flex items-center justify-center flex-shrink-0">
-                      <svg className="w-5 h-5 text-neutral-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </div>
-                    <div className="flex flex-col justify-center">
-                      <h3 className="font-semibold text-neutral-900 mb-2">Định dạng văn bản</h3>
-                      <p className="text-sm text-neutral-700 mb-2 leading-relaxed">
-                        Mỗi câu hỏi là một đoạn, các đoạn cách nhau bằng dòng trắng.
-                        <br />
-                        <strong>Cấu trúc mỗi đoạn:</strong>
-                      </p>
-                      <ul className="text-xs text-neutral-600 space-y-1 list-disc list-inside">
-                        <li>Dòng 1: Câu hỏi</li>
-                        <li>Dòng 2-n: Đáp án theo format <code className="bg-neutral-200 px-1 rounded">đáp_án:giải_thích</code></li>
-                        <li>Dòng cuối: Chữ cái đáp án đúng (A, B, C, D...)</li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 2 cột: textarea & preview */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
-                  {/* LEFT: Editor Card */}
-                  <div
-                    className="bg-white border border-neutral-200 rounded-lg flex flex-col overflow-hidden"
-                    style={{ height: PANEL_HEIGHT }}
-                  >
-                    <div className="px-4 py-3 border-b border-neutral-200 flex items-center justify-between">
-                      <label className="text-sm font-medium text-neutral-900">
-                        Danh sách câu hỏi <span className="text-rose-600">*</span>
-                      </label>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-neutral-800 bg-neutral-100 px-2 py-1 rounded-full">
-                          {totalSections} đoạn
-                        </span>
-                        <span className="text-xs text-emerald-800 bg-emerald-100 px-2 py-1 rounded-full">
-                          {livePreviewQuestions.length} câu hỏi
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex-1 p-3">
-                      <textarea
-                        value={questionsText}
-                        onFocus={() => {
-                          if (isSampleActive && questionsText.trim() === SAMPLE_QUESTIONS.trim()) {
-                            setQuestionsText('');
-                            setIsSampleActive(false);
-                          }
-                        }}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          setQuestionsText(v);
-                          if (isSampleActive && v !== SAMPLE_QUESTIONS) {
-                            setIsSampleActive(false);
-                          }
-                        }}
-                        placeholder={`Nhập theo format:\n\nCâu hỏi của bạn?\nĐáp án A: Giải thích cho đáp án A\nĐáp án B: Giải thích cho đáp án B\nĐáp án C: Giải thích cho đáp án C\nA B\n\nCâu hỏi tiếp theo?\n...`}
-                        className={`w-full h-full resize-none px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-mono text-sm text-neutral-900 placeholder-neutral-500 ${
-                          isSampleActive 
-                            ? 'bg-blue-50 text-blue-800 border-blue-300' 
-                            : 'bg-neutral-50'
-                        }`}
-                        aria-invalid={!!errMsg}
-                      />
-                    </div>
-
-                    <div className="px-3 py-2 border-t border-neutral-200 flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => { setQuestionsText(''); setIsSampleActive(false); }}
-                        className="px-3 py-1.5 text-xs font-medium text-neutral-800 bg-white border border-neutral-300 rounded-md hover:bg-neutral-100"
-                      >
-                        Xoá tất cả
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { setQuestionsText(SAMPLE_QUESTIONS); setIsSampleActive(true); }}
-                        className="px-3 py-1.5 text-xs font-medium text-white bg-emerald-600 rounded-md hover:bg-emerald-700"
-                      >
-                        Dán ví dụ mẫu
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* RIGHT: Preview Card */}
-                  <div
-                    className="bg-white border border-neutral-200 rounded-lg overflow-hidden flex flex-col"
-                    style={{ height: PANEL_HEIGHT }}
-                  >
-                    <div className="px-6 py-4 bg-neutral-900">
-                      <h3 className="text-base font-semibold text-white">Preview câu hỏi (cập nhật trực tiếp)</h3>
-                      <p className="text-xs text-neutral-300">Format text với câu hỏi, đáp án:giải thích, chữ cái đáp án đúng (A, B, C...) — hỗ trợ multi-select</p>
-                    </div>
-
-                    <div className="flex-1 overflow-auto p-4">
-                      {livePreviewQuestions.length === 0 ? (
-                        <div className="text-center py-10 text-sm text-neutral-500">
-                          Nội dung rỗng — bấm "Dán ví dụ mẫu" hoặc nhập text ở khung bên trái.
-                        </div>
-                      ) : (
-                        <div className="space-y-4">
-                          {livePreviewQuestions.map((q, idx) => (
-                            <div key={idx} className="bg-neutral-50 border border-neutral-200 rounded-lg p-4">
-                              <div className="font-semibold text-neutral-900 mb-2">
-                                {idx + 1}. {q.question}
-                              </div>
-                              <div className="space-y-1">
-                                {q.options.map((option, optIdx) => {
-                                  const isCorrect = Array.isArray(q.multiple_correct)
-                                    ? q.multiple_correct.includes(optIdx)
-                                    : q.correct_answer === optIdx;
-
-                                  return (
-                                    <div
-                                      key={optIdx}
-                                      className={`text-sm p-2 rounded ${
-                                        isCorrect
-                                          ? 'bg-emerald-100 text-emerald-800 font-medium'
-                                          : 'text-neutral-700'
-                                      }`}
-                                    >
-                                      <div className="font-medium">
-                                        {String.fromCharCode(65 + optIdx)}. {option}
-                                        {isCorrect && ' ✓'}
-                                      </div>
-                                      {q.explanations && q.explanations[optIdx] && (
-                                        <div className="text-xs text-neutral-600 mt-1 italic">
-                                          → {q.explanations[optIdx]}
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {errMsg && (
-                  <div className="bg-rose-50 border border-rose-200 rounded-lg p-3" role="alert" aria-live="assertive">
-                    <p className="text-sm text-rose-800 whitespace-pre-line">{errMsg}</p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* STEP 2 */}
+        <div className="flex-1 flex flex-col bg-neutral-50 min-h-0">
+          <div className="flex-1 p-6 overflow-y-auto">
+            {/* STEP 1: TEST INFO */}
             {currentStep === 'test-info' && (
               <div className="space-y-4">
                 <div className="bg-white border border-neutral-200 rounded-lg p-4">
                   <h3 className="text-base font-semibold text-neutral-900 mb-1">Thông Tin Bài Test</h3>
                   <p className="text-sm text-neutral-700">
-                    Đã phân tích <span className="font-semibold text-emerald-700">{parsedQuestions.length} câu hỏi</span>
+                    Cấu hình thông tin cơ bản cho bài test trắc nghiệm
                   </p>
                 </div>
 
@@ -595,24 +719,112 @@ export default function CreateMultipleChoiceTestButton({ label = "Tạo Multiple
 
                   <div>
                     <label className="block text-sm font-medium text-neutral-800 mb-1">Chủ đề chính <span className="text-rose-600">*</span></label>
-                    <input
-                      type="text"
-                      value={testInfo.main_topic}
-                      onChange={(e) => setTestInfo((p) => ({ ...p, main_topic: e.target.value }))}
-                      placeholder="VD: General Knowledge, Science, History"
-                      className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-neutral-50 text-neutral-900 placeholder-neutral-500"
-                    />
+                    {showCustomMainTopic ? (
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={customMainTopic}
+                          onChange={(e) => setCustomMainTopic(e.target.value)}
+                          placeholder="Nhập chủ đề chính mới..."
+                          className="flex-1 px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-neutral-50 text-neutral-900 placeholder-neutral-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowCustomMainTopic(false);
+                            setCustomMainTopic('');
+                          }}
+                          className="px-3 py-2 text-sm text-neutral-600 bg-neutral-100 border border-neutral-300 rounded-lg hover:bg-neutral-200"
+                        >
+                          Hủy
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <select
+                          value={testInfo.main_topic}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (value === 'other') {
+                              setShowCustomMainTopic(true);
+                              setTestInfo(p => ({ ...p, main_topic: '' }));
+                            } else {
+                              setTestInfo(p => ({ ...p, main_topic: value }));
+                            }
+                          }}
+                          disabled={loadingTopics}
+                          className="flex-1 px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-neutral-50 text-neutral-900 disabled:opacity-50"
+                        >
+                          <option value="">-- Chọn chủ đề chính --</option>
+                          {mainTopics.map((topic) => (
+                            <option key={topic.mainTopic} value={topic.mainTopic}>
+                              {topic.mainTopic} ({topic.total_tests} bài test)
+                            </option>
+                          ))}
+                          <option value="other">🆕 Khác (tự nhập)</option>
+                        </select>
+                        {loadingTopics && (
+                          <div className="flex items-center px-3">
+                            <div className="animate-spin rounded-full h-4 w-4 border-2 border-neutral-200 border-t-emerald-600"></div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-neutral-800 mb-1">Phân mục <span className="text-rose-600">*</span></label>
-                    <input
-                      type="text"
-                      value={testInfo.sub_topic}
-                      onChange={(e) => setTestInfo((p) => ({ ...p, sub_topic: e.target.value }))}
-                      placeholder="VD: Basic Facts, Advanced Topics"
-                      className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-neutral-50 text-neutral-900 placeholder-neutral-500"
-                    />
+                    {showCustomSubTopic ? (
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={customSubTopic}
+                          onChange={(e) => setCustomSubTopic(e.target.value)}
+                          placeholder="Nhập phân mục mới..."
+                          className="flex-1 px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-neutral-50 text-neutral-900 placeholder-neutral-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowCustomSubTopic(false);
+                            setCustomSubTopic('');
+                          }}
+                          className="px-3 py-2 text-sm text-neutral-600 bg-neutral-100 border border-neutral-300 rounded-lg hover:bg-neutral-200"
+                        >
+                          Hủy
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <select
+                          value={testInfo.sub_topic}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (value === 'other') {
+                              setShowCustomSubTopic(true);
+                              setTestInfo(p => ({ ...p, sub_topic: '' }));
+                            } else {
+                              setTestInfo(p => ({ ...p, sub_topic: value }));
+                            }
+                          }}
+                          disabled={loadingTopics || (!testInfo.main_topic && !showCustomMainTopic)}
+                          className="flex-1 px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-neutral-50 text-neutral-900 disabled:opacity-50"
+                        >
+                          <option value="">-- Chọn phân mục --</option>
+                          {subTopics.map((topic) => (
+                            <option key={topic.subTopic} value={topic.subTopic}>
+                              {topic.subTopic} ({topic.total_tests} bài test)
+                            </option>
+                          ))}
+                          <option value="other">🆕 Khác (tự nhập)</option>
+                        </select>
+                        {loadingTopics && (
+                          <div className="flex items-center px-3">
+                            <div className="animate-spin rounded-full h-4 w-4 border-2 border-neutral-200 border-t-emerald-600"></div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <div>
@@ -667,12 +879,170 @@ export default function CreateMultipleChoiceTestButton({ label = "Tạo Multiple
                     className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-neutral-50 text-neutral-900 placeholder-neutral-500 resize-none"
                   />
                 </div>
+              </div>
+            )}
 
-                {errMsg && (
-                  <div className="bg-rose-50 border border-rose-200 rounded-lg p-3" role="alert" aria-live="assertive">
-                    <p className="text-sm text-rose-800">{errMsg}</p>
+            {/* STEP 2: QUESTIONS */}
+            {currentStep === 'questions' && (
+              <div className="h-full flex flex-col space-y-4">
+                <div className="bg-white border border-neutral-200 rounded-lg p-4 flex-shrink-0">
+                  <h3 className="text-base font-semibold text-neutral-900 mb-2">Nhập Danh Sách Câu Hỏi</h3>
+                  <div className="text-xs text-neutral-700">
+                    <p className="mb-3 text-xs">Nhập các câu hỏi trắc nghiệm theo định dạng sau. Mỗi câu hỏi cách nhau một dòng trống:</p>
+
+                    <div className="flex flex-col lg:flex-row gap-4">
+                      {/* Left: example block */}
+                      <div className="flex-1 bg-neutral-50 border border-neutral-200 rounded-md p-3 text-xs font-mono">
+                        <div className="space-y-1">
+                          <div><span className="text-blue-600 font-medium">Câu hỏi cần hỏi?</span></div>
+                          <div><span className="text-rose-600">Đáp án</span>; <span className="text-neutral-600">Giải thích cho đáp án</span></div>
+                          <div><span className="text-rose-600">Đáp án</span>; <span className="text-neutral-600">Giải thích cho đáp án</span></div>
+                          <div><span className="text-rose-600">Đáp án</span>; <span className="text-neutral-600">Giải thích cho đáp án</span></div>
+                          <div><span className="text-emerald-600 font-bold">A</span> <span className="text-neutral-500">(đáp án đúng)</span></div>
+                        </div>
+                      </div>
+
+                      {/* Right: rules / notes */}
+                      <div className="flex-1 bg-white border border-neutral-200 rounded-md p-3 text-xs text-neutral-700">
+                        <ul className="list-disc pl-5 space-y-2 text-neutral-500 text-xs">
+                          <li>Dấu ";" ngăn cách đáp án và giải thích</li>
+                          <li>Mỗi câu hỏi cách nhau một dòng trống</li>
+                          <li>Hỗ trợ đa đáp án đúng: Liệt kê các chữ cái đáp án đúng ở dòng cuối, cách nhau bởi dấu cách (ví dụ: A C)</li>
+                          <li>Không ghi label đáp án (A, B, C, D...); hệ thống sẽ tự thêm</li>
+                          <li>Chữ cái cuối là đáp án đúng (A, B, C, D...)</li>
+                        </ul>
+                      </div>
+                    </div>
                   </div>
-                )}
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 min-h-0">
+                  {/* Left Panel - Input */}
+                  <div className="bg-white border border-neutral-200 rounded-xl flex flex-col">
+                    <div className="flex items-center justify-between p-4 border-b border-neutral-200 flex-shrink-0">
+                      <h2 className="text-lg font-bold text-neutral-900">Danh sách câu hỏi</h2>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setQuestionsText(SAMPLE_QUESTIONS);
+                            setIsSampleActive(true);
+                          }}
+                          className="px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100"
+                        >
+                          📝 Tải mẫu
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setQuestionsText('');
+                            setIsSampleActive(false);
+                          }}
+                          className="px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100"
+                        >
+                          🗑️ Xóa tất cả
+                        </button>
+                      </div>
+                    </div>
+
+                    <textarea
+                      value={questionsText}
+                      onChange={(e) => {
+                        setQuestionsText(e.target.value);
+                        setIsSampleActive(false);
+                      }}
+                      placeholder={`Ví dụ:
+
+What is the capital of France?
+London; The capital of United Kingdom
+Berlin; The capital of Germany
+Paris; The capital of France
+Madrid; The capital of Spain
+C
+
+Which programming language is known for 'write once, run anywhere'?
+Python; A general-purpose programming language
+Java; Known for platform independence
+C++; A systems programming language
+JavaScript; A web programming language
+B`}
+                      className="flex-1 resize-none px-4 py-3 text-sm font-mono border-0 focus:outline-none bg-neutral-50 text-neutral-900 placeholder-neutral-500"
+                    />
+                  </div>
+
+                  {/* Right Panel - Preview */}
+                  <div className="bg-white border border-neutral-200 rounded-xl flex flex-col">
+                    <div className="flex items-center justify-between p-4 border-b border-neutral-200 flex-shrink-0">
+                      <h2 className="text-lg font-bold text-neutral-900">Xem trước</h2>
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="px-2 py-1 bg-neutral-100 text-neutral-700 rounded text-xs font-medium">
+                          {totalSections} đoạn
+                        </span>
+                        <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-xs font-medium">
+                          {livePreviewQuestions.length} câu hỏi
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex-1 p-4 overflow-y-auto">
+                      {livePreviewQuestions.length === 0 ? (
+                        <div className="flex items-center justify-center h-full text-neutral-500">
+                          <div className="text-center">
+                            <svg className="w-12 h-12 mx-auto mb-3 text-neutral-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <p className="text-sm text-neutral-500 font-medium">Chưa có câu hỏi nào</p>
+                            <p className="text-xs text-neutral-400 mt-1">Nhập câu hỏi bên trái để xem trước</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {livePreviewQuestions.map((question, index) => (
+                            <div key={index} className="bg-neutral-50 border border-neutral-200 rounded-lg p-3">
+                              <div className="font-semibold text-neutral-900 mb-2 text-sm leading-tight">
+                                <span className="text-emerald-600 font-bold">{index + 1}.</span> {question.question}
+                              </div>
+
+                              <div className="space-y-2">
+                                {question.options.map((option, optIdx) => {
+                                  const isCorrect = Array.isArray(question.multiple_correct)
+                                    ? question.multiple_correct.includes(optIdx)
+                                    : question.correct_answer === optIdx;
+
+                                  return (
+                                    <div
+                                      key={optIdx}
+                                      className={`text-sm p-2 rounded-md border ${
+                                        isCorrect
+                                          ? 'bg-emerald-100 border-emerald-300 text-emerald-800'
+                                          : 'bg-white border-neutral-200 text-neutral-700'
+                                      }`}
+                                    >
+                                      <div className="font-medium flex items-start">
+                                        <span className={`mr-2 font-bold ${
+                                          isCorrect ? 'text-emerald-700' : 'text-neutral-600'
+                                        }`}>
+                                          {String.fromCharCode(65 + optIdx)}.
+                                        </span>
+                                        <span className="flex-1">{option}</span>
+                                        {isCorrect && <span className="text-emerald-600 ml-2">✓</span>}
+                                      </div>
+                                      {question.explanations && question.explanations[optIdx] && (
+                                        <div className="text-xs text-neutral-600 mt-1 ml-4 italic">
+                                          → {question.explanations[optIdx]}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -771,12 +1141,6 @@ export default function CreateMultipleChoiceTestButton({ label = "Tạo Multiple
                     </div>
                   </div>
                 </div>
-
-                {errMsg && (
-                  <div className="bg-rose-50 border border-rose-200 rounded-lg p-3" role="alert" aria-live="assertive">
-                    <p className="text-sm text-rose-800 whitespace-pre-line">{errMsg}</p>
-                  </div>
-                )}
               </div>
             )}
 
@@ -814,7 +1178,7 @@ export default function CreateMultipleChoiceTestButton({ label = "Tạo Multiple
                   <button
                     onClick={() => {
                       handleClose();
-                      navigate(`/multiple-choice/tests/${testInfo.main_topic}/${testInfo.sub_topic}`);
+                      navigate(`/test/${testInfo.main_topic}/${testInfo.sub_topic}?type=multiple-choice`);
                     }}
                     className="px-4 py-2 text-sm font-medium text-emerald-600 bg-white border border-emerald-300 rounded-md hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
                   >
@@ -832,73 +1196,105 @@ export default function CreateMultipleChoiceTestButton({ label = "Tạo Multiple
           </div>
 
           {/* Footer */}
-          {(currentStep === 'questions' || currentStep === 'test-info' || currentStep === 'review') && (
-            <div className="flex items-center justify-between px-6 py-4 border-t border-neutral-200 bg-white">
-              <div className="flex gap-3">
-                {currentStep === 'test-info' && (
+          {(currentStep === 'test-info' || currentStep === 'questions' || currentStep === 'review') && (
+            <div className="border-t border-neutral-200 bg-white">
+              {/* Error Message - Hiển thị ở đây để gần nút actions */}
+              {errMsg && (
+                <div className="px-6 pt-4 pb-3">
+                  <div className="bg-rose-50 border border-rose-200 rounded-lg p-4" role="alert" aria-live="assertive">
+                    <div className="flex items-start gap-3">
+                      <svg className="w-5 h-5 text-rose-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-rose-900 mb-2">Lỗi xảy ra!</p>
+                        <p className="text-sm text-rose-800 whitespace-pre-line mb-3">{errMsg}</p>
+                        {errMsg.includes('đã tồn tại') && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCurrentStep('test-info');
+                              setErrMsg('');
+                            }}
+                            className="px-4 py-2 text-sm font-medium text-rose-700 bg-white border border-rose-300 rounded-lg hover:bg-rose-50 transition-colors"
+                          >
+                            ← Quay lại để đổi tên bài test
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Action Buttons */}
+              <div className="flex items-center justify-between px-6 pb-4">
+                <div className="flex gap-3">
+                  {currentStep === 'questions' && (
+                    <button
+                      type="button"
+                      onClick={() => { setCurrentStep('test-info'); setErrMsg(''); }}
+                      disabled={loading}
+                      className="px-4 py-2 text-sm font-medium text-neutral-800 bg-white border border-neutral-300 rounded-md hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50"
+                    >
+                      Quay lại
+                    </button>
+                  )}
+                  {currentStep === 'review' && (
+                    <button
+                      type="button"
+                      onClick={() => { setCurrentStep('questions'); setErrMsg(''); }}
+                      disabled={loading}
+                      className="px-4 py-2 text-sm font-medium text-neutral-800 bg-white border border-neutral-300 rounded-md hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50"
+                    >
+                      Quay lại
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex gap-3">
                   <button
                     type="button"
-                    onClick={() => { setCurrentStep('questions'); setErrMsg(''); }}
+                    onClick={handleClose}
                     disabled={loading}
                     className="px-4 py-2 text-sm font-medium text-neutral-800 bg-white border border-neutral-300 rounded-md hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50"
                   >
-                    Quay lại
+                    Hủy
                   </button>
-                )}
-                {currentStep === 'review' && (
-                  <button
-                    type="button"
-                    onClick={() => { setCurrentStep('test-info'); setErrMsg(''); }}
-                    disabled={loading}
-                    className="px-4 py-2 text-sm font-medium text-neutral-800 bg-white border border-neutral-300 rounded-md hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50"
-                  >
-                    Quay lại
-                  </button>
-                )}
-              </div>
 
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={handleClose}
-                  disabled={loading}
-                  className="px-4 py-2 text-sm font-medium text-neutral-800 bg-white border border-neutral-300 rounded-md hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50"
-                >
-                  Hủy
-                </button>
+                  {currentStep === 'test-info' && (
+                    <button
+                      type="button"
+                      onClick={handleContinueToQuestions}
+                      disabled={loading}
+                      className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 border border-transparent rounded-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50"
+                    >
+                      Tiếp tục
+                    </button>
+                  )}
 
-                {currentStep === 'questions' && (
-                  <button
-                    type="button"
-                    onClick={handleContinueToTestInfo}
-                    disabled={loading}
-                    className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 border border-transparent rounded-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50"
-                  >
-                    Tiếp tục
-                  </button>
-                )}
+                  {currentStep === 'questions' && (
+                    <button
+                      type="button"
+                      onClick={handleContinueToReview}
+                      disabled={loading}
+                      className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 border border-transparent rounded-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50"
+                    >
+                      Xem lại
+                    </button>
+                  )}
 
-                {currentStep === 'test-info' && (
-                  <button
-                    type="button"
-                    onClick={handleContinueToReview}
-                    disabled={loading}
-                    className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 border border-transparent rounded-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50"
-                  >
-                    Xem lại
-                  </button>
-                )}
-
-                {currentStep === 'review' && (
-                  <button
-                    type="button"
-                    onClick={handleCreateTest}
-                    disabled={loading}
-                    className="px-5 py-2 text-sm font-semibold text-white bg-emerald-600 border border-transparent rounded-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-600 disabled:opacity-50"
-                  >
-                    {loading ? 'Đang tạo...' : 'Tạo bài test'}
-                  </button>
-                )}
+                  {currentStep === 'review' && (
+                    <button
+                      type="button"
+                      onClick={handleCreateTest}
+                      disabled={loading}
+                      className="px-5 py-2 text-sm font-semibold text-white bg-emerald-600 border border-transparent rounded-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-600 disabled:opacity-50"
+                    >
+                      {loading ? 'Đang tạo...' : 'Tạo bài test'}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -912,10 +1308,10 @@ export default function CreateMultipleChoiceTestButton({ label = "Tạo Multiple
     <>
       <button
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+        className={`inline-flex items-center gap-2 rounded-lg px-3.5 h-10 min-h-[44px] text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${className}`}
         type="button"
       >
-        <PlusIcon />
+        <span aria-hidden className="text-lg">🧩</span>
         {label}
       </button>
 
@@ -923,3 +1319,4 @@ export default function CreateMultipleChoiceTestButton({ label = "Tạo Multiple
     </>
   );
 }
+

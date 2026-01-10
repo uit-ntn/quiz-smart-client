@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import AdminLayout from '../layout/AdminLayout';
 import testService from '../services/testService';
+import vocabularyService from '../services/vocabularyService';
 import CreateVocabularyTestButton from '../components/CreateVocabularyTestButton';
 import CreateVocabularyWithAIButton from '../components/CreateVocabularyWithAIButton';
 import LoadingSpinner from '../components/LoadingSpinner';
 import Toast from '../components/Toast';
 import DeleteTestModal from '../components/AdminDeleteTestModal';
-import TestDetailModal from '../components/AdminTestDetailModal';
+import AdminVocabularyTestDetailModal from '../components/AdminVocabularyTestDetailModal';
+import ExportVocabularyModal from '../components/ExportVocabularyModal';
 
 const AdminVocabularyTests = () => {
   const { user } = useAuth();
@@ -25,6 +27,12 @@ const AdminVocabularyTests = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedTestId, setSelectedTestId] = useState(null);
   const [testToDelete, setTestToDelete] = useState(null);
+
+  // Bulk operations
+  const [selectedTests, setSelectedTests] = useState(new Set());
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+  const [showBulkExportModal, setShowBulkExportModal] = useState(false);
+  const [bulkExportVocabs, setBulkExportVocabs] = useState([]);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -163,6 +171,7 @@ const AdminVocabularyTests = () => {
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
+    setSelectedTests(new Set()); // Clear selections when filters change
   }, [searchTerm, filterVisibility, filterDifficulty, filterStatus, sortBy, sortOrder]);
 
   const handleDeleteClick = (test) => {
@@ -198,6 +207,74 @@ const AdminVocabularyTests = () => {
 
   const handleTestUpdated = () => {
     fetchVocabularyTests();
+  };
+
+  // Bulk operations
+  const handleSelectAll = () => {
+    if (selectedTests.size === paginatedTests.length) {
+      setSelectedTests(new Set());
+    } else {
+      setSelectedTests(new Set(paginatedTests.map(test => test._id)));
+    }
+  };
+
+  const handleSelectTest = (testId) => {
+    const newSelected = new Set(selectedTests);
+    if (newSelected.has(testId)) {
+      newSelected.delete(testId);
+    } else {
+      newSelected.add(testId);
+    }
+    setSelectedTests(newSelected);
+  };
+
+  const handleBulkDelete = async () => {
+    try {
+      const deletePromises = Array.from(selectedTests).map(testId => 
+        testService.hardDeleteTest(testId)  // ✅ FIX: Dùng hardDeleteTest để xóa vĩnh viễn
+      );
+      
+      await Promise.all(deletePromises);
+      
+      showToast(`Đã xóa vĩnh viễn ${selectedTests.size} bài test thành công`, 'success');
+      setSelectedTests(new Set());
+      setShowBulkDeleteModal(false);
+      fetchVocabularyTests();
+    } catch (error) {
+      console.error('Bulk delete error:', error);
+      showToast('Có lỗi xảy ra khi xóa bài test', 'error');
+    }
+  };
+
+  const handleBulkExport = async () => {
+    try {
+      const selectedTestsData = tests.filter(test => selectedTests.has(test._id));
+      
+      // Fetch all vocabularies from selected tests
+      const vocabPromises = selectedTestsData.map(async (test) => {
+        try {
+          const vocabs = await vocabularyService.getVocabulariesByTestId(test._id);
+          return { test, vocabularies: Array.isArray(vocabs) ? vocabs : [] };
+        } catch (error) {
+          console.error(`Error fetching vocabularies for test ${test._id}:`, error);
+          return { test, vocabularies: [] };
+        }
+      });
+      
+      const results = await Promise.all(vocabPromises);
+      const allVocabs = results.flatMap(result => result.vocabularies);
+      
+      if (allVocabs.length === 0) {
+        showToast('Không có từ vựng nào để xuất từ các bài test đã chọn', 'warning');
+        return;
+      }
+      
+      setBulkExportVocabs(allVocabs);
+      setShowBulkExportModal(true);
+    } catch (error) {
+      console.error('Bulk export error:', error);
+      showToast('Có lỗi xảy ra khi chuẩn bị xuất file', 'error');
+    }
   };
 
   if (loading) {
@@ -290,10 +367,10 @@ const AdminVocabularyTests = () => {
 
           </div>
 
-          <div className="flex-shrink-0">
-            <div className="flex space-x-3">
-              <CreateVocabularyWithAIButton className="min-w-[140px]" />
-              <CreateVocabularyTestButton className="bg-blue-600 hover:bg-blue-700 min-w-[140px]" />
+          <div className="flex-shrink-0 h-12">
+            <div className="h-full flex items-center space-x-3">
+              <CreateVocabularyWithAIButton className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white h-full px-3 text-sm rounded-lg" />
+              <CreateVocabularyTestButton className="bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white h-full px-3 text-sm rounded-lg" />
             </div>
           </div>
         </div>
@@ -319,7 +396,7 @@ const AdminVocabularyTests = () => {
                   onChange={(e) => setFilterVisibility(e.target.value)}
                   className="px-2 py-1 border border-gray-200 rounded-md text-sm bg-white"
                 >
-                  <option value="all">Tất cả</option>
+                  <option value="all">Tất cả Hiển thị</option>
                   <option value="public">Công khai</option>
                   <option value="private">Riêng tư</option>
                 </select>
@@ -329,7 +406,7 @@ const AdminVocabularyTests = () => {
                   onChange={(e) => setFilterDifficulty(e.target.value)}
                   className="px-2 py-1 border border-gray-200 rounded-md text-sm bg-white"
                 >
-                  <option value="all">Tất cả</option>
+                  <option value="all">Tất cả Độ Khó</option>
                   <option value="easy">Dễ</option>
                   <option value="medium">Trung bình</option>
                   <option value="hard">Khó</option>
@@ -340,7 +417,7 @@ const AdminVocabularyTests = () => {
                   onChange={(e) => setFilterStatus(e.target.value)}
                   className="px-2 py-1 border border-gray-200 rounded-md text-sm bg-white"
                 >
-                  <option value="all">Tất cả</option>
+                  <option value="all">Tất cả Trạng Thái</option>
                   <option value="active">Kích hoạt</option>
                   <option value="inactive">Tạm dừng</option>
                   <option value="deleted">Đã xóa</option>
@@ -359,10 +436,44 @@ const AdminVocabularyTests = () => {
               </div>
             </div>
           </div>
+          
+          {/* Bulk Actions */}
+          {selectedTests.size > 0 && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-blue-800">
+                  Đã chọn {selectedTests.size} bài test
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleBulkExport}
+                    className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded-md transition-colors"
+                  >
+                    Xuất file
+                  </button>
+                  <button
+                    onClick={() => setShowBulkDeleteModal(true)}
+                    className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded-md transition-colors"
+                  >
+                    Xóa tất cả
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
+                  <th className="px-3 py-2 text-left">
+                    <input
+                      type="checkbox"
+                      checked={selectedTests.size === paginatedTests.length && paginatedTests.length > 0}
+                      onChange={handleSelectAll}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                  </th>
                   <th 
                     className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                     onClick={() => handleSort('test_title')}
@@ -417,6 +528,14 @@ const AdminVocabularyTests = () => {
                 {paginatedTests.length > 0 ? (
                   paginatedTests.map((test) => (
                     <tr key={test._id} className="hover:bg-gray-50">
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        <input
+                          type="checkbox"
+                          checked={selectedTests.has(test._id)}
+                          onChange={() => handleSelectTest(test._id)}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                      </td>
                       <td className="px-3 py-2 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="text-sm font-medium text-gray-900">{test.test_title}</div>
@@ -526,11 +645,60 @@ const AdminVocabularyTests = () => {
         onDeleteConfirmed={handleDeleteConfirm}
       />
 
-      <TestDetailModal
+      <AdminVocabularyTestDetailModal
         isOpen={showDetailModal}
         onClose={() => setShowDetailModal(false)}
         testId={selectedTestId}
         onTestUpdated={handleTestUpdated}
+      />
+
+      {/* Bulk Delete Modal */}
+      {showBulkDeleteModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex min-h-screen items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black opacity-50" onClick={() => setShowBulkDeleteModal(false)}></div>
+            <div className="relative bg-white rounded-lg shadow-lg max-w-md w-full">
+              <div className="p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Xác nhận xóa nhiều bài test
+                </h3>
+                <p className="text-gray-600 mb-6">
+                  Bạn có chắc chắn muốn xóa {selectedTests.size} bài test đã chọn? Hành động này không thể hoàn tác.
+                </p>
+                <div className="flex justify-end space-x-3">
+                  <button
+                    onClick={() => setShowBulkDeleteModal(false)}
+                    className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    onClick={handleBulkDelete}
+                    className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                  >
+                    Xóa tất cả
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Export Modal */}
+      <ExportVocabularyModal
+        isOpen={showBulkExportModal}
+        onClose={() => {
+          setShowBulkExportModal(false);
+          setBulkExportVocabs([]);
+        }}
+        vocabularies={bulkExportVocabs}
+        testTitle={`Bulk_Export_${selectedTests.size}_Tests`}
+        createdBy={(() => {
+          // Get createdBy from first selected test
+          const firstSelectedTest = tests.find(test => selectedTests.has(test._id));
+          return firstSelectedTest?.created_by_full_name || firstSelectedTest?.created_by?.full_name || "";
+        })()}
       />
 
       {/* Toast */}

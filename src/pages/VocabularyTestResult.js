@@ -297,7 +297,7 @@ const VocabularyTestResult = () => {
 
             <button
               onClick={() => navigate(-2)}
-              className="shrink-0 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+              className="shrink-0 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-slate-600 to-slate-700 px-3 py-2 text-sm font-semibold text-white shadow-md hover:from-slate-700 hover:to-slate-800 transition-all"
             >
               ← Danh sách
             </button>
@@ -399,13 +399,13 @@ const VocabularyTestResult = () => {
               <div className="mt-4 grid grid-cols-2 gap-2">
                 <button
                   onClick={() => navigate(`/vocabulary/test/${testId}/settings`)}
-                  className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-extrabold text-white hover:bg-blue-700"
+                  className="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-3 py-2 text-xs font-extrabold text-white hover:from-blue-700 hover:to-indigo-700 transition-all"
                 >
                   🔄 Làm lại
                 </button>
                 <button
-                  onClick={() => navigate(`/vocabulary/tests/${testInfo?.main_topic}/${testInfo?.sub_topic}`)}
-                  className="rounded-xl bg-indigo-600 px-3 py-2 text-xs font-extrabold text-white hover:bg-indigo-700"
+                  onClick={() => navigate(`/test/${testInfo?.main_topic}/${testInfo?.sub_topic}?type=vocabulary`)}
+                  className="rounded-xl bg-gradient-to-r from-slate-600 to-slate-700 px-3 py-2 text-xs font-extrabold text-white hover:from-slate-700 hover:to-slate-800 transition-all"
                 >
                   📚 Về DS
                 </button>
@@ -536,8 +536,38 @@ const VocabularyTestResult = () => {
                                 “{a.question.example_sentence}”
                               </div>
                             </div>
-                          )}
-                        </div>
+                          )}                          
+                          {/* New fields display */}
+                          {(a?.question?.part_of_speech || a?.question?.cefr_level) && (
+                            <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                              <div className="text-xs font-semibold text-slate-600 mb-2">Thông tin từ vựng</div>
+                              <div className="flex flex-wrap gap-2">
+                                {a?.question?.part_of_speech && (
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                    {a.question.part_of_speech === 'noun' ? 'Danh từ' :
+                                     a.question.part_of_speech === 'verb' ? 'Động từ' :
+                                     a.question.part_of_speech === 'adjective' ? 'Tính từ' :
+                                     a.question.part_of_speech === 'adverb' ? 'Trạng từ' :
+                                     a.question.part_of_speech === 'preposition' ? 'Giới từ' :
+                                     a.question.part_of_speech === 'conjunction' ? 'Liên từ' :
+                                     a.question.part_of_speech === 'pronoun' ? 'Đại từ' :
+                                     a.question.part_of_speech === 'interjection' ? 'Thán từ' :
+                                     a.question.part_of_speech}
+                                  </span>
+                                )}
+                                {a?.question?.cefr_level && (
+                                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                    ['A1', 'A2'].includes(a.question.cefr_level) ? 'bg-green-100 text-green-800' :
+                                    ['B1', 'B2'].includes(a.question.cefr_level) ? 'bg-yellow-100 text-yellow-800' :
+                                    ['C1', 'C2'].includes(a.question.cefr_level) ? 'bg-red-100 text-red-800' :
+                                    'bg-gray-100 text-gray-800'
+                                  }`}>
+                                    CEFR {a.question.cefr_level}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          )}                        </div>
                       </div>
                     )}
                   </button>

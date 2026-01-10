@@ -311,10 +311,23 @@ const CreateVocabularyWithAIButton = ({ className = '' }) => {
     setCurrentStep('generating');
 
     try {
+      console.debug('CreateVocabularyWithAIButton - generating with config:', aiConfig);
       const result = await vocabularyService.generateVocabulary(aiConfig);
+      console.debug('CreateVocabularyWithAIButton - AI generation result:', result);
 
       if (result?.success && result?.data?.vocabulary) {
-        setGeneratedVocabularies(result.data.vocabulary);
+        // Add default values for new required fields to AI-generated vocabularies
+        const vocabulariesWithDefaults = result.data.vocabulary.map((vocab, index) => {
+          console.debug(`CreateVocabularyWithAIButton - processing vocabulary ${index + 1}:`, vocab);
+          return {
+            ...vocab,
+            part_of_speech: (vocab.part_of_speech || 'noun').toLowerCase().trim(),
+            cefr_level: (vocab.cefr_level || 'B1').toUpperCase().trim()
+          };
+        });
+        
+        console.debug('CreateVocabularyWithAIButton - vocabularies with defaults:', vocabulariesWithDefaults);
+        setGeneratedVocabularies(vocabulariesWithDefaults);
 
         setTestInfo((prev) => ({
           ...prev,
@@ -329,8 +342,25 @@ const CreateVocabularyWithAIButton = ({ className = '' }) => {
         throw new Error(result?.message || 'Failed to generate vocabulary');
       }
     } catch (error) {
-      console.error('Error generating vocabulary:', error);
-      setErrMsg(error?.message || 'Có lỗi xảy ra khi tạo từ vựng với AI');
+      console.error('CreateVocabularyWithAIButton - Error generating vocabulary:', {
+        error,
+        message: error?.message,
+        stack: error?.stack,
+        aiConfig
+      });
+      
+      let errorMessage = error?.message || 'Có lỗi xảy ra khi tạo từ vựng với AI';
+      
+      // Provide more specific error messages
+      if (errorMessage.includes('401') || errorMessage.includes('unauthorized')) {
+        errorMessage = 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
+      } else if (errorMessage.includes('429') || errorMessage.includes('rate limit')) {
+        errorMessage = 'Quá nhiều yêu cầu. Vui lòng thử lại sau ít phút.';
+      } else if (errorMessage.includes('500') || errorMessage.includes('server error')) {
+        errorMessage = 'Lỗi server. Vui lòng thử lại sau.';
+      }
+      
+      setErrMsg(errorMessage);
       setCurrentStep('ai-config');
     } finally {
       if (mountedRef.current) setLoading(false);
@@ -339,11 +369,33 @@ const CreateVocabularyWithAIButton = ({ className = '' }) => {
 
   // Vocabulary editing functions
   const handleVocabularyChange = (index, field, value) => {
-    setGeneratedVocabularies((prev) => prev.map((v, i) => (i === index ? { ...v, [field]: value } : v)));
+    setGeneratedVocabularies((prev) => prev.map((v, i) => {
+      if (i !== index) return v;
+      
+      let processedValue = value;
+      
+      // Normalize part_of_speech to lowercase
+      if (field === 'part_of_speech') {
+        processedValue = value.toLowerCase().trim();
+      }
+      
+      // Normalize cefr_level to uppercase
+      if (field === 'cefr_level') {
+        processedValue = value.toUpperCase().trim();
+      }
+      
+      return { ...v, [field]: processedValue };
+    }));
   };
 
   const handleAddVocabulary = () => {
-    setGeneratedVocabularies((prev) => [...prev, { word: '', meaning: '', example_sentence: '' }]);
+    setGeneratedVocabularies((prev) => [...prev, { 
+      word: '', 
+      meaning: '', 
+      example_sentence: '', 
+      part_of_speech: 'noun', 
+      cefr_level: 'B1' 
+    }]);
   };
 
   const handleRemoveVocabulary = (index) => {
@@ -351,9 +403,49 @@ const CreateVocabularyWithAIButton = ({ className = '' }) => {
   };
 
   const handleSaveVocabularies = () => {
-    const invalid = generatedVocabularies.filter((v) => !v.word?.trim() || !v.meaning?.trim());
-    if (invalid.length > 0) return setErrMsg('Vui lòng điền đầy đủ "Từ vựng" và "Nghĩa" cho tất cả các mục.');
-    if (generatedVocabularies.length === 0) return setErrMsg('Cần ít nhất 1 từ vựng để tạo bài test.');
+    // Validate all required fields
+    const invalid = generatedVocabularies.filter((v) => 
+      !v.word?.trim() || 
+      !v.meaning?.trim() || 
+      !v.example_sentence?.trim() || 
+      !v.part_of_speech?.trim() || 
+      !v.cefr_level?.trim()
+    );
+    
+    if (invalid.length > 0) {
+      const invalidIndices = generatedVocabularies
+        .map((v, index) => {
+          const missing = [];
+          if (!v.word?.trim()) missing.push('từ vựng');
+          if (!v.part_of_speech?.trim()) missing.push('từ loại');
+          if (!v.cefr_level?.trim()) missing.push('level');
+          if (!v.meaning?.trim()) missing.push('nghĩa');
+          if (!v.example_sentence?.trim()) missing.push('ví dụ');
+          return missing.length > 0 ? `Dòng ${index + 1}: thiếu ${missing.join(', ')}` : null;
+        })
+        .filter(Boolean);
+      
+      return setErrMsg(`Các trường bắt buộc chưa được điền:\n${invalidIndices.join('\n')}`);
+    }
+    
+    if (generatedVocabularies.length === 0) {
+      return setErrMsg('Cần ít nhất 1 từ vựng để tạo bài test.');
+    }
+    
+    // Validate part_of_speech values
+    const validPartOfSpeech = ['noun', 'verb', 'adjective', 'adverb', 'preposition', 'conjunction', 'pronoun', 'interjection'];
+    const invalidPOS = generatedVocabularies.filter(v => !validPartOfSpeech.includes(v.part_of_speech?.toLowerCase()));
+    if (invalidPOS.length > 0) {
+      return setErrMsg(`Các từ loại không hợp lệ. Dùng: ${validPartOfSpeech.join(', ')}`);
+    }
+    
+    // Validate CEFR levels
+    const validCefrLevels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+    const invalidCEFR = generatedVocabularies.filter(v => !validCefrLevels.includes(v.cefr_level?.toUpperCase()));
+    if (invalidCEFR.length > 0) {
+      return setErrMsg(`Các level không hợp lệ. Dùng: ${validCefrLevels.join(', ')}`);
+    }
+    
     setErrMsg('');
     setCurrentStep('test-info');
   };
@@ -372,6 +464,16 @@ const CreateVocabularyWithAIButton = ({ className = '' }) => {
     setCurrentStep('creating');
 
     try {
+      // Validate user authentication
+      if (!user || !user._id) {
+        throw new Error('Bạn cần đăng nhập để tạo bài test');
+      }
+
+      // Validate vocabularies
+      if (!generatedVocabularies || generatedVocabularies.length === 0) {
+        throw new Error('Danh sách từ vựng không được để trống');
+      }
+
       const visibilityValue = testInfo.visibility === 'public' ? 'public' : 'private';
 
       const testData = {
@@ -382,21 +484,53 @@ const CreateVocabularyWithAIButton = ({ className = '' }) => {
         status: 'active',
       };
 
+      console.debug('CreateVocabularyWithAIButton - creating test payload:', testData);
+      console.debug('CreateVocabularyWithAIButton - user context:', { userId: user._id, userName: user.full_name });
+      console.debug('CreateVocabularyWithAIButton - vocabularies count:', generatedVocabularies.length);
+
       const createdTest = await testService.createTest(testData);
+      console.debug('CreateVocabularyWithAIButton - test created:', createdTest);
       setCreatedTest(createdTest);
 
-      const vocabularyPromises = generatedVocabularies.map((vocab) =>
-        vocabularyService.createVocabulary({ ...vocab, test_id: createdTest._id })
-      );
+      const vocabularyPromises = generatedVocabularies.map((vocab, index) => {
+        console.debug(`CreateVocabularyWithAIButton - creating vocabulary ${index + 1}:`, vocab);
+        return vocabularyService.createVocabulary({ ...vocab, test_id: createdTest._id });
+      });
 
+      console.debug('CreateVocabularyWithAIButton - starting vocabulary creation for', generatedVocabularies.length, 'items');
       const results = await Promise.allSettled(vocabularyPromises);
       const rejected = results.filter((r) => r.status === 'rejected');
-      if (rejected.length) setErrMsg(`Một số từ vựng tạo không thành công: ${rejected.length}/${generatedVocabularies.length}`);
+      
+      if (rejected.length) {
+        console.error('CreateVocabularyWithAIButton - vocabulary creation failures:', rejected.map(r => r.reason));
+        const errorDetails = rejected.map((r, i) => `Từ ${i + 1}: ${r.reason?.message || r.reason}`).join('\n');
+        setErrMsg(`Một số từ vựng tạo không thành công (${rejected.length}/${generatedVocabularies.length}):\n${errorDetails}`);
+      }
 
+      const successful = results.filter((r) => r.status === 'fulfilled').length;
+      console.log(`CreateVocabularyWithAIButton - vocabulary creation completed: ${successful}/${generatedVocabularies.length} successful`);
       setCurrentStep('success');
     } catch (err) {
-      console.error('Error creating vocabulary test:', err);
-      setErrMsg(err?.message || 'Có lỗi xảy ra khi tạo bài test');
+      console.error('CreateVocabularyWithAIButton - Error creating vocabulary test:', {
+        error: err,
+        message: err?.message,
+        stack: err?.stack,
+        testInfo,
+        vocabulariesCount: generatedVocabularies?.length || 0
+      });
+      
+      let errorMessage = err?.message || 'Có lỗi xảy ra khi tạo bài test';
+      
+      // Provide more specific error messages
+      if (errorMessage.includes('401') || errorMessage.includes('unauthorized')) {
+        errorMessage = 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
+      } else if (errorMessage.includes('duplicate') || errorMessage.includes('409')) {
+        errorMessage = 'Tên bài test đã tồn tại. Vui lòng chọn tên khác.';
+      } else if (errorMessage.includes('400') || errorMessage.includes('validation')) {
+        errorMessage = 'Dữ liệu không hợp lệ. Vui lòng kiểm tra lại thông tin.';
+      }
+      
+      setErrMsg(errorMessage);
       setCurrentStep('review');
     } finally {
       if (mountedRef.current) setLoading(false);
@@ -566,8 +700,10 @@ const CreateVocabularyWithAIButton = ({ className = '' }) => {
                       <div className="hidden md:grid grid-cols-12 bg-slate-50 border-b border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-600">
                         <div className="col-span-1">#</div>
                         <div className="col-span-3">Từ vựng</div>
-                        <div className="col-span-3">Nghĩa</div>
-                        <div className="col-span-4">Ví dụ</div>
+                        <div className="col-span-2">Nghĩa</div>
+                        <div className="col-span-3">Ví dụ</div>
+                        <div className="col-span-1">Loại từ</div>
+                        <div className="col-span-1">CEFR</div>
                         <div className="col-span-1 text-right">Xoá</div>
                       </div>
 
@@ -597,7 +733,7 @@ const CreateVocabularyWithAIButton = ({ className = '' }) => {
                               </Field>
                             </div>
 
-                            <div className="md:col-span-3">
+                            <div className="md:col-span-2">
                               <Field label="Nghĩa" required>
                                 <input
                                   value={vocab.meaning || ''}
@@ -608,14 +744,50 @@ const CreateVocabularyWithAIButton = ({ className = '' }) => {
                               </Field>
                             </div>
 
-                            <div className="md:col-span-4">
-                              <Field label="Ví dụ">
+                            <div className="md:col-span-3">
+                              <Field label="Ví dụ" required>
                                 <Textarea
                                   value={vocab.example_sentence || ''}
                                   onChange={(e) => handleVocabularyChange(index, 'example_sentence', e.target.value)}
                                   rows={2}
                                   placeholder="example sentence…"
                                 />
+                              </Field>
+                            </div>
+
+                            <div className="md:col-span-1">
+                              <Field label="Loại từ" required>
+                                <select
+                                  value={vocab.part_of_speech || 'noun'}
+                                  onChange={(e) => handleVocabularyChange(index, 'part_of_speech', e.target.value)}
+                                  className={inputBase}
+                                >
+                                  <option value="noun">Noun</option>
+                                  <option value="verb">Verb</option>
+                                  <option value="adjective">Adjective</option>
+                                  <option value="adverb">Adverb</option>
+                                  <option value="preposition">Preposition</option>
+                                  <option value="conjunction">Conjunction</option>
+                                  <option value="pronoun">Pronoun</option>
+                                  <option value="interjection">Interjection</option>
+                                </select>
+                              </Field>
+                            </div>
+
+                            <div className="md:col-span-1">
+                              <Field label="CEFR" required>
+                                <select
+                                  value={vocab.cefr_level || 'B1'}
+                                  onChange={(e) => handleVocabularyChange(index, 'cefr_level', e.target.value)}
+                                  className={inputBase}
+                                >
+                                  <option value="A1">A1</option>
+                                  <option value="A2">A2</option>
+                                  <option value="B1">B1</option>
+                                  <option value="B2">B2</option>
+                                  <option value="C1">C1</option>
+                                  <option value="C2">C2</option>
+                                </select>
                               </Field>
                             </div>
 
@@ -866,7 +1038,7 @@ const CreateVocabularyWithAIButton = ({ className = '' }) => {
                         type="button"
                         onClick={() => {
                           handleClose();
-                          navigate(`/vocabulary/tests/${testInfo.main_topic}/${testInfo.sub_topic}`);
+                          navigate(`/test/${testInfo.main_topic}/${testInfo.sub_topic}?type=vocabulary`);
                         }}
                         tone="secondary"
                         size="sm"
@@ -944,25 +1116,31 @@ const CreateVocabularyWithAIButton = ({ className = '' }) => {
         type="button"
         onClick={handleClick}
         title="Tạo bài test từ vựng với AI"
+        aria-label="Tạo với AI"
         className={cx(
-          'inline-flex items-center justify-center rounded-xl',
-          'text-white bg-slate-900 hover:bg-slate-800',
-          'shadow-sm hover:shadow-md transition',
-          'focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:ring-offset-2',
-          isFab ? 'p-0' : 'px-4 py-2 text-sm font-semibold gap-2',
+          // Pill base
+          'inline-flex items-center justify-center rounded-full',
+          'text-white shadow-lg transition transform duration-200',
+          'hover:scale-[1.02] active:scale-95',
+          'focus:outline-none focus:ring-4 focus:ring-purple-300/30 focus:ring-offset-2',
+          // spacing when not FAB
+          isFab ? 'p-0' : 'px-5 py-3 text-sm font-bold gap-3',
+          // allow parent to pass gradient or additional classes
           className
         )}
       >
         <span
           className={cx(
-            'inline-flex items-center justify-center rounded-lg',
-            isFab ? '' : 'bg-white/10',
-            isFab ? '' : 'w-8 h-8'
+            'relative inline-flex items-center justify-center flex-shrink-0 rounded-full',
+            isFab ? 'w-11 h-11' : 'w-9 h-9',
+            // stronger, contrasted circle so the icon doesn't blend into gradient backgrounds
+            'bg-white/20 shadow-sm'
           )}
         >
-          <Icon.Spark className={isFab ? 'w-6 h-6' : 'w-4 h-4'} />
+          <span aria-hidden className={isFab ? 'text-2xl' : 'text-lg'}>🤖</span>
         </span>
-        {!isFab && <span>Tạo với AI</span>}
+
+        {!isFab && <span className="select-none">Tạo từ vựng với AI</span>}
       </button>
 
       {modal}

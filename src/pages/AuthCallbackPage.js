@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import authService from '../services/authService';
+import Toast from '../components/Toast';
 
 const AuthCallbackPage = () => {
   const [searchParams] = useSearchParams();
@@ -9,6 +10,17 @@ const AuthCallbackPage = () => {
   const { refreshAuth } = useAuth();
   const [status, setStatus] = useState('processing'); // processing, success, error
   const [message, setMessage] = useState('Đang xử lý đăng nhập...');
+  
+  // Toast state
+  const [toast, setToast] = useState({ message: '', type: 'success', isVisible: false });
+  
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type, isVisible: true });
+  };
+
+  const hideToast = () => {
+    setToast(prev => ({ ...prev, isVisible: false }));
+  };
 
   useEffect(() => {
     const handleAuthCallback = async () => {
@@ -70,11 +82,19 @@ const AuthCallbackPage = () => {
           setStatus('success');
           setMessage('Đăng nhập thành công! Đang chuyển hướng...');
           
-          // Get the return URL from localStorage if it exists
-          const returnTo = localStorage.getItem('authReturnTo') || '/';
-          localStorage.removeItem('authReturnTo');
+          // Show success toast
+          showToast('Đăng nhập Google thành công!', 'success');
           
-          console.log('Redirecting to:', returnTo);
+          // Get the return URL from localStorage or location state
+          const authReturnTo = localStorage.getItem('authReturnTo');
+          console.log('🔍 AuthCallback redirect debug:');
+          console.log('- authReturnTo from localStorage:', authReturnTo);
+          
+          // Default to /topics for successful login (if no return path specified)
+          const returnTo = authReturnTo || '/topics';
+          console.log('- Final returnTo:', returnTo);
+          
+          localStorage.removeItem('authReturnTo');
           
           // Redirect after 1.5 seconds
           setTimeout(() => {
@@ -117,6 +137,9 @@ const AuthCallbackPage = () => {
         }
         
         setMessage(errorMessage);
+        
+        // Show error toast
+        showToast('Đăng nhập Google thất bại: ' + errorMessage, 'error');
         
         // Redirect to login page after 4 seconds for better UX
         setTimeout(() => {
@@ -176,6 +199,14 @@ const AuthCallbackPage = () => {
           )}
         </div>
       </div>
+      
+      {/* Toast */}
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        isVisible={toast.isVisible}
+        onClose={hideToast}
+      />
     </div>
   );
 };

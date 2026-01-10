@@ -9,32 +9,57 @@ const ProtectedRoute = ({ children, requireAuth = true, requireAdmin = false }) 
   const [isAdmin, setIsAdmin] = useState(false);
   const location = useLocation();
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const authenticated = authService.isAuthenticated();
-        
-        if (authenticated) {
-          // Verify token is still valid
-          const isValid = await authService.verifyToken();
-          if (isValid) {
-            setIsAuthenticated(true);
-            setIsAdmin(authService.isAdmin());
-          } else {
-            setIsAuthenticated(false);
-          }
+  const checkAuth = async () => {
+    try {
+      const authenticated = authService.isAuthenticated();
+      
+      if (authenticated) {
+        // Verify token is still valid
+        const isValid = await authService.verifyToken();
+        if (isValid) {
+          setIsAuthenticated(true);
+          setIsAdmin(authService.isAdmin());
         } else {
           setIsAuthenticated(false);
         }
-      } catch (error) {
-        console.error('Auth check error:', error);
+      } else {
         setIsAuthenticated(false);
-      } finally {
-        setLoading(false);
       }
+    } catch (error) {
+      console.error('Auth check error:', error);
+      setIsAuthenticated(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    checkAuth();
+  }, [location.pathname]); // Re-check when route changes
+
+  // Listen for auth changes (login/logout events)
+  useEffect(() => {
+    const handleAuthChange = () => {
+      checkAuth();
     };
 
-    checkAuth();
+    // Listen for custom events
+    window.addEventListener('profileUpdated', handleAuthChange);
+    window.addEventListener('authStateChanged', handleAuthChange);
+    
+    // Listen for storage changes (token/user changes)
+    const handleStorageChange = (e) => {
+      if (e.key === 'token' || e.key === 'user') {
+        checkAuth();
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('profileUpdated', handleAuthChange);
+      window.removeEventListener('authStateChanged', handleAuthChange);
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, []);
 
   if (loading) {
@@ -44,7 +69,9 @@ const ProtectedRoute = ({ children, requireAuth = true, requireAdmin = false }) 
   // If route requires authentication but user is not authenticated
   if (requireAuth && !isAuthenticated) {
     // Store the current location for redirect after login
-    localStorage.setItem('authReturnTo', location.pathname + location.search);
+    const returnPath = location.pathname + location.search;
+    console.log('🔍 ProtectedRoute storing authReturnTo:', returnPath);
+    localStorage.setItem('authReturnTo', returnPath);
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
@@ -54,10 +81,8 @@ const ProtectedRoute = ({ children, requireAuth = true, requireAdmin = false }) 
   }
 
   // If route is for unauthenticated users only (like login/register) but user is authenticated
-  if (!requireAuth && isAuthenticated) {
-    const from = location.state?.from?.pathname || '/';
-    return <Navigate to={from} replace />;
-  }
+  // Note: We don't auto-redirect here to avoid race conditions with LoginPage's own redirect logic
+  // LoginPage will handle redirect after successful login in its useEffect
 
   return children;
 };

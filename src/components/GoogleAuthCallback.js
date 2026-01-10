@@ -32,8 +32,8 @@ const GoogleAuthCallback = () => {
         await handleGoogleCallback(token);
         setStatus('success');
 
-        // Redirect to return URL or dashboard
-        const returnTo = localStorage.getItem('authReturnTo') || '/dashboard';
+        // Redirect to return URL or /topics
+        const returnTo = localStorage.getItem('authReturnTo') || '/topics';
         localStorage.removeItem('authReturnTo');
         
         setTimeout(() => {

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import AdminLayout from '../layout/AdminLayout';
 import testService from '../services/testService';
 import userService from '../services/userService';
@@ -8,6 +8,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 
 const AdminDashboard = () => {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalTests: 0,
@@ -121,6 +122,7 @@ const AdminDashboard = () => {
       ),
       color: 'from-green-500 to-green-600',
       link: '/admin/users',
+      action: 'createUser',
     },
     {
       title: 'Vocabulary Tests',
@@ -169,12 +171,11 @@ const AdminDashboard = () => {
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {statCards.map((card, index) => (
-            <Link
+            <div
               key={index}
-              to={card.link}
               className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg transition-shadow"
             >
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between mb-4">
                 <div>
                   <p className="text-sm font-medium text-gray-600 mb-2">{card.title}</p>
                   <p className="text-3xl font-bold text-gray-900">{card.value}</p>
@@ -183,7 +184,23 @@ const AdminDashboard = () => {
                   {card.icon}
                 </div>
               </div>
-            </Link>
+              <div className="flex gap-2">
+                <Link
+                  to={card.link}
+                  className="flex-1 px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-center"
+                >
+                  Xem
+                </Link>
+                {card.action === 'createUser' && (
+                  <button
+                    onClick={() => navigate('/admin/users', { state: { openCreateModal: true } })}
+                    className="px-3 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                  >
+                    Tạo
+                  </button>
+                )}
+              </div>
+            </div>
           ))}
         </div>
 

@@ -9,9 +9,9 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import testService from "../services/testService";
 import MultipleChoiceService from "../services/multipleChoiceService";
 import testResultService from "../services/testResultService";
-import { useTestSession } from "../hooks/useTestSession";
 import QuestionResultModal from "../components/MCPQuestionResultModal";
 import SubmitConfirmModal from "../components/MCPSubmitConfirmModal";
+import { getCorrectAnswerLabels, isCorrectAnswer } from "../utils/correctAnswerHelpers";
 
 // ===================== utils =====================
 const shuffleArray = (arr) => {
@@ -102,8 +102,6 @@ const MultipleChoiceTestTake = () => {
 
   // Test session tracking
   const [testResultId, setTestResultId] = useState(null);
-  const { initializeSession, endSession, recordBehavior, isTracking } =
-    useTestSession(testResultId);
 
   // ✅ tránh React 18 StrictMode gọi effect 2 lần gây tạo draft 2 lần
   const didCreateInitialDraftRef = useRef(false);
@@ -281,11 +279,12 @@ const MultipleChoiceTestTake = () => {
   const isMultiChoice = useCallback((q) => {
     if (!q) return false;
     if (typeof q.allow_multiple === "boolean") return q.allow_multiple;
-    return (q.correct_answers || []).length > 1;
+    return getCorrectAnswerLabels(q.correct_answers).length > 1;
   }, []);
 
   const computeResult = useCallback((q, selected) => {
-    const correctSet = new Set(q.correct_answers || []);
+    const correctLabels = getCorrectAnswerLabels(q.correct_answers);
+    const correctSet = new Set(correctLabels);
     const selectedSet = new Set(selected || []);
     const isCorrect =
       correctSet.size === selectedSet.size &&
@@ -293,12 +292,51 @@ const MultipleChoiceTestTake = () => {
 
     const wrongSelected = [...selectedSet].filter((s) => !correctSet.has(s));
 
+    // Normalize explanation format: ensure correct is always an object (backward compatibility)
+    const explanation = q.explanation || {};
+    
+    // Normalize correct explanations
+    let normalizedCorrect = {};
+    if (explanation.correct) {
+      // If it's already an object, use it
+      if (typeof explanation.correct === 'object' && !Array.isArray(explanation.correct)) {
+        normalizedCorrect = { ...explanation.correct };
+      }
+      // If it's a string (old format), convert to object by assigning to all correct labels
+      else if (typeof explanation.correct === 'string' && explanation.correct.trim()) {
+        correctLabels.forEach(label => {
+          normalizedCorrect[label] = explanation.correct;
+        });
+      }
+    }
+    
+    // Normalize incorrect_choices: remove any entries that are actually correct answers
+    const normalizedIncorrect = {};
+    if (explanation.incorrect_choices && typeof explanation.incorrect_choices === 'object') {
+      Object.entries(explanation.incorrect_choices).forEach(([label, text]) => {
+        // Only include if this label is NOT a correct answer and has content
+        if (text && text.trim() && !correctSet.has(label)) {
+          normalizedIncorrect[label] = text;
+        }
+        // If this label is actually a correct answer but was in incorrect_choices (data inconsistency),
+        // move it to correct explanations if not already there
+        else if (text && text.trim() && correctSet.has(label) && !normalizedCorrect[label]) {
+          normalizedCorrect[label] = text;
+        }
+      });
+    }
+    
+    const normalizedExplanation = {
+      correct: normalizedCorrect,
+      incorrect_choices: normalizedIncorrect
+    };
+
     return {
       isCorrect,
-      correctAnswer: [...correctSet],
+      correctAnswer: correctLabels,
       selectedAnswers: [...selectedSet],
       wrongSelected,
-      explanation: q.explanation || {},
+      explanation: normalizedExplanation,
       questionText: q.question_text,
     };
   }, []);
@@ -416,7 +454,8 @@ const MultipleChoiceTestTake = () => {
               label: allowedLabels[index],
             }));
 
-            const newCorrectAnswers = (q.correct_answers || []).map(
+            const correctLabels = getCorrectAnswerLabels(q.correct_answers);
+            const newCorrectAnswers = correctLabels.map(
               (oldLabel) => labelMapping[oldLabel] || oldLabel
             );
 
@@ -491,8 +530,8 @@ const MultipleChoiceTestTake = () => {
               opts?.[0]?.label ? [opts[0].label] : [];
 
             const correctAnswers =
-              Array.isArray(firstQuestion?.correct_answers) && firstQuestion.correct_answers.length > 0
-                ? firstQuestion.correct_answers
+              Array.isArray(firstQuestion?.correct_answers) && getCorrectAnswerLabels(firstQuestion.correct_answers).length > 0
+                ? getCorrectAnswerLabels(firstQuestion.correct_answers)
                 : fallbackCorrect;
 
             // chỉ tạo nếu đủ điều kiện validate BE (options >=2, correct_answers non-empty)
@@ -501,6 +540,7 @@ const MultipleChoiceTestTake = () => {
                 test_id: testId,
                 // test_snapshot optional (BE tự build nếu không gửi)
                 test_snapshot: {
+                  test_id: testId,
                   test_title: testData?.test_title || "Multiple Choice Test",
                   main_topic: testData?.main_topic || "Multiple Choice",
                   sub_topic: testData?.sub_topic || "",
@@ -550,22 +590,6 @@ const MultipleChoiceTestTake = () => {
     loadSettingsAndData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [testId]);
-
-  // Initialize test session when testResultId is available
-  useEffect(() => {
-    if (testResultId && !isTracking) {
-      initializeSession();
-    }
-  }, [testResultId, isTracking, initializeSession]);
-
-  // Cleanup session on unmount
-  useEffect(() => {
-    return () => {
-      if (isTracking) {
-        endSession();
-      }
-    };
-  }, [isTracking, endSession]);
 
   // ===================== submit =====================
   const doSubmitTest = useCallback(
@@ -618,7 +642,7 @@ const MultipleChoiceTestTake = () => {
                 label: o.label, // A–E
                 text: o.text,
               })),
-              correct_answers: Array.isArray(q.correct_answers) ? q.correct_answers : [],
+              correct_answers: getCorrectAnswerLabels(q.correct_answers),
               user_answers: selected,
               is_correct: !!r.isCorrect,
             };
@@ -630,16 +654,6 @@ const MultipleChoiceTestTake = () => {
 
         if (draftId) localStorage.setItem(DRAFT_KEY, String(draftId));
         localStorage.removeItem(STORE_KEY);
-
-        // End test session tracking BEFORE navigation
-        if (isTracking) {
-          try {
-            await endSession();
-            console.log("✅ Test session ended successfully");
-          } catch (err) {
-            console.error("❌ Failed to end test session:", err);
-          }
-        }
 
         // (Optional) dọn rác: xoá mềm bản placeholder draft ban đầu
         if (testResultId && draftId && String(testResultId) !== String(draftId)) {
@@ -685,7 +699,7 @@ const MultipleChoiceTestTake = () => {
         });
       }
     },
-    [DRAFT_KEY, STORE_KEY, computeResult, navigate, testId, endSession, isTracking, testResultId]
+    [DRAFT_KEY, STORE_KEY, computeResult, navigate, testId, testResultId]
   );
 
   // total timer
@@ -749,21 +763,13 @@ const MultipleChoiceTestTake = () => {
         const wasSelected = current.includes(label);
         const action = multi ? (wasSelected ? "deselect" : "select") : "choose";
 
-        recordBehavior("answer_selection", {
-          question_id: qid,
-          question_index: currentQuestionIndex,
-          selected_option: label,
-          is_multi_choice: multi,
-          action,
-        });
-
         if (!multi) return { ...prev, [qid]: [label] };
 
         const next = wasSelected ? current.filter((x) => x !== label) : [...current, label];
         return { ...prev, [qid]: next };
       });
     },
-    [isLocked, isMultiChoice, pushHistory, currentQuestionIndex, recordBehavior]
+    [isLocked, isMultiChoice, pushHistory, currentQuestionIndex]
   );
 
   const toggleMarkCurrent = useCallback(() => {
@@ -779,15 +785,9 @@ const MultipleChoiceTestTake = () => {
       if (next[qid]) delete next[qid];
       else next[qid] = true;
 
-      recordBehavior("mark_for_review", {
-        question_id: qid,
-        question_index: currentQuestionIndex,
-        action: wasMarked ? "unmark" : "mark",
-      });
-
       return next;
     });
-  }, [currentQuestion, pushHistory, currentQuestionIndex, recordBehavior]);
+  }, [currentQuestion, pushHistory, currentQuestionIndex]);
 
   const handleCheckAnswer = useCallback(() => {
     if (!currentQuestion) return;
@@ -802,17 +802,6 @@ const MultipleChoiceTestTake = () => {
     setResultModalData(result);
     setShowResultModal(true);
 
-    recordBehavior("check_answer", {
-      question_id: qid,
-      question_index: currentQuestionIndex,
-      selected_options: selected,
-      is_correct: result.isCorrect,
-      time_spent:
-        questionTimeRemaining > 0
-          ? settings.questionTimeLimit - questionTimeRemaining
-          : 0,
-    });
-
     if (settingsRef.current.testMode === "question_timer") setIsQuestionTimerPaused(true);
   }, [
     computeResult,
@@ -820,7 +809,6 @@ const MultipleChoiceTestTake = () => {
     currentQuestionIndex,
     questionTimeRemaining,
     settings.questionTimeLimit,
-    recordBehavior,
   ]);
 
   const handleCloseResultModal = useCallback(() => {
@@ -831,12 +819,6 @@ const MultipleChoiceTestTake = () => {
   const handleNext = useCallback(() => {
     const qs = questionsRef.current || [];
     if (currentQuestionIndex < qs.length - 1) {
-      recordBehavior("question_navigation", {
-        from_question: currentQuestionIndex,
-        to_question: currentQuestionIndex + 1,
-        action: "next",
-      });
-
       setCurrentQuestionIndex((i) => i + 1);
       if (settingsRef.current.testMode === "question_timer") {
         setQuestionTimeRemaining(settingsRef.current.questionTimeLimit || 30);
@@ -844,34 +826,21 @@ const MultipleChoiceTestTake = () => {
       }
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
-  }, [currentQuestionIndex, recordBehavior]);
+  }, [currentQuestionIndex]);
 
   const handlePrev = useCallback(() => {
     if (settingsRef.current.testMode !== "flexible") return;
     if (currentQuestionIndex > 0) {
-      recordBehavior("question_navigation", {
-        from_question: currentQuestionIndex,
-        to_question: currentQuestionIndex - 1,
-        action: "prev",
-      });
-
       setCurrentQuestionIndex((i) => i - 1);
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
-  }, [currentQuestionIndex, recordBehavior]);
+  }, [currentQuestionIndex]);
 
   const handleSubmitClick = useCallback(() => {
     if (isSubmittedRef.current) return;
 
-    recordBehavior("submit_attempt", {
-      total_questions: questions.length,
-      answered_questions: answeredCount,
-      unanswered_questions: questions.length - answeredCount,
-      current_question: currentQuestionIndex,
-    });
-
     setShowSubmitModal(true);
-  }, [questions.length, answeredCount, currentQuestionIndex, recordBehavior]);
+  }, [questions.length, answeredCount, currentQuestionIndex]);
 
   // ===================== highlight handlers =====================
   const addHighlightFromSelection = useCallback(
@@ -1248,7 +1217,7 @@ const MultipleChoiceTestTake = () => {
                 <button
                   type="button"
                   onClick={redo}
-                  className="px-4 py-2 rounded-lg text-xs font-semibold border border-slate-300 bg-white text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                  className="px-4 py-2 rounded-lg text-xs font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 transition-all flex items-center gap-2"
                 >
                   ↪️ Làm lại
                 </button>

@@ -8,17 +8,26 @@ import testResultService from "../services/testResultService";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
 import Toast from "../components/Toast";
-import { useTestSession } from "../hooks/useTestSession";
 
 const DEFAULT_TOTAL_QUESTIONS = 10;
 const DEFAULT_TIME_PER_QUESTION = 30;
+
+const shuffleArray = (arr) => {
+  const a = [...(arr || [])];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+};
 
 const sanitizeSettings = (raw = {}) => {
   const modeRaw = raw?.mode || "word_to_meaning";
   const mode =
     modeRaw === "word_to_meaning" ||
     modeRaw === "meaning_to_word" ||
-    modeRaw === "listen_and_type"
+    modeRaw === "listen_and_type" ||
+    modeRaw === "listen_and_write_sentence"
       ? modeRaw
       : "word_to_meaning";
 
@@ -48,13 +57,17 @@ const VOICE_PRESETS = [
 const modeLabel = (mode) => {
   if (mode === "word_to_meaning") return "Từ → Nghĩa";
   if (mode === "meaning_to_word") return "Nghĩa → Từ";
-  return "Nghe & Viết";
+  if (mode === "listen_and_type") return "Nghe & Viết";
+  if (mode === "listen_and_write_sentence") return "Nghe câu & Viết câu";
+  return "Từ vựng";
 };
 
 const modeBadge = (mode) => {
   if (mode === "word_to_meaning") return "Đưa từ đoán nghĩa";
   if (mode === "meaning_to_word") return "Đưa nghĩa đoán từ";
-  return "Nghe và ghi từ";
+  if (mode === "listen_and_type") return "Nghe và ghi từ";
+  if (mode === "listen_and_write_sentence") return "Nghe và viết câu";
+  return "Từ vựng";
 };
 
 const normalize = (s) => (s || "").toLowerCase().trim();
@@ -73,7 +86,6 @@ const VocabularyTestTake = () => {
 
   // ===== session tracking =====
   const [testResultId, setTestResultId] = useState(null);
-  const { initializeSession, endSession, recordBehavior, isTracking } = useTestSession(testResultId);
 
   // ===== states =====
   const [loading, setLoading] = useState(true);
@@ -143,6 +155,7 @@ const VocabularyTestTake = () => {
       if (!item) return "";
       if (settings.mode === "word_to_meaning") return item.meaning || "";
       if (settings.mode === "meaning_to_word") return item.word || "";
+      if (settings.mode === "listen_and_write_sentence") return item.example_sentence || "";
       return item.word || ""; // listen_and_type
     },
     [settings.mode]
@@ -153,6 +166,7 @@ const VocabularyTestTake = () => {
     const ua = normalize(answer);
     if (mode === "word_to_meaning") return ua === normalize(item.meaning);
     if (mode === "meaning_to_word") return ua === normalize(item.word);
+    if (mode === "listen_and_write_sentence") return ua === normalize(item.example_sentence);
     return ua === normalize(item.word);
   }, []);
 
@@ -206,17 +220,9 @@ const VocabularyTestTake = () => {
       u.onend = () => setIsPlaying(false);
       u.onerror = () => setIsPlaying(false);
 
-      recordBehavior?.("audio_playback", {
-        question_index: index,
-        question_id: current?._id,
-        voice_id: voiceId,
-        voice_lang: lang,
-        text_length: (text || "").length,
-      });
-
       speechSynthesis.speak(u);
     },
-    [current?._id, index, isPlaying, pickVoice, recordBehavior, voiceId]
+    [current?._id, index, isPlaying, pickVoice, voiceId]
   );
 
   // ===== fetch + restore =====
@@ -274,7 +280,7 @@ const VocabularyTestTake = () => {
           return;
         }
 
-        const shuffled = [...vocab].sort(() => Math.random() - 0.5);
+        const shuffled = settings.shuffleQuestions ? shuffleArray(vocab) : [...vocab];
         const maxQ = Math.min(settings.totalQuestions || DEFAULT_TOTAL_QUESTIONS, shuffled.length);
 
         const selected = shuffled.slice(0, maxQ).map((it, i) => ({
@@ -283,6 +289,13 @@ const VocabularyTestTake = () => {
         }));
 
         setItems(selected);
+
+        // Debug: Log vocabulary data to check if part_of_speech and cefr_level are present
+        console.log('🔍 Vocabulary data loaded:', selected.map(v => ({
+          word: v.word,
+          part_of_speech: v.part_of_speech,
+          cefr_level: v.cefr_level
+        })));
 
         // init start time
         startTimeRef.current = Date.now();
@@ -365,18 +378,6 @@ const VocabularyTestTake = () => {
       mounted = false;
     };
   }, [DRAFT_KEY, STORE_KEY, settings.mode, settings.timePerQuestion, settings.totalQuestions, showToastMsg, testId]);
-
-  // ===== init session when have testResultId =====
-  useEffect(() => {
-    if (testResultId && !isTracking) initializeSession?.();
-  }, [initializeSession, isTracking, testResultId]);
-
-  // ===== cleanup session on unmount =====
-  useEffect(() => {
-    return () => {
-      if (isTracking) endSession?.();
-    };
-  }, [endSession, isTracking]);
 
   // ===== autosave =====
   useEffect(() => {
@@ -463,15 +464,6 @@ const VocabularyTestTake = () => {
       setShowAnswer(true);
       setIsPaused(true);
 
-      recordBehavior?.("answer_submitted", {
-        question_index: index,
-        question_id: current?._id,
-        mode: settings.mode,
-        time_spent_sec: Math.max(0, timeSpentSec),
-        is_correct: isCorrect,
-        answer_length: (answerText || "").length,
-      });
-
       // keep timeLeft stable
       setTimeLeft(settings.timePerQuestion || DEFAULT_TIME_PER_QUESTION);
     },
@@ -482,7 +474,6 @@ const VocabularyTestTake = () => {
       getCorrectAnswer,
       index,
       items.length,
-      recordBehavior,
       settings.mode,
       settings.timePerQuestion,
       showAnswer,
@@ -495,12 +486,6 @@ const VocabularyTestTake = () => {
     setLastAnswerResult(null);
     setIsPaused(false);
 
-    recordBehavior?.("question_navigation", {
-      from_question: index,
-      to_question: index < items.length - 1 ? index + 1 : "completed",
-      action: "next_after_reveal",
-    });
-
     if (index < items.length - 1) {
       setIndex((i) => i + 1);
       setCurrentAnswer("");
@@ -510,7 +495,7 @@ const VocabularyTestTake = () => {
 
     // last question => submit
     setShowSubmitConfirm(true);
-  }, [index, items.length, recordBehavior, settings.timePerQuestion]);
+  }, [index, items.length, settings.timePerQuestion]);
 
   const handlePrev = useCallback(() => {
     if (index <= 0) return;
@@ -522,8 +507,7 @@ const VocabularyTestTake = () => {
     setIsPaused(false);
     setTimeLeft(settings.timePerQuestion || DEFAULT_TIME_PER_QUESTION);
 
-    recordBehavior?.("question_navigation", { from_question: index, to_question: index - 1, action: "manual_prev" });
-  }, [index, pushHistory, recordBehavior, settings.timePerQuestion]);
+  }, [index, pushHistory, settings.timePerQuestion]);
 
   const handleNext = useCallback(() => {
     if (index >= items.length - 1) return;
@@ -535,8 +519,7 @@ const VocabularyTestTake = () => {
     setIsPaused(false);
     setTimeLeft(settings.timePerQuestion || DEFAULT_TIME_PER_QUESTION);
 
-    recordBehavior?.("question_navigation", { from_question: index, to_question: index + 1, action: "manual_next" });
-  }, [index, items.length, pushHistory, recordBehavior, settings.timePerQuestion]);
+  }, [index, items.length, pushHistory, settings.timePerQuestion]);
 
   // ===== submit =====
   const completeTest = useCallback(
@@ -580,14 +563,6 @@ const VocabularyTestTake = () => {
 
         const finalResult = await testResultService.createTestResult(payload);
 
-        if (isTracking) {
-          try {
-            await endSession?.();
-          } catch (e) {
-            // ignore
-          }
-        }
-
         // cleanup
         try {
           localStorage.removeItem(STORE_KEY);
@@ -612,20 +587,13 @@ const VocabularyTestTake = () => {
         setIsSubmitting(false);
       }
     },
-    [answers, endSession, getCorrectAnswer, isTracking, navigate, settings, testId, testInfo, DRAFT_KEY, STORE_KEY]
+    [answers, getCorrectAnswer, navigate, settings, testId, testInfo, DRAFT_KEY, STORE_KEY]
   );
 
   const submitNow = useCallback(() => setShowSubmitConfirm(true), []);
 
   const confirmSubmit = useCallback(async () => {
     setShowSubmitConfirm(false);
-
-    recordBehavior?.("test_submission", {
-      action: "submit",
-      current_question: index,
-      total_questions: items.length,
-      answered_questions: answers.filter(Boolean).length,
-    });
 
     // fill blanks
     const remain = [...answers];
@@ -634,7 +602,7 @@ const VocabularyTestTake = () => {
     }
     setAnswers(remain);
     await completeTest(remain);
-  }, [answers, completeTest, index, items, recordBehavior]);
+  }, [answers, completeTest, index, items]);
 
   // ===== keyboard shortcuts (global) =====
   useEffect(() => {
@@ -659,13 +627,17 @@ const VocabularyTestTake = () => {
       }
       if (e.key === "p" || e.key === "P") {
         e.preventDefault();
-        if (current?.word) playAudio(current.word);
+        if (settings.mode === "listen_and_write_sentence" && current?.example_sentence) {
+          playAudio(current.example_sentence);
+        } else if (current?.word) {
+          playAudio(current.word);
+        }
       }
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [current?.word, handleNext, handlePrev, playAudio, showExitConfirm, showSubmitConfirm]);
+  }, [current?.word, current?.example_sentence, settings.mode, handleNext, handlePrev, playAudio, showExitConfirm, showSubmitConfirm]);
 
   // ===== exit =====
   const handleExit = () => setShowExitConfirm(true);
@@ -695,7 +667,11 @@ const VocabularyTestTake = () => {
       ? "Nhập nghĩa tiếng Việt."
       : settings.mode === "meaning_to_word"
       ? "Nhập từ tiếng Anh."
-      : "Bấm nghe, rồi gõ từ bạn nghe được.";
+      : settings.mode === "listen_and_type"
+      ? "Bấm nghe, rồi gõ từ bạn nghe được."
+      : settings.mode === "listen_and_write_sentence"
+      ? "Bấm nghe câu, rồi viết lại câu bạn nghe được."
+      : "Nhập câu trả lời.";
 
   return (
     <TestLayout
@@ -792,6 +768,43 @@ const VocabularyTestTake = () => {
                           </button>
                         </div>
                         <p className="mt-2 text-sm text-zinc-600">Nhập nghĩa tiếng Việt cho từ trên.</p>
+                        
+                        {/* Show part of speech and CEFR level badges */}
+                        {current && (
+                          <div className="mt-3 flex justify-center flex-wrap gap-2">
+                            {current.part_of_speech ? (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                {current.part_of_speech === 'noun' ? 'Danh từ' :
+                                 current.part_of_speech === 'verb' ? 'Động từ' :
+                                 current.part_of_speech === 'adjective' ? 'Tính từ' :
+                                 current.part_of_speech === 'adverb' ? 'Trạng từ' :
+                                 current.part_of_speech === 'preposition' ? 'Giới từ' :
+                                 current.part_of_speech === 'conjunction' ? 'Liên từ' :
+                                 current.part_of_speech === 'pronoun' ? 'Đại từ' :
+                                 current.part_of_speech === 'interjection' ? 'Thán từ' :
+                                 current.part_of_speech}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                                Chưa có loại từ
+                              </span>
+                            )}
+                            {current.cefr_level ? (
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                ['A1', 'A2'].includes(current.cefr_level) ? 'bg-green-100 text-green-800' :
+                                ['B1', 'B2'].includes(current.cefr_level) ? 'bg-yellow-100 text-yellow-800' :
+                                ['C1', 'C2'].includes(current.cefr_level) ? 'bg-red-100 text-red-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                CEFR {current.cefr_level}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                                Chưa có CEFR
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </>
                     )}
 
@@ -801,6 +814,43 @@ const VocabularyTestTake = () => {
                           {current?.meaning}
                         </h2>
                         <p className="mt-2 text-sm text-zinc-600">Nhập từ tiếng Anh phù hợp.</p>
+                        
+                        {/* Show part of speech and CEFR level badges */}
+                        {current && (
+                          <div className="mt-3 flex justify-center flex-wrap gap-2">
+                            {current.part_of_speech ? (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                {current.part_of_speech === 'noun' ? 'Danh từ' :
+                                 current.part_of_speech === 'verb' ? 'Động từ' :
+                                 current.part_of_speech === 'adjective' ? 'Tính từ' :
+                                 current.part_of_speech === 'adverb' ? 'Trạng từ' :
+                                 current.part_of_speech === 'preposition' ? 'Giới từ' :
+                                 current.part_of_speech === 'conjunction' ? 'Liên từ' :
+                                 current.part_of_speech === 'pronoun' ? 'Đại từ' :
+                                 current.part_of_speech === 'interjection' ? 'Thán từ' :
+                                 current.part_of_speech}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                                Chưa có loại từ
+                              </span>
+                            )}
+                            {current.cefr_level ? (
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                ['A1', 'A2'].includes(current.cefr_level) ? 'bg-green-100 text-green-800' :
+                                ['B1', 'B2'].includes(current.cefr_level) ? 'bg-yellow-100 text-yellow-800' :
+                                ['C1', 'C2'].includes(current.cefr_level) ? 'bg-red-100 text-red-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                CEFR {current.cefr_level}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                                Chưa có CEFR
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </>
                     )}
 
@@ -825,6 +875,87 @@ const VocabularyTestTake = () => {
                           )}
                         </div>
                         <p className="mt-2 text-sm text-zinc-600">Nghe và gõ từ bạn nghe được.</p>
+                        
+                        {/* Show part of speech and CEFR level badges */}
+                        {current && (
+                          <div className="mt-3 flex justify-center flex-wrap gap-2">
+                            {current.part_of_speech ? (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                {current.part_of_speech === 'noun' ? 'Danh từ' :
+                                 current.part_of_speech === 'verb' ? 'Động từ' :
+                                 current.part_of_speech === 'adjective' ? 'Tính từ' :
+                                 current.part_of_speech === 'adverb' ? 'Trạng từ' :
+                                 current.part_of_speech === 'preposition' ? 'Giới từ' :
+                                 current.part_of_speech === 'conjunction' ? 'Liên từ' :
+                                 current.part_of_speech === 'pronoun' ? 'Đại từ' :
+                                 current.part_of_speech === 'interjection' ? 'Thán từ' :
+                                 current.part_of_speech}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                                Chưa có loại từ
+                              </span>
+                            )}
+                            {current.cefr_level ? (
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                ['A1', 'A2'].includes(current.cefr_level) ? 'bg-green-100 text-green-800' :
+                                ['B1', 'B2'].includes(current.cefr_level) ? 'bg-yellow-100 text-yellow-800' :
+                                ['C1', 'C2'].includes(current.cefr_level) ? 'bg-red-100 text-red-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                CEFR {current.cefr_level}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                                Chưa có CEFR
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {settings.mode === "listen_and_write_sentence" && (
+                      <>
+                        <div className="flex items-center justify-center gap-3">
+                          <button
+                            onClick={() => playAudio(current?.example_sentence)}
+                            disabled={isPlaying || !current?.example_sentence}
+                            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg hover:opacity-95 disabled:opacity-50"
+                          >
+                            🔊 {isPlaying ? "Đang phát..." : "Nghe câu"}
+                          </button>
+                          {!current?.example_sentence && (
+                            <span className="text-sm text-zinc-500">Không có câu ví dụ</span>
+                          )}
+                        </div>
+                        <p className="mt-2 text-sm text-zinc-600">Nghe câu và viết lại câu bạn nghe được.</p>
+                        
+                        {/* Show word and meaning for context */}
+                        {current && (
+                          <div className="mt-3 flex justify-center flex-wrap gap-2">
+                            {current.word && (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                Từ: {current.word}
+                              </span>
+                            )}
+                            {current.meaning && (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                Nghĩa: {current.meaning}
+                              </span>
+                            )}
+                            {current.cefr_level && (
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                ['A1', 'A2'].includes(current.cefr_level) ? 'bg-green-100 text-green-800' :
+                                ['B1', 'B2'].includes(current.cefr_level) ? 'bg-yellow-100 text-yellow-800' :
+                                ['C1', 'C2'].includes(current.cefr_level) ? 'bg-red-100 text-red-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                CEFR {current.cefr_level}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </>
                     )}
                   </div>
@@ -926,9 +1057,49 @@ const VocabularyTestTake = () => {
                 </div>
               </div>
 
+              {/* Voice on mobile */}
+              <div className="block lg:hidden mt-3">
+                <div className="rounded-2xl border border-zinc-200 bg-white shadow-sm p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <h3 className="text-sm font-extrabold text-zinc-900">Giọng đọc</h3>
+                      <p className="text-xs text-zinc-600 mt-0.5">Áp dụng ngay khi bấm "Nghe".</p>
+                    </div>
+                    <span className="inline-flex items-center rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-700">
+                      {availableVoices.filter((v) => v.lang?.startsWith("en")).length} EN
+                    </span>
+                  </div>
+
+                  <select
+                    value={voiceId}
+                    onChange={(e) => {
+                      setVoiceId(e.target.value);
+                      localStorage.setItem(`vocab_voice_${testId}`, e.target.value);
+                      showToastMsg("Đã đổi giọng đọc", "success");
+                    }}
+                    className="mt-3 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-violet-500"
+                  >
+                    {VOICE_PRESETS.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.flag} {p.label}
+                      </option>
+                    ))}
+                  </select>
+
+                  <button
+                    type="button"
+                    onClick={() => playAudio(current?.word || "hello")}
+                    disabled={isPlaying}
+                    className="mt-3 w-full inline-flex items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-bold text-zinc-800 shadow-sm hover:bg-zinc-50 disabled:opacity-50"
+                  >
+                    🔈 Nghe thử
+                  </button>
+                </div>
+              </div>
+
               {/* ACTION BUTTONS */}
               <div className="mt-3">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   <button
                     type="button"
                     onClick={() => revealAnswer(currentAnswer)}

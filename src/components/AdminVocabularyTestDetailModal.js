@@ -1,9 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import testService from "../services/testService";
-import multipleChoiceService from "../services/multipleChoiceService";
 import vocabularyService from "../services/vocabularyService";
-import grammarService from "../services/grammarService";
-import AdminQuestionModal from "./AdminQuestionModal";
+import AdminVocabularyQuestionModal from "./AdminVocabularyQuestionModal";
+import ExportVocabularyModal from "./ExportVocabularyModal";
 
 /* =========================
    Small UI helpers
@@ -50,9 +49,24 @@ const Icon = {
       />
     </svg>
   ),
-  Plus: (p) => (
+  Book: (p) => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}>
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 5v14M5 12h14" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+        d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+      />
+    </svg>
+  ),
+  Download: (p) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+      />
     </svg>
   ),
   Spinner: (p) => (
@@ -63,42 +77,40 @@ const Icon = {
   ),
 };
 
-const difficultyTone = (d) => (d === "easy" ? "green" : d === "medium" ? "amber" : d === "hard" ? "rose" : "slate");
 const testStatusTone = (s) => (s === "active" ? "green" : s === "inactive" ? "amber" : s === "deleted" ? "rose" : "slate");
 const visibilityTone = (v) => (v === "public" ? "green" : v === "private" ? "rose" : "slate");
 
 const clamp = (txt = "", n = 120) => (txt.length > n ? txt.slice(0, n) + "…" : txt);
-
-// Support cả 2 tên field (FE cũ vs BE)
 const getTimeLimit = (t) => Number(t?.time_limit_minutes ?? t?.duration_minutes ?? 0) || 0;
 
-const TestDetailModal = ({ isOpen, onClose, testId, onTestUpdated }) => {
+const AdminVocabularyTestDetailModal = ({ isOpen, onClose, testId, onTestUpdated }) => {
   const [test, setTest] = useState(null);
-  const [questions, setQuestions] = useState([]);
+  const [vocabularies, setVocabularies] = useState([]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-
   const [editingTest, setEditingTest] = useState(false);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
 
-  // Question modal
-  const [questionModalOpen, setQuestionModalOpen] = useState(false);
-  const [editingQuestion, setEditingQuestion] = useState(null);
+  // Vocabulary modal
+  const [vocabularyModalOpen, setVocabularyModalOpen] = useState(false);
+  const [editingVocabulary, setEditingVocabulary] = useState(null);
 
-  // Edit form (đã thêm status + visibility + difficulty + time_limit_minutes)
+  // Export modal
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+
+  // Edit form
   const [testFormData, setTestFormData] = useState({
     test_title: "",
     description: "",
     main_topic: "",
     sub_topic: "",
-    test_type: "",
+    test_type: "vocabulary",
     total_questions: 0,
     time_limit_minutes: 0,
-    difficulty: "medium",
     status: "active",
     visibility: "public",
   });
@@ -113,21 +125,18 @@ const TestDetailModal = ({ isOpen, onClose, testId, onTestUpdated }) => {
 
   useEffect(() => {
     if (isOpen && testId) fetchTestDetails();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, testId]);
 
   useEffect(() => {
     if (!test) return;
-
     setTestFormData({
       test_title: test.test_title || "",
       description: test.description || "",
       main_topic: test.main_topic || "",
       sub_topic: test.sub_topic || "",
-      test_type: test.test_type || "",
+      test_type: "vocabulary",
       total_questions: Number(test.total_questions || 0),
       time_limit_minutes: getTimeLimit(test),
-      difficulty: test.difficulty || "medium",
       status: test.status || "active",
       visibility: test.visibility || "public",
     });
@@ -141,16 +150,8 @@ const TestDetailModal = ({ isOpen, onClose, testId, onTestUpdated }) => {
       const t = await testService.getTestById(testId);
       setTest(t);
 
-      let qs = [];
-      if (t.test_type === "multiple_choice") {
-        qs = await multipleChoiceService.getQuestionsByTestId(testId);
-      } else if (t.test_type === "vocabulary") {
-        qs = await vocabularyService.getAllVocabulariesByTestId(testId);
-      } else if (t.test_type === "grammar") {
-        qs = await grammarService.getGrammarsByTestId(testId);
-      }
-
-      setQuestions(Array.isArray(qs) ? qs : []);
+      const vocabs = await vocabularyService.getAllVocabulariesByTestId(testId);
+      setVocabularies(Array.isArray(vocabs) ? vocabs : []);
       setCurrentPage(1);
     } catch (e) {
       console.error("Error fetching test details:", e);
@@ -166,10 +167,9 @@ const TestDetailModal = ({ isOpen, onClose, testId, onTestUpdated }) => {
       setLoading(true);
       setError(null);
 
-      // gửi ưu tiên BE: time_limit_minutes
-      // kèm duration_minutes để không gãy nếu BE/FE cũ đang dùng tên này
       const payload = {
         ...testFormData,
+        test_type: "vocabulary",
         time_limit_minutes: Number(testFormData.time_limit_minutes || 0),
         duration_minutes: Number(testFormData.time_limit_minutes || 0),
         total_questions: Number(testFormData.total_questions || 0),
@@ -186,55 +186,47 @@ const TestDetailModal = ({ isOpen, onClose, testId, onTestUpdated }) => {
     }
   };
 
-  const handleAddQuestion = () => {
-    setEditingQuestion(null);
-    setQuestionModalOpen(true);
+  const handleEditVocabulary = (vocab) => {
+    setEditingVocabulary(vocab);
+    setVocabularyModalOpen(true);
   };
 
-  const handleEditQuestion = (q) => {
-    setEditingQuestion(q);
-    setQuestionModalOpen(true);
+  const handleVocabularySaved = async (response) => {
+    try {
+      await fetchTestDetails();
+      setVocabularyModalOpen(false);
+      setEditingVocabulary(null);
+      onTestUpdated?.();
+    } catch (error) {
+      console.error('Error refreshing test details:', error);
+    }
   };
 
-  const handleQuestionSaved = () => {
-    fetchTestDetails();
-    setQuestionModalOpen(false);
-    setEditingQuestion(null);
-  };
-
-  const handleDeleteQuestion = async (id) => {
-    if (!window.confirm("Bạn có chắc chắn muốn xoá câu hỏi này không?")) return;
+  const handleDeleteVocabulary = async (id) => {
+    if (!window.confirm("Bạn có chắc chắn muốn xoá từ vựng này không?")) return;
 
     try {
       setLoading(true);
       setError(null);
-
-      if (test?.test_type === "multiple_choice") {
-        await multipleChoiceService.deleteMultipleChoice(id);
-      } else if (test?.test_type === "vocabulary") {
-        await vocabularyService.deleteVocabulary(id);
-      } else if (test?.test_type === "grammar") {
-        await grammarService.deleteGrammar(id, localStorage.getItem("token"));
-      }
-
+      await vocabularyService.deleteVocabulary(id);
       await fetchTestDetails();
       onTestUpdated?.();
     } catch (e) {
       console.error("Delete error:", e);
-      setError(e?.message || "Không thể xoá câu hỏi. Vui lòng thử lại.");
+      setError(e?.message || "Không thể xoá từ vựng. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
   };
 
-  const totalPages = useMemo(() => Math.max(1, Math.ceil(questions.length / itemsPerPage)), [questions.length, itemsPerPage]);
+  const totalPages = useMemo(() => Math.max(1, Math.ceil(vocabularies.length / itemsPerPage)), [vocabularies.length, itemsPerPage]);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const currentQuestions = useMemo(
-    () => questions.slice(startIndex, startIndex + itemsPerPage),
-    [questions, startIndex, itemsPerPage]
+  const currentVocabularies = useMemo(
+    () => vocabularies.slice(startIndex, startIndex + itemsPerPage),
+    [vocabularies, startIndex, itemsPerPage]
   );
 
-  const title = test?.test_title || "Chi tiết bài kiểm tra";
+  const title = test?.test_title || "Chi tiết bài từ vựng";
   const timeLimit = getTimeLimit(test);
 
   if (!isOpen) return null;
@@ -249,23 +241,19 @@ const TestDetailModal = ({ isOpen, onClose, testId, onTestUpdated }) => {
           {/* Header */}
           <div className="px-4 sm:px-5 py-3 border-b border-slate-200 flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <div className="text-base sm:text-lg font-semibold text-slate-900 truncate">{title}</div>
+              <div className="text-base sm:text-lg font-semibold text-slate-900 truncate flex items-center gap-2">
+                <Icon.Book className="w-5 h-5 text-blue-600" />
+                {title}
+              </div>
 
               <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
-                <Pill tone="blue">{test?.test_type || "—"}</Pill>
+                <Pill tone="blue">Từ vựng</Pill>
 
-                {/* Chế độ */}
                 <Pill tone={visibilityTone(test?.visibility)}>
                   {test?.visibility === "public" ? "Công khai" : test?.visibility === "private" ? "Riêng tư" : "—"}
                 </Pill>
 
-                {/* Trạng thái test */}
                 <Pill tone={testStatusTone(test?.status)}>{test?.status || "—"}</Pill>
-
-                {/* Độ khó */}
-                <Pill tone={difficultyTone(test?.difficulty)}>{test?.difficulty || "—"}</Pill>
-
-                {/* Time limit */}
                 <Pill tone="violet">{timeLimit} phút</Pill>
 
                 <Pill tone="slate">
@@ -273,7 +261,7 @@ const TestDetailModal = ({ isOpen, onClose, testId, onTestUpdated }) => {
                   {test?.sub_topic ? ` / ${test.sub_topic}` : ""}
                 </Pill>
 
-                <Pill tone="slate">{questions.length} câu hỏi</Pill>
+                <Pill tone="slate">{vocabularies.length} từ vựng</Pill>
               </div>
             </div>
 
@@ -296,13 +284,14 @@ const TestDetailModal = ({ isOpen, onClose, testId, onTestUpdated }) => {
                 <Icon.Edit className="w-4 h-4" />
                 {editingTest ? "Đóng chỉnh sửa" : "Sửa thông tin"}
               </button>
-
+              
               <button
-                onClick={handleAddQuestion}
-                className="inline-flex items-center gap-2 rounded-xl bg-blue-700 px-3.5 py-2 text-sm font-semibold text-white hover:bg-blue-800"
+                onClick={() => setExportModalOpen(true)}
+                disabled={vocabularies.length === 0}
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Icon.Plus className="w-4 h-4" />
-                Thêm câu hỏi
+                <Icon.Download className="w-4 h-4" />
+                Xuất file
               </button>
             </div>
 
@@ -320,7 +309,7 @@ const TestDetailModal = ({ isOpen, onClose, testId, onTestUpdated }) => {
                 <option value={25}>25</option>
                 <option value={50}>50</option>
                 <option value={100}>100</option>
-                <option value={questions.length || 1}>Tất cả</option>
+                <option value={vocabularies.length || 1}>Tất cả</option>
               </select>
             </div>
           </div>
@@ -347,7 +336,7 @@ const TestDetailModal = ({ isOpen, onClose, testId, onTestUpdated }) => {
                 {/* Edit Test */}
                 {editingTest && (
                   <div className="mb-4 rounded-2xl border border-slate-200 p-4 bg-slate-50">
-                    <div className="text-sm font-semibold text-slate-900 mb-3">Cập nhật thông tin</div>
+                    <div className="text-sm font-semibold text-slate-900 mb-3">Cập nhật thông tin bài từ vựng</div>
 
                     <form onSubmit={handleTestUpdate} className="space-y-3">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -361,18 +350,16 @@ const TestDetailModal = ({ isOpen, onClose, testId, onTestUpdated }) => {
                         </div>
 
                         <div>
-                          <label className="text-xs font-medium text-slate-700">Loại test</label>
-                          <select
-                            value={testFormData.test_type}
-                            onChange={(e) => setTestFormData({ ...testFormData, test_type: e.target.value })}
-                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-600 focus:border-transparent"
-                          >
-                            <option value="multiple_choice">Trắc nghiệm</option>
-                            <option value="vocabulary">Từ vựng</option>
-                            <option value="grammar">Ngữ pháp</option>
-                            <option value="spelling">Spelling</option>
-                            <option value="listening">Listening</option>
-                          </select>
+                          <label className="text-xs font-medium text-slate-700">Giới hạn thời gian (phút)</label>
+                          <input
+                            type="number"
+                            min={0}
+                            value={testFormData.time_limit_minutes}
+                            onChange={(e) =>
+                              setTestFormData({ ...testFormData, time_limit_minutes: Number(e.target.value || 0) })
+                            }
+                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                          />
                         </div>
                       </div>
 
@@ -405,8 +392,7 @@ const TestDetailModal = ({ isOpen, onClose, testId, onTestUpdated }) => {
                         </div>
                       </div>
 
-                      {/* NEW: status + visibility + difficulty + time limit */}
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div>
                           <label className="text-xs font-medium text-slate-700">Chế độ</label>
                           <select
@@ -417,45 +403,6 @@ const TestDetailModal = ({ isOpen, onClose, testId, onTestUpdated }) => {
                             <option value="public">Công khai</option>
                             <option value="private">Riêng tư</option>
                           </select>
-                        </div>
-
-                        <div>
-                          <label className="text-xs font-medium text-slate-700">Trạng thái</label>
-                          <select
-                            value={testFormData.status}
-                            onChange={(e) => setTestFormData({ ...testFormData, status: e.target.value })}
-                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-600 focus:border-transparent"
-                          >
-                            <option value="active">active</option>
-                            <option value="inactive">inactive</option>
-                            <option value="deleted">deleted</option>
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="text-xs font-medium text-slate-700">Độ khó</label>
-                          <select
-                            value={testFormData.difficulty}
-                            onChange={(e) => setTestFormData({ ...testFormData, difficulty: e.target.value })}
-                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-600 focus:border-transparent"
-                          >
-                            <option value="easy">easy</option>
-                            <option value="medium">medium</option>
-                            <option value="hard">hard</option>
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="text-xs font-medium text-slate-700">Giới hạn thời gian (phút)</label>
-                          <input
-                            type="number"
-                            min={0}
-                            value={testFormData.time_limit_minutes}
-                            onChange={(e) =>
-                              setTestFormData({ ...testFormData, time_limit_minutes: Number(e.target.value || 0) })
-                            }
-                            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 focus:border-transparent"
-                          />
                         </div>
                       </div>
 
@@ -478,14 +425,13 @@ const TestDetailModal = ({ isOpen, onClose, testId, onTestUpdated }) => {
                   </div>
                 )}
 
-                {/* Questions */}
-                {currentQuestions.length === 0 ? (
+                {/* Vocabularies */}
+                {currentVocabularies.length === 0 ? (
                   <div className="py-16 text-center text-slate-700">
-                    <div className="text-sm font-medium">Chưa có câu hỏi nào</div>
-                    <div className="text-xs text-slate-500 mt-1">Bấm “Thêm câu hỏi” để tạo mới.</div>
+                    <Icon.Book className="w-12 h-12 mx-auto text-slate-400 mb-4" />
+                    <div className="text-sm font-medium">Chưa có từ vựng nào</div>
                   </div>
-                ) : test?.test_type === "vocabulary" ? (
-                  /* Vocabulary table */
+                ) : (
                   <div className="overflow-x-auto rounded-2xl border border-slate-200">
                     <table className="w-full">
                       <thead className="bg-slate-50 border-b border-slate-200">
@@ -494,36 +440,52 @@ const TestDetailModal = ({ isOpen, onClose, testId, onTestUpdated }) => {
                           <th className="px-3 py-2 text-left">Từ</th>
                           <th className="px-3 py-2 text-left">Nghĩa</th>
                           <th className="px-3 py-2 text-left">Ví dụ</th>
-                          <th className="px-3 py-2 text-left w-28">Độ khó</th>
-                          <th className="px-3 py-2 text-left w-28">Trạng thái</th>
+                          <th className="px-3 py-2 text-left">Loại từ</th>
+                          <th className="px-3 py-2 text-left">CEFR</th>
                           <th className="px-3 py-2 text-right w-24">Thao tác</th>
                         </tr>
                       </thead>
 
                       <tbody className="divide-y divide-slate-100">
-                        {currentQuestions.map((q, idx) => (
-                          <tr key={q._id} className="hover:bg-slate-50">
+                        {currentVocabularies.map((vocab, idx) => (
+                          <tr key={vocab._id} className="hover:bg-slate-50">
                             <td className="px-3 py-2 text-sm text-slate-700">{startIndex + idx + 1}</td>
-                            <td className="px-3 py-2 text-sm font-medium text-slate-900">{q.word || "—"}</td>
-                            <td className="px-3 py-2 text-sm text-slate-800">{q.meaning || "—"}</td>
+                            <td className="px-3 py-2 text-sm font-medium text-slate-900">{vocab.word || "—"}</td>
+                            <td className="px-3 py-2 text-sm text-slate-800">{vocab.meaning || "—"}</td>
                             <td className="px-3 py-2 text-sm text-slate-700 italic">
-                              {q.example_sentence ? `“${clamp(q.example_sentence, 60)}”` : "—"}
+                              {vocab.example_sentence ? `"${clamp(vocab.example_sentence, 60)}"` : "—"}
                             </td>
                             <td className="px-3 py-2">
-                              {q.difficulty ? <Pill tone={difficultyTone(q.difficulty)}>{q.difficulty}</Pill> : <span className="text-slate-400">—</span>}
+                              <Pill tone="blue">
+                                {vocab.part_of_speech === 'noun' ? 'Danh từ' :
+                                 vocab.part_of_speech === 'verb' ? 'Động từ' :
+                                 vocab.part_of_speech === 'adjective' ? 'Tính từ' :
+                                 vocab.part_of_speech === 'adverb' ? 'Trạng từ' :
+                                 vocab.part_of_speech === 'preposition' ? 'Giới từ' :
+                                 vocab.part_of_speech === 'conjunction' ? 'Liên từ' :
+                                 vocab.part_of_speech === 'pronoun' ? 'Đại từ' :
+                                 vocab.part_of_speech === 'interjection' ? 'Thán từ' :
+                                 vocab.part_of_speech || '—'}
+                              </Pill>
                             </td>
-                            <td className="px-3 py-2">{q.status ? <Pill tone={q.status === "active" ? "green" : "rose"}>{q.status}</Pill> : <span className="text-slate-400">—</span>}</td>
+                            <td className="px-3 py-2">
+                              <Pill tone={['A1', 'A2'].includes(vocab.cefr_level) ? 'green' :
+                                         ['B1', 'B2'].includes(vocab.cefr_level) ? 'amber' :
+                                         ['C1', 'C2'].includes(vocab.cefr_level) ? 'rose' : 'slate'}>
+                                {vocab.cefr_level || '—'}
+                              </Pill>
+                            </td>
                             <td className="px-3 py-2">
                               <div className="flex justify-end gap-1">
                                 <button
-                                  onClick={() => handleEditQuestion(q)}
+                                  onClick={() => handleEditVocabulary(vocab)}
                                   className="p-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-white"
                                   title="Sửa"
                                 >
                                   <Icon.Edit className="w-4 h-4" />
                                 </button>
                                 <button
-                                  onClick={() => handleDeleteQuestion(q._id)}
+                                  onClick={() => handleDeleteVocabulary(vocab._id)}
                                   className="p-2 rounded-lg border border-rose-300 text-rose-800 hover:bg-rose-100"
                                   title="Xóa"
                                 >
@@ -536,131 +498,13 @@ const TestDetailModal = ({ isOpen, onClose, testId, onTestUpdated }) => {
                       </tbody>
                     </table>
                   </div>
-                ) : (
-                  /* Multiple choice / grammar cards */
-                  <div className="space-y-2">
-                    {currentQuestions.map((q, idx) => (
-                      <div key={q._id} className="rounded-2xl border border-slate-200 p-3 hover:bg-slate-50">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2 mb-2">
-                              <Pill tone="blue">#{startIndex + idx + 1}</Pill>
-                              {q.difficulty ? <Pill tone={difficultyTone(q.difficulty)}>{q.difficulty}</Pill> : null}
-                              {q.status ? <Pill tone={q.status === "active" ? "green" : "rose"}>{q.status}</Pill> : null}
-                            </div>
-
-                            {test?.test_type === "multiple_choice" ? (
-                              <>
-                                <div className="text-sm font-medium text-slate-900">{q.question_text || "—"}</div>
-
-                                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                  {(q.options || []).map((op, i) => {
-                                    const isCorrect = q.correct_answers?.includes(op.label);
-                                    return (
-                                      <div
-                                        key={i}
-                                        className={`rounded-xl border px-3 py-2 text-sm ${
-                                          isCorrect ? "border-emerald-600 bg-emerald-200" : "border-slate-200 bg-white"
-                                        }`}
-                                      >
-                                        <div className="flex gap-2">
-                                          <span className="text-xs font-semibold text-slate-700 w-5">{op.label}</span>
-                                          <span className={`text-sm ${isCorrect ? "text-emerald-950 font-semibold" : "text-slate-800"}`}>
-                                            {op.text}
-                                          </span>
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-
-                                {q.correct_answers?.length ? (
-                                  <div className="mt-2 text-xs text-slate-600">
-                                    Đáp án đúng: <span className="font-semibold text-slate-900">{q.correct_answers.join(", ")}</span>
-                                  </div>
-                                ) : null}
-
-                                {/* Explanation */}
-                                {(q.explanation?.correct ||
-                                  (q.explanation?.incorrect_choices && Object.keys(q.explanation.incorrect_choices).length > 0)) && (
-                                  <div className="mt-3 border-t border-slate-200 pt-3">
-                                    <div className="text-xs font-semibold text-slate-900 mb-2 flex items-center gap-1">
-                                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1M21 12h-1M4 12H3" />
-                                      </svg>
-                                      Giải thích đáp án
-                                    </div>
-
-                                    <div className="space-y-2">
-                                      {q.explanation.correct && (
-                                        <div className="bg-emerald-200 border border-emerald-600 border-l-4 border-l-emerald-800 p-2 rounded-lg">
-                                          <div className="text-xs font-semibold text-emerald-950">
-                                            ✓ Đáp án đúng ({q.correct_answers?.join(", ")}):
-                                          </div>
-                                          <div className="text-xs text-emerald-950 mt-1">{q.explanation.correct}</div>
-                                        </div>
-                                      )}
-
-                                      {q.explanation.incorrect_choices && Object.keys(q.explanation.incorrect_choices).length > 0 && (
-                                        <div className="space-y-1">
-                                          {Object.entries(q.explanation.incorrect_choices)
-                                            .filter(([, text]) => text && text.trim())
-                                            .map(([label, text]) => (
-                                              <div
-                                                key={label}
-                                                className="bg-rose-200 border border-rose-600 border-l-4 border-l-rose-800 p-2 rounded-lg"
-                                              >
-                                                <div className="flex items-start gap-2">
-                                                  <span className="text-xs font-semibold text-rose-950">✗ {label}:</span>
-                                                  <div className="text-xs text-rose-950">{text}</div>
-                                                </div>
-                                              </div>
-                                            ))}
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                )}
-                              </>
-                            ) : (
-                              <>
-                                <div className="text-sm font-medium text-slate-900">{q.question_text || "—"}</div>
-                                {q.correct_answer ? (
-                                  <div className="mt-2 text-sm text-emerald-950">
-                                    Đáp án: <span className="font-semibold">{q.correct_answer}</span>
-                                  </div>
-                                ) : null}
-                              </>
-                            )}
-                          </div>
-
-                          <div className="flex shrink-0 gap-1">
-                            <button
-                              onClick={() => handleEditQuestion(q)}
-                              className="p-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-white"
-                              title="Sửa"
-                            >
-                              <Icon.Edit className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteQuestion(q._id)}
-                              className="p-2 rounded-lg border border-rose-300 text-rose-800 hover:bg-rose-100"
-                              title="Xóa"
-                            >
-                              <Icon.Trash className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
                 )}
 
                 {/* Pagination */}
                 <div className="pt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                   <div className="text-sm text-slate-700">
-                    Hiển thị {questions.length ? startIndex + 1 : 0}–{Math.min(startIndex + itemsPerPage, questions.length)} /{" "}
-                    {questions.length}
+                    Hiển thị {vocabularies.length ? startIndex + 1 : 0}–{Math.min(startIndex + itemsPerPage, vocabularies.length)} /{" "}
+                    {vocabularies.length}
                   </div>
 
                   {totalPages > 1 && (
@@ -693,20 +537,28 @@ const TestDetailModal = ({ isOpen, onClose, testId, onTestUpdated }) => {
         </div>
       </div>
 
-      {/* Question Modal */}
-      <AdminQuestionModal
-        isOpen={questionModalOpen}
+      {/* Vocabulary Modal */}
+      <AdminVocabularyQuestionModal
+        isOpen={vocabularyModalOpen}
         onClose={() => {
-          setQuestionModalOpen(false);
-          setEditingQuestion(null);
+          setVocabularyModalOpen(false);
+          setEditingVocabulary(null);
         }}
         testId={testId}
-        testType={test?.test_type}
-        question={editingQuestion}
-        onQuestionSaved={handleQuestionSaved}
+        question={editingVocabulary}
+        onQuestionSaved={handleVocabularySaved}
+      />
+
+      {/* Export Modal */}
+      <ExportVocabularyModal
+        isOpen={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        vocabularies={vocabularies}
+        testTitle={test?.test_title || 'Bài từ vựng'}
+        createdBy={test?.created_by_full_name || test?.created_by?.full_name || ""}
       />
     </div>
   );
 };
 
-export default TestDetailModal;
+export default AdminVocabularyTestDetailModal;

@@ -2,8 +2,10 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import TestService from "../services/testService";
 import testResultService from "../services/testResultService";
+import { getCorrectAnswerLabels, isCorrectAnswer } from "../utils/correctAnswerHelpers";
 
 import Toast from '../components/Toast';
+import ExportMCPModal from '../components/ExportMCPModal';
 
 const MultipleChoiceTestReview = () => {
   const { testId } = useParams();
@@ -34,6 +36,9 @@ const MultipleChoiceTestReview = () => {
   
   // Toast state
   const [toast, setToast] = useState({ message: '', type: 'success', isVisible: false });
+  
+  // Export modal state
+  const [showExportModal, setShowExportModal] = useState(false);
   
   const isAnswered = (ua) => (Array.isArray(ua) ? ua.length > 0 : !!ua);
 
@@ -68,25 +73,77 @@ const MultipleChoiceTestReview = () => {
         if (location.state?.test && location.state?.questions?.length) {
           const {
             test,
-            questions,
+            questions: stateQuestions,
             userAnswers,
-            results,
+            results: stateResults,
             draftResultId,
             percentage,
           } = location.state;
 
+          // Normalize explanations in questions from state (backward compatibility)
+          const normalizedQuestions = (stateQuestions || []).map(q => {
+            if (!q.explanation) return q;
+            const correctLabels = getCorrectAnswerLabels(q.correct_answers);
+            return {
+              ...q,
+              explanation: {
+                correct: (() => {
+                  if (!q.explanation.correct) return {};
+                  if (typeof q.explanation.correct === 'object' && !Array.isArray(q.explanation.correct)) {
+                    return q.explanation.correct;
+                  }
+                  if (typeof q.explanation.correct === 'string' && q.explanation.correct.trim()) {
+                    const correctObj = {};
+                    correctLabels.forEach(label => {
+                      correctObj[label] = q.explanation.correct;
+                    });
+                    return correctObj;
+                  }
+                  return {};
+                })(),
+                incorrect_choices: q.explanation.incorrect_choices || {}
+              }
+            };
+          });
+
+          // Normalize explanations in results from state (backward compatibility)
+          const normalizedResults = (stateResults || []).map(r => {
+            if (!r.explanation) return r;
+            return {
+              ...r,
+              explanation: {
+                correct: (() => {
+                  if (!r.explanation.correct) return {};
+                  if (typeof r.explanation.correct === 'object' && !Array.isArray(r.explanation.correct)) {
+                    return r.explanation.correct;
+                  }
+                  if (typeof r.explanation.correct === 'string' && r.explanation.correct.trim()) {
+                    const correctLabels = Array.isArray(r.correctAnswer) ? r.correctAnswer : [];
+                    const correctObj = {};
+                    correctLabels.forEach(label => {
+                      correctObj[label] = r.explanation.correct;
+                    });
+                    return correctObj;
+                  }
+                  return {};
+                })(),
+                incorrect_choices: r.explanation.incorrect_choices || {}
+              }
+            };
+          });
+
           setTest(test);
-          setQuestions(questions || []);
+          setQuestions(normalizedQuestions);
           setUserAnswers(userAnswers || {});
-          setResults(results || []);
+          setResults(normalizedResults);
           setDraftResultId(draftResultId || null);
 
           if (draftResultId) localStorage.setItem(DRAFT_KEY, String(draftResultId));
 
           if (percentage !== undefined) setScore(percentage);
           else {
-            const correctCnt = (results || []).filter((r) => r.isCorrect).length;
-            const totalQ = (results || []).length;
+            const correctCnt = normalizedResults.filter((r) => r.isCorrect).length;
+            const totalQ = normalizedResults.length;
             setScore(totalQ > 0 ? Math.round((correctCnt / totalQ) * 100) : 0);
           }
 
@@ -114,14 +171,40 @@ const MultipleChoiceTestReview = () => {
 
         // build questions from snapshot answers
         const answers = Array.isArray(doc?.answers) ? doc.answers : [];
-        const builtQuestions = answers.map((a) => ({
-          _id: a.question_id,
-          question_text: a.question_text,
-          options: a.options || [],
-          correct_answers: a.correct_answers || [],
-          // explanation không có trong snapshot BE mới (nếu bạn muốn thì thêm vào schema/payload)
-          explanation: a.explanation || null,
-        }));
+        const builtQuestions = answers.map((a) => {
+          // Normalize explanation format if present (backward compatibility)
+          let normalizedExplanation = null;
+          if (a.explanation) {
+            normalizedExplanation = {
+              correct: (() => {
+                if (!a.explanation.correct) return {};
+                // If it's already an object, return it
+                if (typeof a.explanation.correct === 'object' && !Array.isArray(a.explanation.correct)) {
+                  return a.explanation.correct;
+                }
+                // If it's a string (old format), convert to object by assigning to all correct labels
+                if (typeof a.explanation.correct === 'string' && a.explanation.correct.trim()) {
+                  const correctLabels = getCorrectAnswerLabels(a.correct_answers);
+                  const correctObj = {};
+                  correctLabels.forEach(label => {
+                    correctObj[label] = a.explanation.correct;
+                  });
+                  return correctObj;
+                }
+                return {};
+              })(),
+              incorrect_choices: a.explanation.incorrect_choices || {}
+            };
+          }
+          
+          return {
+            _id: a.question_id,
+            question_text: a.question_text,
+            options: a.options || [],
+            correct_answers: getCorrectAnswerLabels(a.correct_answers),
+            explanation: normalizedExplanation,
+          };
+        });
 
         // build userAnswers map
         const ua = {};
@@ -130,13 +213,38 @@ const MultipleChoiceTestReview = () => {
         });
 
         // build results
-        const builtResults = answers.map((a) => ({
-          questionId: a.question_id,
-          userAnswer: Array.isArray(a.user_answers) ? a.user_answers : [],
-          correctAnswer: Array.isArray(a.correct_answers) ? a.correct_answers : [],
-          isCorrect: !!a.is_correct,
-          explanation: a.explanation || null,
-        }));
+        const builtResults = answers.map((a) => {
+          // Normalize explanation format if present (backward compatibility)
+          let normalizedExplanation = null;
+          if (a.explanation) {
+            normalizedExplanation = {
+              correct: (() => {
+                if (!a.explanation.correct) return {};
+                if (typeof a.explanation.correct === 'object' && !Array.isArray(a.explanation.correct)) {
+                  return a.explanation.correct;
+                }
+                if (typeof a.explanation.correct === 'string' && a.explanation.correct.trim()) {
+                  const correctLabels = getCorrectAnswerLabels(a.correct_answers);
+                  const correctObj = {};
+                  correctLabels.forEach(label => {
+                    correctObj[label] = a.explanation.correct;
+                  });
+                  return correctObj;
+                }
+                return {};
+              })(),
+              incorrect_choices: a.explanation.incorrect_choices || {}
+            };
+          }
+          
+          return {
+            questionId: a.question_id,
+            userAnswer: Array.isArray(a.user_answers) ? a.user_answers : [],
+            correctAnswer: getCorrectAnswerLabels(a.correct_answers),
+            isCorrect: !!a.is_correct,
+            explanation: normalizedExplanation,
+          };
+        });
 
         // compute score
         const correctCnt = builtResults.filter((r) => r.isCorrect).length;
@@ -176,6 +284,18 @@ const MultipleChoiceTestReview = () => {
 
   const hideToast = () => {
     setToast(prev => ({ ...prev, isVisible: false }));
+  };
+
+  const handleExportQuestions = () => {
+    if (score < 70) {
+      showToast('Bạn cần đạt điểm tối thiểu 70% để xuất câu hỏi!', 'warning');
+      return;
+    }
+    setShowExportModal(true);
+  };
+
+  const handleCloseExportModal = () => {
+    setShowExportModal(false);
   };
 
   const saveResult = async () => {
@@ -278,24 +398,6 @@ const MultipleChoiceTestReview = () => {
     <div className="min-h-screen bg-slate-100">
       {/* container */}
       <div className="w-full h-full px-2 sm:px-4 py-1 sm:py-2 flex flex-col">
-        {/* top bar */}
-        <div className="mb-1 flex items-center justify-between gap-2 shrink-0">
-          <button
-            onClick={() => navigate("/topics")}
-            className="inline-flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-md hover:bg-slate-50"
-          >
-            <span className="text-lg leading-none">←</span>
-            Về danh sách
-          </button>
-
-          <div className="hidden sm:flex items-center gap-3">
-            <span className="text-xs text-slate-500">Câu hiện tại</span>
-            <span className="rounded-lg bg-white border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-700 shadow-md">
-              {selectedQuestion + 1}/{questions.length}
-            </span>
-          </div>
-        </div>
-
         <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-1 sm:gap-2">
           {/* MAIN */}
           <div className="lg:col-span-8 min-h-0 flex flex-col">
@@ -339,15 +441,15 @@ const MultipleChoiceTestReview = () => {
                 <div className="mt-3 space-y-1.5">
                   {(currentQuestion?.options || []).map((option) => {
                     const isUserAnswer = selectedLabels.includes(option.label);
-                    const isCorrectAnswer = (currentQuestion?.correct_answers || []).includes(option.label);
+                    const isAnswerCorrect = isCorrectAnswer(currentQuestion?.correct_answers, option.label);
 
-                    const tone = isCorrectAnswer
+                    const tone = isAnswerCorrect
                       ? "border-emerald-600 bg-emerald-600 text-white"
                       : isUserAnswer
                       ? "border-rose-600 bg-rose-600 text-white"
                       : "border-slate-200 bg-white";
 
-                    const badgeTone = isCorrectAnswer
+                    const badgeTone = isAnswerCorrect
                       ? "border-emerald-700 text-white bg-emerald-700"
                       : isUserAnswer
                       ? "border-rose-700 text-white bg-rose-700"
@@ -366,20 +468,20 @@ const MultipleChoiceTestReview = () => {
                           </div>
 
                           <div className="flex-1">
-                            <p className={`text-xs leading-relaxed ${isCorrectAnswer || isUserAnswer ? 'text-white' : 'text-slate-800'}`}>{option.text}</p>
+                            <p className={`text-xs leading-relaxed ${isAnswerCorrect || isUserAnswer ? 'text-white' : 'text-slate-800'}`}>{option.text}</p>
 
                             <div className="mt-1.5 flex flex-wrap gap-1.5">
-                              {isCorrectAnswer && (
+                              {isAnswerCorrect && (
                                 <span className="inline-flex items-center rounded-full bg-emerald-600 px-1 py-0.5 text-[10px] font-semibold text-white">
                                   Đáp án đúng
                                 </span>
                               )}
-                              {isUserAnswer && !isCorrectAnswer && (
+                              {isUserAnswer && !isAnswerCorrect && (
                                 <span className="inline-flex items-center rounded-full bg-rose-600 px-1 py-0.5 text-[10px] font-semibold text-white">
                                   Bạn chọn
                                 </span>
                               )}
-                              {isUserAnswer && isCorrectAnswer && (
+                              {isUserAnswer && isAnswerCorrect && (
                                 <span className="inline-flex items-center rounded-full bg-slate-900 px-1 py-0.5 text-[10px] font-semibold text-white">
                                   Bạn chọn đúng
                                 </span>
@@ -388,7 +490,7 @@ const MultipleChoiceTestReview = () => {
                           </div>
 
                           <div className="shrink-0 pt-0.5">
-                            {isCorrectAnswer ? (
+                            {isAnswerCorrect ? (
                               <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-md">
                                 ✓
                               </span>
@@ -410,16 +512,42 @@ const MultipleChoiceTestReview = () => {
 
                 {/* Explanation */}
                 {currentQuestion?.explanation && (
-                  <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                  <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-xl space-y-2">
                     <h5 className="text-xs font-semibold text-blue-900 mb-2">Giải thích</h5>
-                    <p className="text-xs text-blue-800 mb-2">{currentQuestion.explanation.correct}</p>
-                    {currentQuestion.explanation.incorrect_choices && (
-                      <div className="space-y-1">
-                        {Object.entries(currentQuestion.explanation.incorrect_choices).map(([key, value]) => (
-                          <p key={key} className="text-xs text-blue-700">
-                            <span className="font-medium">{key}:</span> {value}
-                          </p>
-                        ))}
+                    
+                    {/* Correct answer explanations */}
+                    {currentQuestion.explanation.correct && (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-2">
+                        <p className="text-xs font-semibold text-green-800 mb-1">
+                          Đáp án đúng ({getCorrectAnswerLabels(currentQuestion.correct_answers).join(', ')})
+                        </p>
+                        {typeof currentQuestion.explanation.correct === 'object' && Object.keys(currentQuestion.explanation.correct).length > 0 ? (
+                          <div className="space-y-1">
+                            {Object.entries(currentQuestion.explanation.correct).map(([option, text]) => (
+                              <p key={option} className="text-xs text-green-700">
+                                <span className="font-medium text-green-800">{option}:</span> {text}
+                              </p>
+                            ))}
+                          </div>
+                        ) : typeof currentQuestion.explanation.correct === 'string' && currentQuestion.explanation.correct.trim() ? (
+                          <p className="text-xs text-green-700">{currentQuestion.explanation.correct}</p>
+                        ) : null}
+                      </div>
+                    )}
+                    
+                    {/* Incorrect answer explanations */}
+                    {currentQuestion.explanation.incorrect_choices && Object.keys(currentQuestion.explanation.incorrect_choices).length > 0 && (
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-2">
+                        <p className="text-xs font-semibold text-red-800 mb-1">Giải thích các đáp án sai:</p>
+                        <div className="space-y-1">
+                          {Object.entries(currentQuestion.explanation.incorrect_choices)
+                            .filter(([label, value]) => value && value.trim())
+                            .map(([label, value]) => (
+                              <p key={label} className="text-xs text-red-700">
+                                <span className="font-medium text-red-800">{label}:</span> {value}
+                              </p>
+                            ))}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -493,16 +621,23 @@ const MultipleChoiceTestReview = () => {
                     </div>
                   )}
 
+                  <button
+                    onClick={handleExportQuestions}
+                    className="w-full rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-md hover:opacity-95 active:opacity-90 mb-2"
+                  >
+                    📄 Xuất câu hỏi PDF/DOCX
+                  </button>
+
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       onClick={() => navigate(`/multiple-choice/test/${testId}/settings`)}
-                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-md hover:bg-slate-50"
+                      className="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-md hover:from-blue-700 hover:to-indigo-700 transition-all"
                     >
                       Làm lại
                     </button>
                     <button
                       onClick={() => navigate("/topics")}
-                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-md hover:bg-slate-50"
+                      className="rounded-xl bg-gradient-to-r from-slate-600 to-slate-700 px-3 py-2 text-sm font-semibold text-white shadow-md hover:from-slate-700 hover:to-slate-800 transition-all"
                     >
                       Danh sách
                     </button>
@@ -606,7 +741,15 @@ const MultipleChoiceTestReview = () => {
         isVisible={toast.isVisible}
         onClose={hideToast}
       />
-    </div>
+      {/* Export Modal */}
+      <ExportMCPModal
+        isOpen={showExportModal}
+        onClose={handleCloseExportModal}
+        questions={questions}
+        testTitle={test?.test_title || testInfo?.test_title || "Bài kiểm tra trắc nghiệm"}
+        testMainTopic={test?.main_topic || testInfo?.main_topic || ""}
+        testSubTopic={test?.sub_topic || testInfo?.sub_topic || ""}
+      />    </div>
   );
 };
 
