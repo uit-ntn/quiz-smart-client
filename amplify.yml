@@ -3,7 +3,6 @@ frontend:
   phases:
     preBuild:
       commands:
-        - cd quiz-smart-client || cd .
         - npm ci --legacy-peer-deps
     build:
       commands:
