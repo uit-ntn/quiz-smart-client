@@ -150,17 +150,24 @@ const QuestionResultModal = ({
                     </p>
                     {typeof resultData.explanation.correct === 'object' && Object.keys(resultData.explanation.correct).length > 0 ? (
                       <div className="space-y-1.5">
-                        {Object.entries(resultData.explanation.correct).map(([option, text]) => (
-                          <div key={option} className="flex items-start gap-1.5 bg-white/70 rounded p-1.5 border border-green-200">
-                            <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-green-600 text-white font-bold text-[10px] flex-shrink-0">
-                              {option}
-                            </span>
-                            <p className="text-xs text-green-800 leading-snug flex-1">{text}</p>
-                          </div>
-                        ))}
+                        {Object.entries(resultData.explanation.correct).map(([option, text]) => {
+                          const explanationText = typeof text === 'string' ? text : String(text || '');
+                          return (
+                            <div key={option} className="flex items-start gap-1.5 bg-white/70 rounded p-1.5 border border-green-200">
+                              <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-green-600 text-white font-bold text-[10px] flex-shrink-0">
+                                {option}
+                              </span>
+                              <p className="text-xs text-green-800 leading-snug flex-1">{explanationText}</p>
+                            </div>
+                          );
+                        })}
                       </div>
                     ) : (
-                      <p className="text-xs text-green-800 leading-snug">{resultData.explanation.correct}</p>
+                      <p className="text-xs text-green-800 leading-snug">
+                        {typeof resultData.explanation.correct === 'string' 
+                          ? resultData.explanation.correct 
+                          : String(resultData.explanation.correct || '')}
+                      </p>
                     )}
                   </div>
                 )}
@@ -171,7 +178,8 @@ const QuestionResultModal = ({
                   const incorrectEntries = Object.entries(resultData.explanation.incorrect_choices)
                     .filter(([choice, explanation]) => {
                       // Filter out if it's empty or if this choice is actually a correct answer
-                      if (!explanation || !explanation.trim()) return false;
+                      const explanationText = typeof explanation === 'string' ? explanation : String(explanation || '');
+                      if (!explanationText || !explanationText.trim()) return false;
                       // Only show if this choice is NOT in the correct answers list
                       return !resultData.correctAnswer.includes(choice);
                     });
@@ -180,14 +188,17 @@ const QuestionResultModal = ({
                     <div className="space-y-2">
                       <p className="font-semibold text-red-800 text-[10px] mb-1.5">Giải thích các đáp án sai</p>
                       <div className="space-y-1.5">
-                        {incorrectEntries.map(([choice, explanation]) => (
-                          <div key={choice} className="flex items-start gap-1.5 bg-red-50 border border-red-200 rounded-lg p-1.5">
-                            <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-red-600 text-white font-bold text-[10px] flex-shrink-0">
-                              {choice}
-                            </span>
-                            <p className="text-xs text-red-800 leading-snug flex-1">{explanation}</p>
-                          </div>
-                        ))}
+                        {incorrectEntries.map(([choice, explanation]) => {
+                          const explanationText = typeof explanation === 'string' ? explanation : String(explanation || '');
+                          return (
+                            <div key={choice} className="flex items-start gap-1.5 bg-red-50 border border-red-200 rounded-lg p-1.5">
+                              <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-red-600 text-white font-bold text-[10px] flex-shrink-0">
+                                {choice}
+                              </span>
+                              <p className="text-xs text-red-800 leading-snug flex-1">{explanationText}</p>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   );

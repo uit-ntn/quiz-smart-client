@@ -1,30 +1,16 @@
 import React, { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import MainLayout from "../layout/MainLayout";
 import userService from "../services/userService";
 
 const HomePage = () => {
-  const navigate = useNavigate();
-  const [latestUsers, setLatestUsers] = useState([]);
-  const [topContributors, setTopContributors] = useState([]);
-  const [topPerformers, setTopPerformers] = useState([]);
   const [systemStats, setSystemStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [selectedContributor, setSelectedContributor] = useState(null);
-  const [showContributorModal, setShowContributorModal] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [users, contributors, performers, stats] = await Promise.all([
-          userService.getLatestUsers(5),
-          userService.getTopContributors(5),
-          userService.getTopPerformers(5),
-          userService.getSystemOverview()
-        ]);
-        setLatestUsers(users);
-        setTopContributors(contributors);
-        setTopPerformers(performers);
+        const stats = await userService.getSystemOverview();
         setSystemStats(stats);
       } catch (error) {
         console.error("Failed to fetch data:", error);
@@ -34,23 +20,6 @@ const HomePage = () => {
     };
     fetchData();
   }, []);
-
-  const handleTestClick = (test) => {
-    if (!test.test_id) return;
-    
-    // Navigate to test settings page based on test type
-    if (test.test_type === 'vocabulary') {
-      navigate(`/vocabulary/test/${test.test_id}/settings`);
-    } else if (test.test_type === 'multiple_choice') {
-      navigate(`/multiple-choice/test/${test.test_id}/settings`);
-    } else {
-      // For other test types, navigate to general test page
-      navigate(`/test/${test.test_id}`);
-    }
-    
-    // Close modal after navigation
-    setShowContributorModal(false);
-  };
 
   const StatCard = ({ icon, title, value, subtitle, color = "blue" }) => {
     const colorClasses = {
@@ -76,56 +45,8 @@ const HomePage = () => {
     );
   };
 
-  const UserCard = ({ user, index, type = "latest" }) => {
-    const isContributor = type === "contributor";
-    const isPerformer = type === "performer";
-    
-    const bgColor = isContributor ? "bg-amber-50 hover:bg-amber-100" : 
-                   isPerformer ? "bg-green-50 hover:bg-green-100" : 
-                   "bg-blue-50 hover:bg-blue-100";
-    
-    const iconColor = isContributor ? "bg-amber-600" : 
-                     isPerformer ? "bg-green-600" : 
-                     "bg-blue-600";
-
-    return (
-      <div 
-        className={`flex items-center gap-4 p-4 ${bgColor} rounded-xl transition-all duration-200 ${isContributor ? 'cursor-pointer' : ''}`}
-        onClick={isContributor ? () => {
-          setSelectedContributor(user);
-          setShowContributorModal(true);
-        } : undefined}
-      >
-        <div className={`w-12 h-12 ${iconColor} text-white rounded-full flex items-center justify-center font-bold text-lg flex-shrink-0`}>
-          {isContributor || isPerformer ? `#${index + 1}` : user.full_name?.charAt(0).toUpperCase() || '?'}
-        </div>
-        <div className="flex-1 min-w-0">
-          <h4 className="font-semibold text-slate-900 truncate">{user.full_name || 'N/A'}</h4>
-          <p className="text-sm text-slate-600 truncate">{user.email}</p>
-          {isContributor && (
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-amber-700 font-bold text-sm">{user.total_tests || 0} bài test</span>
-              {user.vocabulary_tests > 0 && <span className="text-xs text-slate-500">📚 {user.vocabulary_tests}</span>}
-              {user.multiple_choice_tests > 0 && <span className="text-xs text-slate-500">📝 {user.multiple_choice_tests}</span>}
-            </div>
-          )}
-          {isPerformer && (
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-green-700 font-bold text-sm">{user.average_percentage}% TB</span>
-              <span className="text-slate-500">•</span>
-              <span className="text-slate-600 text-sm">{user.total_tests} bài</span>
-            </div>
-          )}
-        </div>
-        {isContributor && (
-          <div className="text-xs text-slate-400">Chi tiết →</div>
-        )}
-      </div>
-    );
-  };
-
   return (
-    <MainLayout maxWidth="full">
+    <MainLayout maxWidth="full" className="!px-0 !py-0">
       {/* Hero Section with Stats */}
       <div className="bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
@@ -143,7 +64,7 @@ const HomePage = () => {
           </div>
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-12">
+          <div className="hidden md:grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-12">
             <StatCard
               icon="👥"
               title="Người dùng"
@@ -205,8 +126,6 @@ const HomePage = () => {
           </div>
         </div>
       </div>
-
-
     </MainLayout>
   );
 };
