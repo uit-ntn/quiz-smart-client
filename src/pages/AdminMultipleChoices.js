@@ -268,7 +268,18 @@ const AdminMultipleChoices = () => {
         const optionsText = q.options?.map(op => 
           typeof op === 'string' ? op.toLowerCase() : op?.text?.toLowerCase() || ''
         ).join(' ') || '';
-        const explanationText = q.explanation?.correct?.toLowerCase() || '';
+        
+        // Handle explanation.correct - can be string or object
+        let explanationText = '';
+        if (q.explanation?.correct) {
+          if (typeof q.explanation.correct === 'string') {
+            explanationText = q.explanation.correct.toLowerCase();
+          } else if (typeof q.explanation.correct === 'object') {
+            explanationText = Object.values(q.explanation.correct).join(' ').toLowerCase();
+          }
+        }
+        
+        // Handle explanation.incorrect_choices - is object/Map
         const incorrectChoicesText = q.explanation?.incorrect_choices 
           ? Object.values(q.explanation.incorrect_choices).join(' ').toLowerCase()
           : '';

@@ -33,8 +33,8 @@ const SmartFilterBar = ({ filters, setFilters }) => {
           </div>
         </div>
 
-        {/* Advanced Filters - Always visible */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 pt-3 border-t border-slate-200">
+        {/* Advanced Filters - Hidden on mobile */}
+        <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 pt-3 border-t border-slate-200">
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1.5">Loại test</label>
             <select

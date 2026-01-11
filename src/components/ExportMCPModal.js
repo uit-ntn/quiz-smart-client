@@ -2,6 +2,7 @@ import React, { useCallback, useContext, useEffect, useMemo, useState } from "re
 import pdfMake from "pdfmake/build/pdfmake";
 import pdfFonts from "pdfmake/build/vfs_fonts";
 import AuthContext from '../context/AuthContext';
+import { getCorrectAnswerLabels, isCorrectAnswer } from '../utils/correctAnswerHelpers';
 
 const cx = (...a) => a.filter(Boolean).join(" ");
 
@@ -103,38 +104,6 @@ const ExportMCPModal = ({
   const [errorBanner, setErrorBanner] = useState("");
   const [previewMode, setPreviewMode] = useState(false);
 
-  // Helper function to get correct answer labels - supports both Array and Map/Object format
-  const getCorrectAnswerLabels = (correctAnswers) => {
-    if (!correctAnswers) return [];
-    if (Array.isArray(correctAnswers)) return correctAnswers;
-    if (typeof correctAnswers === 'object' && correctAnswers.constructor === Map) {
-      return Array.from(correctAnswers.keys());
-    }
-    if (typeof correctAnswers === 'object') {
-      // Filter out entries where value is explicitly false or "false"
-      return Object.keys(correctAnswers).filter(key => {
-        const value = correctAnswers[key];
-        return value !== false && value !== "false";
-      });
-    }
-    return [];
-  };
-
-  // Helper function to check if a label is a correct answer
-  const isCorrectAnswer = (correctAnswers, label) => {
-    if (!correctAnswers || !label) return false;
-    if (Array.isArray(correctAnswers)) return correctAnswers.includes(label);
-    if (typeof correctAnswers === 'object' && correctAnswers.constructor === Map) {
-      return correctAnswers.has(label);
-    }
-    if (typeof correctAnswers === 'object') {
-      // Check if label exists and value is not false or "false"
-      if (!(label in correctAnswers)) return false;
-      const value = correctAnswers[label];
-      return value !== false && value !== "false";
-    }
-    return false;
-  };
 
   const availableFields = useMemo(
     () => [

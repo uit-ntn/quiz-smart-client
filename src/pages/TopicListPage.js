@@ -29,10 +29,35 @@ import ModernSidebar from "../components/ModernSidebar";
 import UserInfoModal from "../components/UserInfoModal";
 import ContributorTestsModal from "../components/ContributorTestsModal";
 import ReviewSection from "../components/ReviewSection";
-import Avatar from "../components/Avatar";
 import Footer from "../components/Footer";
 
 const cx = (...a) => a.filter(Boolean).join(" ");
+
+// Helper function for retry with exponential backoff (for cold server start)
+const fetchWithRetry = async (fetchFn, maxRetries = 3) => {
+  let lastError;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const result = await fetchFn();
+      return result;
+    } catch (err) {
+      lastError = err;
+      console.log(`Fetch attempt ${attempt}/${maxRetries} failed:`, err.message);
+      
+      // Don't retry on 4xx errors (client errors)
+      if (err.message && (err.message.includes('400') || err.message.includes('401') || err.message.includes('403') || err.message.includes('404'))) {
+        throw err;
+      }
+      
+      // Wait before retry (exponential backoff)
+      if (attempt < maxRetries) {
+        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+  throw lastError;
+};
 
 // --- Main Component ---
 const TopicListPage = () => {
@@ -45,7 +70,18 @@ const TopicListPage = () => {
   const [topContributors, setTopContributors] = useState([]);
   const [topTestTakers, setTopTestTakers] = useState([]);
   const [latestUsers, setLatestUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [latestUsersLimit, setLatestUsersLimit] = useState(8);
+  const [loadingMoreLatestUsers, setLoadingMoreLatestUsers] = useState(false);
+  const [showAllLatestUsers, setShowAllLatestUsers] = useState(false);
+  
+  // Separate loading states for progressive rendering
+  const [loadingTopics, setLoadingTopics] = useState(true);
+  const [loadingTopTaken, setLoadingTopTaken] = useState(true);
+  const [loadingNewest, setLoadingNewest] = useState(true);
+  const [loadingContributors, setLoadingContributors] = useState(true);
+  const [loadingTestTakers, setLoadingTestTakers] = useState(true);
+  const [loadingLatestUsers, setLoadingLatestUsers] = useState(true);
+  
   const [error, setError] = useState(null);
 
   const [filters, setFilters] = useState({
@@ -106,6 +142,10 @@ const TopicListPage = () => {
   const [reviewForm, setReviewForm] = useState({ rating: 0, comment: '' });
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [toast, setToast] = useState({ isVisible: false, message: '', type: 'success' });
+  
+  // Refs for scroll sections
+  const reviewSectionRef = useRef(null);
+  const topicListRef = useRef(null);
 
   useEffect(() => {
     fetchAllTopics();
@@ -119,12 +159,12 @@ const TopicListPage = () => {
 
   const fetchAllTopics = async () => {
     try {
-      setLoading(true);
+      setLoadingTopics(true);
       setError(null);
 
       // ✅ Use topic service to get all topics with their subtopics and stats
       // Backend already calculates total_tests, total_questions, and test types
-      const allTopicsFromService = await topicService.getAllTopics();
+      const allTopicsFromService = await fetchWithRetry(() => topicService.getAllTopics());
 
       // ✅ Process topics using backend topic data directly
       const processedTopics = allTopicsFromService
@@ -156,27 +196,36 @@ const TopicListPage = () => {
       setAllTopics(processedTopics);
     } catch (err) {
       console.error('Error fetching topics:', err);
-      setError(err?.message || "Có lỗi xảy ra khi tải danh sách chủ đề");
+      // Don't set error for topics - just show empty state
+      setAllTopics([]);
     } finally {
-      setLoading(false);
+      setLoadingTopics(false);
     }
   };
 
   const fetchTopTakenTests = async () => {
     try {
-      const tests = await testService.getTopTakenTests({ limit: 10 });
-      setTopTakenTests(tests);
+      setLoadingTopTaken(true);
+      const tests = await fetchWithRetry(() => testService.getTopTakenTests({ limit: 10 }));
+      setTopTakenTests(tests || []);
     } catch (err) {
       console.error("Failed to fetch top taken tests:", err);
+      setTopTakenTests([]); // Show empty state instead of error
+    } finally {
+      setLoadingTopTaken(false);
     }
   };
 
   const fetchNewestTests = async () => {
     try {
-      const tests = await testService.getNewestTests({ limit: 10 });
-      setNewestTests(tests);
+      setLoadingNewest(true);
+      const tests = await fetchWithRetry(() => testService.getNewestTests({ limit: 10 }));
+      setNewestTests(tests || []);
     } catch (err) {
       console.error("Failed to fetch newest tests:", err);
+      setNewestTests([]); // Show empty state instead of error
+    } finally {
+      setLoadingNewest(false);
     }
   };
 
@@ -277,37 +326,71 @@ const TopicListPage = () => {
 
   const fetchTopContributors = async () => {
     try {
-      const contributors = await userService.getTopContributors(5);
-      setTopContributors(contributors);
+      setLoadingContributors(true);
+      const contributors = await fetchWithRetry(() => userService.getTopContributors(5));
+      setTopContributors(contributors || []);
     } catch (err) {
       console.error("Failed to fetch top contributors:", err);
+      setTopContributors([]); // Show empty state instead of error
+    } finally {
+      setLoadingContributors(false);
     }
   };
 
   const fetchTopTestTakers = async () => {
     try {
-      const users = await testResultService.getTopTestTakers(5);
-      setTopTestTakers(users);
+      setLoadingTestTakers(true);
+      const users = await fetchWithRetry(() => testResultService.getTopTestTakers(5));
+      setTopTestTakers(users || []);
     } catch (err) {
       console.error("Failed to fetch top test takers:", err);
+      setTopTestTakers([]); // Show empty state instead of error
+    } finally {
+      setLoadingTestTakers(false);
     }
   };
 
   const fetchLatestUsers = async () => {
     try {
-      const users = await userService.getLatestUsers(7);
-      setLatestUsers(users);
+      setLoadingLatestUsers(true);
+      const users = await fetchWithRetry(() => userService.getLatestUsers(8));
+      setLatestUsers(users || []);
+      setLatestUsersLimit(8);
+      setShowAllLatestUsers(false);
     } catch (err) {
       console.error("Failed to fetch latest users:", err);
+      setLatestUsers([]); // Show empty state instead of error
+    } finally {
+      setLoadingLatestUsers(false);
     }
+  };
+
+  const handleLoadMoreLatestUsers = async () => {
+    try {
+      setLoadingMoreLatestUsers(true);
+      const users = await fetchWithRetry(() => userService.getLatestUsers(28));
+      setLatestUsers(users || []);
+      setLatestUsersLimit(28);
+      setShowAllLatestUsers(true);
+    } catch (err) {
+      console.error("Failed to load more latest users:", err);
+    } finally {
+      setLoadingMoreLatestUsers(false);
+    }
+  };
+
+  const handleHideLatestUsers = () => {
+    setShowAllLatestUsers(false);
+    // Không cần fetch lại, chỉ cần slice array hiện tại
   };
 
   const fetchReviews = async () => {
     try {
       setReviewLoading(true);
+      setReviewError(null); // Clear any previous error
       const [reviewsResponse, statsResponse] = await Promise.all([
-        getAllReviews({ limit: 20, offset: 0 }),
-        getReviewStatistics(),
+        fetchWithRetry(() => getAllReviews({ limit: 20, offset: 0 })),
+        fetchWithRetry(() => getReviewStatistics()),
       ]);
       
       if (reviewsResponse.success) {
@@ -322,7 +405,9 @@ const TopicListPage = () => {
       }
     } catch (err) {
       console.error("Failed to fetch reviews:", err);
-      setReviewError(err.message);
+      // Don't set error - just show empty reviews and keep loading a bit longer for cold start
+      setReviews([]);
+      setReviewError(null); // Explicitly clear error to prevent showing error message
     } finally {
       setReviewLoading(false);
     }
@@ -441,14 +526,15 @@ const TopicListPage = () => {
     pagination.currentPage * pagination.itemsPerPage
   );
 
-  if (loading) return <LoadingSpinner message="Đang tải dữ liệu..." />;
-  if (error) return <ErrorMessage error={error} onRetry={fetchAllTopics} />;
+  // Don't block entire page - show progressive loading
+  // if (loading) return <LoadingSpinner message="Đang tải dữ liệu..." />;
+  // if (error) return <ErrorMessage error={error} onRetry={fetchAllTopics} />;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
       <Header />
       {/* Main Content */}
-      <div className="max-w-[1600px] mx-auto px-4 pb-4 pt-0 ">
+      <div className="max-w-[1600px] mx-auto px-2 md:px-4 pb-4 pt-0 ">
         {/* Search & Filter Bar */}
         <div className="mt-4">
           <SmartFilterBar filters={filters} setFilters={setFilters} />
@@ -459,9 +545,9 @@ const TopicListPage = () => {
           {/* Main Content */}
         <div className="xl:col-span-9 space-y-6">
             {/* Topic Grid */}
-          <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 overflow-hidden">
+          <div ref={topicListRef} className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 overflow-hidden">
             {/* Header */}
-            <div className="px-5 pt-5 pb-2 border-b border-white/20 bg-gradient-to-r from-slate-50/50 to-white/50">
+            <div className="px-3 md:px-5 pt-5 pb-2 border-b border-white/20 bg-gradient-to-r from-slate-50/50 to-white/50">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/25">
                   <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -482,11 +568,20 @@ const TopicListPage = () => {
             </div>
 
             {/* Topic Grid Content */}
-            <div className="px-5 pt-3 pb-5">
-              <TopicGrid 
-                topics={currentTopics}
-                onOpenModal={(mainTopic, type) => setModalState({ isOpen: true, mainTopic, type })}
-              />
+            <div className="px-2 md:px-5 pt-3 pb-5">
+              {loadingTopics ? (
+                <div className="flex items-center justify-center py-20">
+                  <div className="text-center">
+                    <div className="w-12 h-12 border-4 border-slate-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4" />
+                    <p className="text-sm text-slate-600">Đang tải danh sách chủ đề...</p>
+                  </div>
+                </div>
+              ) : (
+                <TopicGrid 
+                  topics={currentTopics}
+                  onOpenModal={(mainTopic, type) => setModalState({ isOpen: true, mainTopic, type })}
+                />
+              )}
 
               {/* Pagination */}
                 {totalPages > 1 && (
@@ -509,39 +604,81 @@ const TopicListPage = () => {
           </div>
 
           {/* Top Tests Hot - Bên trái dưới danh sách topic */}
-          <TopTestsHot 
-            topTakenTests={topTakenTests}
-            onTestClick={handleTestClick}
-          />
+          {loadingTopTaken ? (
+            <div className="bg-white/70 backdrop-blur-sm rounded-2xl border border-white/20 shadow-lg overflow-hidden mt-8 p-6">
+              <div className="flex items-center justify-center py-12">
+                <div className="text-center">
+                  <div className="w-10 h-10 border-4 border-slate-200 border-t-orange-600 rounded-full animate-spin mx-auto mb-4" />
+                  <p className="text-sm text-slate-600">Đang tải bài test hot...</p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <TopTestsHot 
+              topTakenTests={topTakenTests}
+              onTestClick={handleTestClick}
+            />
+          )}
 
           {/* Newest Tests - Bên trái dưới top tests hot */}
-          <NewestTests 
-            newestTests={newestTests}
-            onPreviewVocabulary={handlePreviewVocabulary}
-            onPreviewMCP={handlePreviewMCP}
-          />
+          {loadingNewest ? (
+            <div className="bg-white/70 backdrop-blur-sm rounded-2xl border border-white/20 shadow-lg overflow-hidden mt-6 p-6">
+              <div className="flex items-center justify-center py-12">
+                <div className="text-center">
+                  <div className="w-10 h-10 border-4 border-slate-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4" />
+                  <p className="text-sm text-slate-600">Đang tải bài test mới...</p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <NewestTests 
+              newestTests={newestTests}
+              onPreviewVocabulary={handlePreviewVocabulary}
+              onPreviewMCP={handlePreviewMCP}
+            />
+          )}
                       </div>
 
           {/* Sidebar */}
           <div className="xl:col-span-3">
-            <ModernSidebar
-              topContributors={topContributors}
-              topTestTakers={topTestTakers}
-              latestUsers={latestUsers}
-              onContributorClick={handleContributorClick}
-              onUserInfoClick={handleUserInfoClick}
-            />
+            {(loadingContributors || loadingTestTakers || loadingLatestUsers) ? (
+              <div className="space-y-6">
+                {(loadingContributors || loadingTestTakers || loadingLatestUsers) && (
+                  <div className="bg-white/80 backdrop-blur-xl rounded-2xl p-4 shadow-xl border border-white/50">
+                    <div className="flex items-center justify-center py-12">
+                      <div className="text-center">
+                        <div className="w-10 h-10 border-4 border-slate-200 border-t-amber-600 rounded-full animate-spin mx-auto mb-4" />
+                        <p className="text-sm text-slate-600">Đang tải sidebar...</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <ModernSidebar
+                topContributors={topContributors}
+                topTestTakers={topTestTakers}
+                latestUsers={latestUsers}
+                onContributorClick={handleContributorClick}
+                onUserInfoClick={handleUserInfoClick}
+                onLoadMoreLatestUsers={handleLoadMoreLatestUsers}
+                onHideLatestUsers={handleHideLatestUsers}
+                loadingMoreLatestUsers={loadingMoreLatestUsers}
+                showAllLatestUsers={showAllLatestUsers}
+                currentUser={user}
+              />
+            )}
                       </div>
                     </div>
 
         {/* Review Section - Full width below grid */}
-        <div className="mt-6">
+        <div ref={reviewSectionRef} className="mt-6">
           <ReviewSection
             user={user}
             reviews={reviews}
             reviewStats={reviewStats}
             reviewLoading={reviewLoading}
-            reviewError={reviewError}
+            reviewError={null}
             reviewForm={reviewForm}
             setReviewForm={setReviewForm}
             isSubmittingReview={isSubmittingReview}
@@ -632,6 +769,37 @@ const TopicListPage = () => {
         onClose={() => setToast({ isVisible: false, message: '', type: 'success' })}
       />
       <Footer></Footer>
+      
+      {/* Floating buttons to scroll to sections */}
+      <div className="fixed bottom-4 right-4 md:bottom-6 md:right-6 z-50 flex flex-col gap-2 md:gap-3">
+        {/* Button to scroll to topic list */}
+        <button
+          onClick={() => {
+            topicListRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }}
+          className="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-full shadow-lg hover:shadow-xl hover:scale-110 transition-all duration-300 flex items-center justify-center"
+          aria-label="Đến danh sách chủ đề"
+          title="Đến danh sách chủ đề"
+        >
+          <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+          </svg>
+        </button>
+        
+        {/* Button to scroll to review section */}
+        <button
+          onClick={() => {
+            reviewSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }}
+          className="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-full shadow-lg hover:shadow-xl hover:scale-110 transition-all duration-300 flex items-center justify-center"
+          aria-label="Đến phần đánh giá"
+          title="Đến phần đánh giá"
+        >
+          <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          </svg>
+        </button>
+      </div>
     </div>
   );
 };

@@ -16,7 +16,7 @@ const TopTestsHot = ({ topTakenTests, onTestClick }) => {
           </div>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {topTakenTests.slice(0, 6).map((test, index) => (
             <div
               key={test.test_id || index}
