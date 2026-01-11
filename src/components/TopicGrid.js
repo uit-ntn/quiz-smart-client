@@ -20,7 +20,7 @@ const TopicGrid = ({ topics, onOpenModal }) => {
     <div
       className={cx(
         "grid gap-4 items-stretch",
-        "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+        "grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
       )}
     >
       {topics.map((topic, index) => (

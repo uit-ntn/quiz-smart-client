@@ -1,6 +1,7 @@
 import React, { useState, useContext } from 'react';
 import AuthContext from '../context/AuthContext';
 import LoginPromptModal from './LoginPromptModal';
+import { getCorrectAnswerLabels, isCorrectAnswer } from '../utils/correctAnswerHelpers';
 
 const MCPPreviewModal = ({ 
   isOpen, 
@@ -24,32 +25,6 @@ const MCPPreviewModal = ({
 
   // Debug: Log the received props to console
   console.log('MCPPreviewModal props:', { testTitle, testMainTopic, testSubTopic });
-
-  // Helper function to get correct answer labels - supports both Array and Map/Object format
-  const getCorrectAnswerLabels = (correctAnswers) => {
-    if (!correctAnswers) return [];
-    if (Array.isArray(correctAnswers)) return correctAnswers;
-    if (typeof correctAnswers === 'object' && correctAnswers.constructor === Map) {
-      return Array.from(correctAnswers.keys());
-    }
-    if (typeof correctAnswers === 'object') {
-      return Object.keys(correctAnswers);
-    }
-    return [];
-  };
-
-  // Helper function to check if a label is a correct answer
-  const isCorrectAnswer = (correctAnswers, label) => {
-    if (!correctAnswers || !label) return false;
-    if (Array.isArray(correctAnswers)) return correctAnswers.includes(label);
-    if (typeof correctAnswers === 'object' && correctAnswers.constructor === Map) {
-      return correctAnswers.has(label);
-    }
-    if (typeof correctAnswers === 'object') {
-      return correctAnswers.hasOwnProperty(label);
-    }
-    return false;
-  };
 
   if (!isOpen) return null;
 

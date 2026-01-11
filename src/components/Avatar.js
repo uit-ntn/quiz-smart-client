@@ -12,19 +12,19 @@ const Avatar = ({
 }) => {
   const [imageStatus, setImageStatus] = useState('loading'); // 'loading', 'loaded', 'error'
 
-  // Size classes
+  // Size classes - responsive trên mobile
   const sizeClasses = {
-    sm: 'w-10 h-10',
-    md: 'w-14 h-14', 
-    lg: 'w-16 h-16',
-    xl: 'w-20 h-20'
+    sm: 'w-8 h-8 md:w-10 md:h-10',
+    md: 'w-12 h-12 md:w-14 md:h-14', 
+    lg: 'w-14 h-14 md:w-16 md:h-16',
+    xl: 'w-16 h-16 md:w-20 md:h-20'
   };
 
   const textSizeClasses = {
-    sm: 'text-sm',
-    md: 'text-base',
-    lg: 'text-lg', 
-    xl: 'text-xl'
+    sm: 'text-xs md:text-sm',
+    md: 'text-sm md:text-base',
+    lg: 'text-base md:text-lg', 
+    xl: 'text-lg md:text-xl'
   };
 
   const handleImageLoad = () => {
