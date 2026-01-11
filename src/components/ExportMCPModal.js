@@ -111,7 +111,11 @@ const ExportMCPModal = ({
       return Array.from(correctAnswers.keys());
     }
     if (typeof correctAnswers === 'object') {
-      return Object.keys(correctAnswers);
+      // Filter out entries where value is explicitly false or "false"
+      return Object.keys(correctAnswers).filter(key => {
+        const value = correctAnswers[key];
+        return value !== false && value !== "false";
+      });
     }
     return [];
   };
@@ -124,7 +128,10 @@ const ExportMCPModal = ({
       return correctAnswers.has(label);
     }
     if (typeof correctAnswers === 'object') {
-      return correctAnswers.hasOwnProperty(label);
+      // Check if label exists and value is not false or "false"
+      if (!(label in correctAnswers)) return false;
+      const value = correctAnswers[label];
+      return value !== false && value !== "false";
     }
     return false;
   };
@@ -190,10 +197,15 @@ const ExportMCPModal = ({
           }
         }
         
-        // Incorrect answer explanations
+        // Incorrect answer explanations - only show explanations for choices that are NOT correct answers
         if (question.explanation?.incorrect_choices && Object.keys(question.explanation.incorrect_choices).length > 0) {
+          const correctLabels = getCorrectAnswerLabels(question.correct_answers);
           const incorrectExplanations = Object.entries(question.explanation.incorrect_choices)
-            .filter(([label, text]) => text && text.trim());
+            .filter(([label, text]) => {
+              // Filter out if empty or if this label is actually a correct answer
+              if (!text || !text.trim()) return false;
+              return !correctLabels.includes(label);
+            });
           
           if (incorrectExplanations.length > 0) {
             const incorrectText = incorrectExplanations
