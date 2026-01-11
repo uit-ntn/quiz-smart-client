@@ -1,11 +1,28 @@
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 
-import { Picker } from "emoji-mart";
-
 const cx = (...a) => a.filter(Boolean).join(" ");
 
 const MAX_STARS = 5;
+
+// Common emojis for picker
+const COMMON_EMOJIS = [
+  "😀", "😃", "😄", "😁", "😆", "😅", "🤣", "😂", "🙂", "🙃",
+  "😉", "😊", "😇", "🥰", "😍", "🤩", "😘", "😗", "😚", "😙",
+  "😋", "😛", "😜", "🤪", "😝", "🤑", "🤗", "🤭", "🤫", "🤔",
+  "🤐", "🤨", "😐", "😑", "😶", "😏", "😒", "🙄", "😬", "🤥",
+  "😌", "😔", "😪", "🤤", "😴", "😷", "🤒", "🤕", "🤢", "🤮",
+  "🤧", "🥵", "🥶", "😶‍🌫️", "😎", "🤓", "🧐", "😕", "😟", "🙁",
+  "☹️", "😮", "😯", "😲", "😳", "🥺", "😦", "😧", "😨", "😰",
+  "😥", "😢", "😭", "😱", "😖", "😣", "😞", "😓", "😩", "😫",
+  "👍", "👎", "👌", "✌️", "🤞", "🤟", "🤘", "👏", "🙌", "👐",
+  "🙏", "✍️", "💪", "🦾", "🦿", "🦵", "🦶", "👂", "👃", "👀",
+  "❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍", "🤎", "💔",
+  "❤️‍🔥", "❤️‍🩹", "💕", "💞", "💓", "💗", "💖", "💘", "💝", "💟",
+  "✨", "⭐", "🌟", "💫", "💥", "💢", "💦", "💨", "💤", "💯",
+  "🎉", "🎊", "🎈", "🎁", "🎀", "🎂", "🍰", "🧁", "🍭", "🍬",
+  "🚀", "💎", "🔥", "🎯", "🎨", "🎪"
+];
 
 // Jokes cho mỗi mức rating
 const JOKES_3_STARS = [
@@ -254,13 +271,12 @@ const ReviewSection = ({
     ));
 
   // Handle emoji selection
-  const handleEmojiSelect = (e) => {
-    const emojiChar = e?.native || "";
-    if (!emojiChar) return;
+  const handleEmojiSelect = (emoji) => {
+    if (!emoji) return;
 
     setReviewForm((prev) => ({
       ...prev,
-      comment: (prev.comment || "") + emojiChar,
+      comment: (prev.comment || "") + emoji,
     }));
     setShowEmojiPicker(false);
   };
@@ -509,14 +525,20 @@ const ReviewSection = ({
 
                 {showEmojiPicker && (
                   <div ref={emojiPickerRef} className="absolute right-0 bottom-10 z-50">
-                    <div className="rounded-xl overflow-hidden border bg-white shadow-xl">
-                      <Picker
-                        onEmojiSelect={handleEmojiSelect}
-                        theme="light"
-                        previewPosition="none"
-                        searchPosition="top"
-                        navPosition="top"
-                      />
+                    <div className="rounded-xl border bg-white shadow-xl p-3 max-w-xs w-[280px] max-h-[300px] overflow-y-auto">
+                      <div className="grid grid-cols-8 gap-2">
+                        {COMMON_EMOJIS.map((emoji, index) => (
+                          <button
+                            key={index}
+                            type="button"
+                            onClick={() => handleEmojiSelect(emoji)}
+                            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors text-lg hover:scale-110"
+                            title={emoji}
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 )}

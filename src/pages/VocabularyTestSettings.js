@@ -183,20 +183,20 @@ const VocabularyTestSettings = () => {
 
   return (
     <VocabularyLayout>
-      <div className="mx-auto max-w-6xl px-3 sm:px-4 py-4 sm:py-6">
+      <div className="mx-auto max-w-7xl">
         {/* Top header */}
-        <div className="mb-4 sm:mb-6 flex items-start justify-between gap-3">
+        <div className="mb-3 sm:mb-4 flex items-start justify-between gap-3">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm">
               <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
               Vocabulary Test
             </div>
 
-            <h1 className="mt-2 text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+            <h1 className="mt-1.5 text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
               Cấu hình bài test
             </h1>
 
-            <p className="mt-1 text-sm text-slate-600">
+            <p className="mt-0.5 text-xs sm:text-sm text-slate-600">
               <span className="font-semibold text-slate-800">{testInfo?.test_title}</span>
               <span className="mx-2 text-slate-300">•</span>
               {vocabularyCount} từ vựng
@@ -212,14 +212,14 @@ const VocabularyTestSettings = () => {
         </div>
 
         {/* Content */}
-        <div className="mt-4 sm:mt-6 grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           {/* Left: Test Info */}
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-3 sm:p-4">
-            <h2 className="text-base sm:text-lg font-extrabold text-slate-900 mb-3">Thông tin bài test</h2>
-            <div className="space-y-2">
+          <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-3">
+            <h2 className="text-sm sm:text-base font-extrabold text-slate-900 mb-2.5">Thông tin bài test</h2>
+            <div className="space-y-1.5">
               <InfoLine icon="📝" label="Tiêu đề" value={testInfo?.test_title || "—"} />
               <InfoLine icon="📖" label="Mô tả" value={testInfo?.description || "—"} />
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-1.5">
                 <InfoLine icon="🏷️" label="Chủ đề chính" value={testInfo?.main_topic || "—"} />
                 <InfoLine icon="📂" label="Chủ đề phụ" value={testInfo?.sub_topic || "—"} />
                 <InfoLine icon="🔧" label="Loại test" value={testInfo?.test_type || "—"} />
@@ -233,16 +233,16 @@ const VocabularyTestSettings = () => {
               
               {/* Vocabulary level statistics */}
               {vocabularies.length > 0 && (
-                <div className="mt-4 space-y-3">
+                <div className="mt-3 grid grid-cols-2 gap-2">
                   {/* CEFR Level Distribution */}
-                  <div className="p-3 rounded-xl border border-slate-200 bg-slate-50">
-                    <div className="text-xs font-semibold text-slate-600 mb-2">Phân bố theo trình độ CEFR</div>
-                    <div className="flex flex-wrap gap-1">
+                  <div className="p-2 rounded-lg border border-slate-200 bg-slate-50">
+                    <div className="text-[10px] font-semibold text-slate-600 mb-1.5">Phân bố CEFR</div>
+                    <div className="flex flex-wrap gap-0.5">
                       {['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map(level => {
                         const count = vocabularies.filter(v => v.cefr_level === level).length;
                         if (count === 0) return null;
                         return (
-                          <span key={level} className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                          <span key={level} className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium ${
                             ['A1', 'A2'].includes(level) ? 'bg-green-100 text-green-700' :
                             ['B1', 'B2'].includes(level) ? 'bg-yellow-100 text-yellow-700' :
                             'bg-red-100 text-red-700'
@@ -255,9 +255,9 @@ const VocabularyTestSettings = () => {
                   </div>
 
                   {/* Part of Speech Distribution */}
-                  <div className="p-3 rounded-xl border border-slate-200 bg-slate-50">
-                    <div className="text-xs font-semibold text-slate-600 mb-2">Phân bố theo loại từ</div>
-                    <div className="flex flex-wrap gap-1">
+                  <div className="p-2 rounded-lg border border-slate-200 bg-slate-50">
+                    <div className="text-[10px] font-semibold text-slate-600 mb-1.5">Phân bố loại từ</div>
+                    <div className="flex flex-wrap gap-0.5">
                       {['noun', 'verb', 'adjective', 'adverb', 'preposition', 'conjunction', 'pronoun', 'interjection'].map(pos => {
                         const count = vocabularies.filter(v => v.part_of_speech === pos).length;
                         if (count === 0) return null;
@@ -270,7 +270,7 @@ const VocabularyTestSettings = () => {
                                      pos === 'pronoun' ? 'Đại từ' :
                                      pos === 'interjection' ? 'Thán từ' : pos;
                         return (
-                          <span key={pos} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                          <span key={pos} className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-700">
                             {label}: {count}
                           </span>
                         );
@@ -283,21 +283,21 @@ const VocabularyTestSettings = () => {
           </div>
 
           {/* Right: Settings */}
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-3">
-            <div className="flex items-center justify-between gap-3 mb-2 sm:mb-3">
+          <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-3">
+            <div className="flex items-center justify-between gap-3 mb-2">
               <div>
-                <h2 className="text-base sm:text-lg font-extrabold text-slate-900">Chế độ bài test</h2>
-                <p className="text-sm text-slate-600 mt-1">Chọn 1 chế độ. Hệ thống sẽ lưu lại cho lần sau.</p>
+                <h2 className="text-sm sm:text-base font-extrabold text-slate-900">Chế độ bài test</h2>
+                <p className="text-xs text-slate-600 mt-0.5">Chọn 1 chế độ. Hệ thống sẽ lưu lại cho lần sau.</p>
               </div>
               <span
-                className={`hidden sm:inline-flex items-center rounded-xl px-3 py-1 text-xs font-semibold ${selectedMode.bg} ${selectedMode.text}`}
+                className={`hidden sm:inline-flex items-center rounded-lg px-2 py-1 text-[10px] font-semibold ${selectedMode.bg} ${selectedMode.text}`}
               >
                 Đang chọn: {selectedMode.title}
               </span>
             </div>
 
             {/* Mode picker */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 items-stretch auto-rows-fr mb-3 sm:mb-4">
+            <div className="grid grid-cols-2 gap-2 items-stretch auto-rows-fr mb-3">
               {modes.map((m) => {
                 const active = mode === m.value;
 
@@ -313,38 +313,38 @@ const VocabularyTestSettings = () => {
                       );
                     }}
                     className={`
-                      h-full min-h-[120px] sm:min-h-[160px] text-left rounded-2xl border p-2 sm:p-3 transition
+                      h-full min-h-[100px] text-left rounded-xl border p-2 transition
                       flex flex-col shadow-sm hover:shadow
                       ${active ? `border-transparent ring-2 ${m.ring} bg-white` : 'border-slate-200 bg-white hover:bg-slate-50'}
                     `}
                   >
                     {/* header */}
-                    <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start justify-between gap-2">
                       <div
-                        className={`inline-flex h-8 w-8 items-center justify-center rounded-2xl bg-gradient-to-br ${m.accent} text-white shadow-sm`}
+                        className={`inline-flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br ${m.accent} text-white shadow-sm`}
                       >
                         {m.icon}
                       </div>
 
                       <div
-                        className={`h-5 w-5 rounded-full border flex items-center justify-center ${
+                        className={`h-4 w-4 rounded-full border flex items-center justify-center ${
                           active ? 'border-blue-500 bg-blue-50' : 'border-slate-200 bg-white'
                         }`}
                       >
-                        <span className={`h-2 w-2 rounded-full ${active ? 'bg-blue-600' : 'bg-slate-200'}`} />
+                        <span className={`h-1.5 w-1.5 rounded-full ${active ? 'bg-blue-600' : 'bg-slate-200'}`} />
                       </div>
                     </div>
 
                     {/* body */}
-                    <div className="mt-2 flex-1">
-                      <div className="font-extrabold text-slate-900 text-sm">{m.title}</div>
-                      <div className="mt-1 text-xs text-slate-600 leading-relaxed">{m.desc}</div>
+                    <div className="mt-1.5 flex-1">
+                      <div className="font-extrabold text-slate-900 text-xs">{m.title}</div>
+                      <div className="mt-0.5 text-[10px] text-slate-600 leading-snug">{m.desc}</div>
                     </div>
 
                     {/* footer */}
-                    <div className="mt-3">
+                    <div className="mt-2">
                       <span
-                        className={`inline-flex items-center gap-2 rounded-full px-2 py-1 text-xs font-semibold
+                        className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold
                           ${active ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-700'}
                         `}
                       >
@@ -357,8 +357,8 @@ const VocabularyTestSettings = () => {
             </div>
 
             {/* Shuffle setting */}
-            <div className="mt-4 p-4 rounded-2xl border border-slate-200 bg-slate-50">
-              <label className="flex items-center gap-3 cursor-pointer">
+            <div className="mt-3 p-2.5 rounded-lg border border-slate-200 bg-slate-50">
+              <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={shuffleQuestions}
@@ -369,28 +369,28 @@ const VocabularyTestSettings = () => {
                       JSON.stringify({ ...effective, shuffleQuestions: e.target.checked })
                     );
                   }}
-                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                  className="w-3.5 h-3.5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
                 />
                 <div>
-                  <div className="text-sm font-semibold text-slate-900">Đảo thứ tự câu hỏi</div>
-                  <div className="text-xs text-slate-600">Trộn ngẫu nhiên thứ tự các từ vựng trong bài test.</div>
+                  <div className="text-xs font-semibold text-slate-900">Đảo thứ tự câu hỏi</div>
+                  <div className="text-[10px] text-slate-600">Trộn ngẫu nhiên thứ tự các từ vựng trong bài test.</div>
                 </div>
               </label>
             </div>
 
-            <div className="mt-6 space-y-3">
+            <div className="mt-3 space-y-2">
               <button
                 onClick={() => setShowPreviewModal(true)}
-                className="w-full inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 shadow-sm hover:bg-slate-50"
+                className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50"
               >
                 👁️ Xem trước từ vựng
               </button>
               
               <button
                 onClick={handleStartTest}
-                className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-3 py-2 text-sm font-bold text-white shadow-lg hover:opacity-95 active:opacity-90"
+                className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-3 py-2 text-xs font-bold text-white shadow-lg hover:opacity-95 active:opacity-90"
               >
-                Bắt đầu bài test <span className="text-lg">→</span>
+                Bắt đầu bài test <span className="text-base">→</span>
               </button>
             </div>
           </div>
@@ -422,12 +422,12 @@ const VocabularyTestSettings = () => {
 
 function InfoLine({ icon, label, value }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2">
-      <div className="flex items-center gap-2 text-sm text-slate-700">
-        <span className="text-base">{icon}</span>
-        <span className="text-slate-500">{label}</span>
+    <div className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5">
+      <div className="flex items-center gap-1.5 text-xs text-slate-700 min-w-0">
+        <span className="text-sm shrink-0">{icon}</span>
+        <span className="text-slate-500 truncate">{label}</span>
       </div>
-      <div className="text-sm font-bold text-slate-900">{value}</div>
+      <div className="text-xs font-bold text-slate-900 truncate text-right ml-2">{value}</div>
     </div>
   );
 }
