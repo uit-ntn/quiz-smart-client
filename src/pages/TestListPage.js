@@ -183,8 +183,6 @@ const TestGrid = ({ tests, viewMode, onPreviewVocabulary, onPreviewMCP, typeConf
       {tests.map((test, index) => (
         <div 
           key={test._id || test.id}
-          className="animate-in fade-in duration-500"
-          style={{ animationDelay: `${index * 100}ms` }}
         >
           <TestCard
             test={test}

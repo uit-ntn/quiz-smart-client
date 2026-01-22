@@ -151,21 +151,15 @@ const TestCard = ({
       <div
         onClick={handleClick}
         className={cx(
-          "group cursor-pointer rounded-2xl border border-slate-200/60 bg-white backdrop-blur-sm",
-          "shadow-lg shadow-slate-200/40 hover:shadow-xl hover:shadow-slate-300/30",
-          "hover:-translate-y-1 hover:scale-[1.02] hover:border-slate-300/60",
-          "transition-all duration-300 ease-out",
+          "group cursor-pointer rounded-2xl border border-slate-200/60 bg-white",
+          "shadow-md hover:shadow-lg",
+          "hover:-translate-y-0.5 hover:border-slate-300/60",
+          "transition-shadow duration-200 ease-out",
           "relative overflow-hidden",
           dense ? "p-4" : "p-5",
           className
         )}
       >
-        {/* Subtle gradient background */}
-        <div className={cx(
-          "absolute inset-0 bg-gradient-to-r opacity-0 group-hover:opacity-100 transition-opacity duration-300",
-          cfg.headerAccent
-        )} />
-        
         <div className={cx("relative flex items-center gap-4", dense ? "gap-3" : "gap-5")}>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2">
@@ -252,10 +246,10 @@ const TestCard = ({
       <div
         onClick={handleClick}
         className={cx(
-          "group cursor-pointer bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60",
-          "shadow-lg shadow-slate-200/40 hover:shadow-xl hover:shadow-slate-300/50",
-          "hover:-translate-y-2 hover:scale-[1.03] hover:border-slate-300/60",
-          "transition-all duration-500 ease-out overflow-hidden h-full flex flex-col relative",
+          "group cursor-pointer bg-white rounded-2xl border border-slate-200/60",
+          "shadow-md hover:shadow-lg",
+          "hover:-translate-y-1 hover:scale-[1.02] hover:border-slate-300/60",
+          "transition-transform duration-200 ease-out overflow-hidden h-full flex flex-col relative",
           className
         )}
       >

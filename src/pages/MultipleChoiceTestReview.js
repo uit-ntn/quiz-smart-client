@@ -399,8 +399,162 @@ const MultipleChoiceTestReview = () => {
       {/* container */}
       <div className="w-full h-full px-2 sm:px-4 py-1 sm:py-2 flex flex-col">
         <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-1 sm:gap-2">
-          {/* MAIN */}
-          <div className="lg:col-span-8 min-h-0 flex flex-col">
+          {/* SIDEBAR - Mobile: First, Desktop: Last */}
+          <div className="lg:col-span-4 min-h-0 order-1 lg:order-2">
+            <div className="lg:sticky lg:top-4 min-h-0 flex flex-col gap-2 lg:max-h-[calc(100vh-2rem)] lg:overflow-auto">
+              {/* score card */}
+              <div className="rounded-2xl border border-slate-200 bg-white shadow-md p-3 sm:p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <p className="text-xs text-slate-500">Điểm số</p>
+                    <p className="text-lg sm:text-xl font-extrabold text-slate-900">{score}%</p>
+                    <p className="text-xs font-semibold text-slate-700">{getScoreMessage(score)}</p>
+                  </div>
+
+                  <Ring value={score} />
+                </div>
+
+                <div className="mt-2 grid grid-cols-3 gap-2">
+                  <StatMini label="Đúng" value={correctCount} tone="emerald" />
+                  <StatMini label="Sai" value={incorrectCount} tone="rose" />
+                  <StatMini label="Chưa làm" value={unansweredCount} tone="amber" />
+                </div>
+
+                <div className="mt-2 flex flex-col gap-2">
+                  {draftResultId && !isSaved && (
+                    <button
+                      onClick={saveResult}
+                      disabled={loading}
+                      className={`w-full rounded-xl px-3 py-2 text-sm font-semibold text-white shadow-md transition ${
+                        loading ? "bg-emerald-400" : "bg-emerald-600 hover:bg-emerald-700"
+                      }`}
+                    >
+                      {loading ? "Đang lưu…" : "Lưu kết quả"}
+                    </button>
+                  )}
+
+                  {isSaved && (
+                    <div className="w-full rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 text-center">
+                      ✓ Đã lưu kết quả
+                    </div>
+                  )}
+
+                  <button
+                    onClick={handleExportQuestions}
+                    className="w-full rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-md hover:opacity-95 active:opacity-90 mb-2"
+                  >
+                    📄 Xuất câu hỏi PDF/DOCX
+                  </button>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => navigate(`/multiple-choice/test/${testId}/settings`)}
+                      className="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-md hover:from-blue-700 hover:to-indigo-700 transition-all"
+                    >
+                      Làm lại
+                    </button>
+                    <button
+                      onClick={() => navigate("/topics")}
+                      className="rounded-xl bg-gradient-to-r from-slate-600 to-slate-700 px-3 py-2 text-sm font-semibold text-white shadow-md hover:from-slate-700 hover:to-slate-800 transition-all flex items-center justify-center gap-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                      </svg>
+                      <span>Thoát</span>
+                    </button>
+                  </div>
+
+                  {error && (
+                    <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+                      {error}
+                    </div>
+                  )}
+                </div>
+
+                {/* Test Info inside score card */}
+                <div className="mt-3 pt-3 border-t border-slate-200">
+                  <h4 className="text-xs font-bold text-slate-900 mb-2">Thông tin bài kiểm tra</h4>
+                  <div className="space-y-1 text-xs">
+                    <InfoRow label="Tiêu đề" value={testInfo?.test_title || test?.test_title || "—"} />
+                    <InfoRow
+                      label="Chủ đề"
+                      value={`${testInfo?.main_topic || test?.main_topic || "—"} - ${testInfo?.sub_topic || test?.sub_topic || "—"}`}
+                    />
+                    <InfoRow label="Độ khó" value={(test?.difficulty || "—").toString()} badge />
+                    <InfoRow label="Giới hạn" value={`${testInfo?.time_limit_minutes ?? test?.time_limit_minutes ?? "—"} phút`} />
+                  </div>
+                </div>
+              </div>
+
+              {/* question grid */}
+              <div className="rounded-2xl border border-slate-200 bg-white shadow-md overflow-hidden">
+                <div className="px-2 sm:px-2 py-1 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-slate-900">Danh sách câu</h4>
+                  <span className="text-xs text-slate-500">{questions.length} câu</span>
+                </div>
+
+                <div className="p-3 sm:p-3 max-h-64 overflow-y-auto">
+                  <div className="grid grid-cols-8 sm:grid-cols-10 lg:grid-cols-12 gap-1.5">
+                    {questionsToDisplay.map((question, i) => {
+                      const actualIndex = startIndex + i;
+                      const result = results[actualIndex];
+                      const isCurrent = actualIndex === selectedQuestion;
+                      const answered = isAnswered(result.userAnswer);
+
+                      let tone = "bg-amber-500";
+                      if (result.isCorrect) tone = "bg-emerald-600";
+                      else if (answered) tone = "bg-rose-600";
+
+                      return (
+                        <button
+                          key={String(question._id)}
+                          onClick={() => setSelectedQuestion(actualIndex)}
+                          className={`aspect-square rounded-xl text-white text-xs font-bold shadow-md transition hover:opacity-90 ${tone} ${
+                            isCurrent ? "ring-2 ring-blue-500 ring-offset-2" : "ring-0"
+                          }`}
+                          title={`Câu ${actualIndex + 1}`}
+                        >
+                          {actualIndex + 1}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-600">
+                    <LegendDot color="bg-emerald-600" label={`Đúng (${correctCount})`} />
+                    <LegendDot color="bg-rose-600" label={`Sai (${incorrectCount})`} />
+                    <LegendDot color="bg-amber-500" label={`Chưa làm (${unansweredCount})`} />
+                  </div>
+
+                  {totalQuestionPages > 1 && (
+                    <div className="mt-3 flex items-center justify-between">
+                      <button
+                        onClick={() => setQuestionPage((p) => Math.max(0, p - 1))}
+                        disabled={questionPage === 0}
+                        className="px-3 py-1 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Trước
+                      </button>
+                      <span className="text-xs text-slate-500">
+                        Trang {questionPage + 1} / {totalQuestionPages}
+                      </span>
+                      <button
+                        onClick={() => setQuestionPage((p) => Math.min(totalQuestionPages - 1, p + 1))}
+                        disabled={questionPage === totalQuestionPages - 1}
+                        className="px-3 py-1 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Sau
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+          {/* end sidebar */}
+
+          {/* MAIN - Mobile: Second, Desktop: First */}
+          <div className="lg:col-span-8 min-h-0 flex flex-col order-2 lg:order-1">
             <div className="flex-1 min-h-0 rounded-2xl border border-slate-200 bg-white shadow-md overflow-hidden flex flex-col">
               {/* header */}
               <div className="px-3 sm:px-4 py-2 border-b border-slate-200 bg-slate-50 shrink-0">
@@ -580,157 +734,7 @@ const MultipleChoiceTestReview = () => {
               </div>
             </div>
           </div>
-
-          {/* SIDEBAR */}
-          <div className="lg:col-span-4 min-h-0">
-            <div className="lg:sticky lg:top-4 min-h-0 flex flex-col gap-2 lg:max-h-[calc(100vh-2rem)] lg:overflow-auto">
-              {/* score card */}
-              <div className="rounded-2xl border border-slate-200 bg-white shadow-md p-3 sm:p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <p className="text-xs text-slate-500">Điểm số</p>
-                    <p className="text-lg sm:text-xl font-extrabold text-slate-900">{score}%</p>
-                    <p className="text-xs font-semibold text-slate-700">{getScoreMessage(score)}</p>
-                  </div>
-
-                  <Ring value={score} />
-                </div>
-
-                <div className="mt-2 grid grid-cols-3 gap-2">
-                  <StatMini label="Đúng" value={correctCount} tone="emerald" />
-                  <StatMini label="Sai" value={incorrectCount} tone="rose" />
-                  <StatMini label="Chưa làm" value={unansweredCount} tone="amber" />
-                </div>
-
-                <div className="mt-2 flex flex-col gap-2">
-                  {draftResultId && !isSaved && (
-                    <button
-                      onClick={saveResult}
-                      disabled={loading}
-                      className={`w-full rounded-xl px-3 py-2 text-sm font-semibold text-white shadow-md transition ${
-                        loading ? "bg-emerald-400" : "bg-emerald-600 hover:bg-emerald-700"
-                      }`}
-                    >
-                      {loading ? "Đang lưu…" : "Lưu kết quả"}
-                    </button>
-                  )}
-
-                  {isSaved && (
-                    <div className="w-full rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 text-center">
-                      ✓ Đã lưu kết quả
-                    </div>
-                  )}
-
-                  <button
-                    onClick={handleExportQuestions}
-                    className="w-full rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-md hover:opacity-95 active:opacity-90 mb-2"
-                  >
-                    📄 Xuất câu hỏi PDF/DOCX
-                  </button>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => navigate(`/multiple-choice/test/${testId}/settings`)}
-                      className="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-md hover:from-blue-700 hover:to-indigo-700 transition-all"
-                    >
-                      Làm lại
-                    </button>
-                    <button
-                      onClick={() => navigate("/topics")}
-                      className="rounded-xl bg-gradient-to-r from-slate-600 to-slate-700 px-3 py-2 text-sm font-semibold text-white shadow-md hover:from-slate-700 hover:to-slate-800 transition-all"
-                    >
-                      Danh sách
-                    </button>
-                  </div>
-
-                  {error && (
-                    <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
-                      {error}
-                    </div>
-                  )}
-                </div>
-
-                {/* Test Info inside score card */}
-                <div className="mt-3 pt-3 border-t border-slate-200">
-                  <h4 className="text-xs font-bold text-slate-900 mb-2">Thông tin bài kiểm tra</h4>
-                  <div className="space-y-1 text-xs">
-                    <InfoRow label="Tiêu đề" value={testInfo?.test_title || test?.test_title || "—"} />
-                    <InfoRow
-                      label="Chủ đề"
-                      value={`${testInfo?.main_topic || test?.main_topic || "—"} - ${testInfo?.sub_topic || test?.sub_topic || "—"}`}
-                    />
-                    <InfoRow label="Độ khó" value={(test?.difficulty || "—").toString()} badge />
-                    <InfoRow label="Giới hạn" value={`${testInfo?.time_limit_minutes ?? test?.time_limit_minutes ?? "—"} phút`} />
-                  </div>
-                </div>
-              </div>
-
-              {/* question grid */}
-              <div className="rounded-2xl border border-slate-200 bg-white shadow-md overflow-hidden">
-                <div className="px-2 sm:px-2 py-1 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-slate-900">Danh sách câu</h4>
-                  <span className="text-xs text-slate-500">{questions.length} câu</span>
-                </div>
-
-                <div className="p-3 sm:p-3 max-h-64 overflow-y-auto">
-                  <div className="grid grid-cols-8 sm:grid-cols-10 lg:grid-cols-12 gap-1.5">
-                    {questionsToDisplay.map((question, i) => {
-                      const actualIndex = startIndex + i;
-                      const result = results[actualIndex];
-                      const isCurrent = actualIndex === selectedQuestion;
-                      const answered = isAnswered(result.userAnswer);
-
-                      let tone = "bg-amber-500";
-                      if (result.isCorrect) tone = "bg-emerald-600";
-                      else if (answered) tone = "bg-rose-600";
-
-                      return (
-                        <button
-                          key={String(question._id)}
-                          onClick={() => setSelectedQuestion(actualIndex)}
-                          className={`aspect-square rounded-xl text-white text-xs font-bold shadow-md transition hover:opacity-90 ${tone} ${
-                            isCurrent ? "ring-2 ring-blue-500 ring-offset-2" : "ring-0"
-                          }`}
-                          title={`Câu ${actualIndex + 1}`}
-                        >
-                          {actualIndex + 1}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-600">
-                    <LegendDot color="bg-emerald-600" label={`Đúng (${correctCount})`} />
-                    <LegendDot color="bg-rose-600" label={`Sai (${incorrectCount})`} />
-                    <LegendDot color="bg-amber-500" label={`Chưa làm (${unansweredCount})`} />
-                  </div>
-
-                  {totalQuestionPages > 1 && (
-                    <div className="mt-3 flex items-center justify-between">
-                      <button
-                        onClick={() => setQuestionPage((p) => Math.max(0, p - 1))}
-                        disabled={questionPage === 0}
-                        className="px-3 py-1 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Trước
-                      </button>
-                      <span className="text-xs text-slate-500">
-                        Trang {questionPage + 1} / {totalQuestionPages}
-                      </span>
-                      <button
-                        onClick={() => setQuestionPage((p) => Math.min(totalQuestionPages - 1, p + 1))}
-                        disabled={questionPage === totalQuestionPages - 1}
-                        className="px-3 py-1 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Sau
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-          {/* end sidebar */}
+          {/* end main */}
         </div>
       </div>
 
