@@ -35,7 +35,35 @@ const Avatar = ({
     setImageStatus('error');
   };
 
+  // Tạo fallback text từ alt (tên người dùng) nếu không có fallback được truyền vào
+  const getFallbackText = () => {
+    // Nếu có fallback được truyền vào và không phải là emoji mặc định, dùng nó
+    if (fallback && fallback !== '👤') {
+      return typeof fallback === 'string' && fallback.length === 1 
+        ? fallback.toUpperCase() 
+        : fallback;
+    }
+    
+    // Nếu không có fallback, tự động tạo từ alt (tên người dùng)
+    if (alt && alt !== 'User') {
+      // Lấy các chữ cái đầu của từng từ trong tên
+      const words = alt.trim().split(/\s+/).filter(word => word.length > 0);
+      if (words.length > 0) {
+        // Nếu có 1 từ: lấy 2 chữ cái đầu
+        if (words.length === 1) {
+          return words[0].substring(0, 2).toUpperCase();
+        }
+        // Nếu có nhiều từ: lấy chữ cái đầu của 2 từ đầu tiên
+        return (words[0][0] + words[1][0]).toUpperCase();
+      }
+    }
+    
+    // Fallback cuối cùng
+    return '👤';
+  };
+
   const baseClasses = `${sizeClasses[size]} rounded-xl object-cover border-2 ${borderColor} ${className}`;
+  const fallbackText = getFallbackText();
 
   return (
     <div className={`relative ${sizeClasses[size]} flex-shrink-0 z-0`}>
@@ -62,7 +90,7 @@ const Avatar = ({
         <div className={`${sizeClasses[size]} rounded-xl flex items-center justify-center font-bold ${textSizeClasses[size]} bg-gradient-to-br ${gradientFrom} ${gradientTo} text-white border-2 ${borderColor} ${
           imageStatus === 'error' && src ? 'transition-opacity duration-300 opacity-100' : ''
         }`}>
-          {typeof fallback === 'string' && fallback.length === 1 ? fallback.toUpperCase() : fallback}
+          {fallbackText}
         </div>
       )}
     </div>

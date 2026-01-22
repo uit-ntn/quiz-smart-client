@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
-import AdminLayout from "../layout/AdminLayout";
+import AdminLayout, { useSidebar } from "../layout/AdminLayout";
 import MultipleChoiceService from "../services/multipleChoiceService";
 import testService from "../services/testService";
 import { getCorrectAnswerLabels, isCorrectAnswer } from "../utils/correctAnswerHelpers";
@@ -615,7 +615,7 @@ const AdminMultipleChoices = () => {
 
   return (
     <AdminLayout>
-      <div className="max-w-7xl mx-auto sm:px-6 lg:px-2 py-2 space-y-3">
+      <div className="w-full sm:px-6 lg:px-2 py-2 space-y-3">
         {/* Content */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
           {/* Compact Filter Toolbar */}

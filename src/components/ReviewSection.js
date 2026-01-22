@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
+import { updateReview } from "../services/reviewService";
 
 const cx = (...a) => a.filter(Boolean).join(" ");
 
@@ -146,15 +147,70 @@ const ReviewSection = ({
   setReviewForm,
   isSubmittingReview,
   onSubmitReview,
+  onEditReview = null,
+  editingReviewId = null,
+  onRefresh = null,
 }) => {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showLowRatingModal, setShowLowRatingModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingReview, setEditingReview] = useState(null);
+  const [editForm, setEditForm] = useState({ rating: 0, comment: '' });
+  const [isUpdating, setIsUpdating] = useState(false);
   const [currentJoke, setCurrentJoke] = useState('');
   const [commentReminderJoke, setCommentReminderJoke] = useState('');
   const [commentLengthJoke, setCommentLengthJoke] = useState('');
   const emojiPickerRef = useRef(null);
   const previousWordCountRef = useRef(0);
   const previousWordCategoryRef = useRef('');
+
+  // Check if review belongs to current user
+  const isCurrentUserReview = (review) => {
+    if (!user || !review) return false;
+    const reviewUserId = review.user_id?._id || review.user_id;
+    const currentUserId = user._id || user.user_id;
+    return reviewUserId && currentUserId && String(reviewUserId) === String(currentUserId);
+  };
+
+  // Handle edit review - open modal
+  const handleEditClick = (review) => {
+    setEditingReview(review);
+    setEditForm({
+      rating: review.rating || 0,
+      comment: review.comment || ''
+    });
+    setShowEditModal(true);
+  };
+
+  // Handle update review in modal
+  const handleUpdateReview = async () => {
+    if (!editingReview) return;
+    if (editForm.rating < 1 || editForm.rating > 5) {
+      return;
+    }
+
+    try {
+      setIsUpdating(true);
+      const response = await updateReview(
+        editingReview._id,
+        editForm.rating,
+        editForm.comment || ''
+      );
+      if (response.success) {
+        setShowEditModal(false);
+        setEditingReview(null);
+        setEditForm({ rating: 0, comment: '' });
+        // Call parent callback to refresh reviews
+        if (onRefresh) {
+          onRefresh();
+        }
+      }
+    } catch (err) {
+      console.error("Error updating review:", err);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   // Function để random joke
   const getRandomJoke = (rating) => {
@@ -389,6 +445,18 @@ const ReviewSection = ({
                             <div className="flex items-center gap-2">
                               <div className="flex items-center gap-0.5">{renderStars(rating)}</div>
                               <span className="text-xs font-bold text-blue-600">{rating}/5</span>
+                              {/* Edit button - chỉ hiển thị cho review của current user */}
+                              {isCurrentUserReview(review) && (
+                                <button
+                                  onClick={() => handleEditClick(review)}
+                                  className="ml-2 p-1.5 rounded-lg hover:bg-blue-50 text-blue-600 hover:text-blue-700 transition-colors"
+                                  title="Sửa đánh giá"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                  </svg>
+                                </button>
+                              )}
                             </div>
                             {review.created_at && (
                               <span className="text-[10px] text-slate-500">{formatDate(review.created_at)}</span>
@@ -412,7 +480,7 @@ const ReviewSection = ({
 
         {/* My Review Form */}
         {user ? (
-          <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-3 border border-blue-200/50">
+          <div data-review-form className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-3 border border-blue-200/50">
             <h3 className="text-base font-bold text-slate-900 mb-3">Đánh giá ứng dụng</h3>
 
             {/* Star Rating */}
@@ -577,7 +645,7 @@ const ReviewSection = ({
                   (isSubmittingReview || (reviewForm.rating || 0) < 1) && "opacity-50 cursor-not-allowed"
                 )}
               >
-                {isSubmittingReview ? "Đang xử lý..." : "Gửi đánh giá"}
+                {isSubmittingReview ? "Đang xử lý..." : (editingReviewId ? "Cập nhật đánh giá" : "Gửi đánh giá")}
               </button>
               {(reviewForm.rating || 0) < 1 && (
                 <span className="text-xs text-red-500 italic">
@@ -598,6 +666,118 @@ const ReviewSection = ({
           </div>
         )}
       </div>
+
+      {/* Edit Review Modal */}
+      {showEditModal && editingReview && createPortal(
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-y-auto max-h-[90vh]">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-cyan-600 px-4 py-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">✏️</span>
+                  <h3 className="text-base font-bold text-white">Sửa đánh giá</h3>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setEditingReview(null);
+                    setEditForm({ rating: 0, comment: '' });
+                  }}
+                  className="text-white/80 hover:text-white transition-colors p-1"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="px-4 py-5">
+              <div className="space-y-4">
+                {/* Star Rating */}
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    Điểm đánh giá (1-5 sao)
+                  </label>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {Array.from({ length: MAX_STARS }, (_, i) => {
+                      const starValue = i + 1;
+                      const isSelected = editForm.rating >= starValue;
+                      return (
+                        <button
+                          key={starValue}
+                          type="button"
+                          onClick={() => setEditForm(prev => ({ ...prev, rating: starValue }))}
+                          className={cx(
+                            "transition-all duration-200 cursor-pointer hover:scale-110",
+                            isSelected
+                              ? "text-yellow-400 fill-yellow-400"
+                              : "text-slate-300 fill-slate-300 hover:text-yellow-300 hover:fill-yellow-300"
+                          )}
+                          title={`Chọn ${starValue} sao`}
+                        >
+                          <StarIcon className="w-8 h-8" />
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {editForm.rating > 0 && (
+                    <p className="text-xs text-slate-600 mt-2">
+                      Đã chọn {editForm.rating}/5 sao
+                    </p>
+                  )}
+                </div>
+
+                {/* Comment */}
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    Bình luận (tùy chọn)
+                  </label>
+                  <textarea
+                    value={editForm.comment || ''}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, comment: e.target.value }))}
+                    placeholder="Chia sẻ ý kiến của bạn về ứng dụng..."
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-300 resize-none text-sm"
+                    rows={4}
+                    maxLength={2000}
+                  />
+                  <p className="text-xs text-slate-500 mt-1">
+                    {(editForm.comment || '').length}/2000 ký tự
+                  </p>
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center gap-3 pt-2">
+                  <button
+                    onClick={handleUpdateReview}
+                    disabled={isUpdating || editForm.rating < 1}
+                    className={cx(
+                      "flex-1 px-4 py-2 rounded-lg font-bold text-white transition-all duration-300 shadow-md hover:shadow-lg text-sm",
+                      "bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700",
+                      (isUpdating || editForm.rating < 1) && "opacity-50 cursor-not-allowed"
+                    )}
+                  >
+                    {isUpdating ? "Đang cập nhật..." : "Cập nhật"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowEditModal(false);
+                      setEditingReview(null);
+                      setEditForm({ rating: 0, comment: '' });
+                    }}
+                    className="flex-1 px-4 py-2 rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-700 transition-colors text-sm"
+                  >
+                    Hủy
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* Low Rating Modal - Năn nỉ */}
       {showLowRatingModal && createPortal(

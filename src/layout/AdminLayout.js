@@ -1,12 +1,29 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, createContext, useContext } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import Footer from "../components/Footer";
 
+// Context để truyền sidebar state xuống các page
+const SidebarContext = createContext({
+  sidebarCollapsed: false,
+});
+
+export const useSidebar = () => useContext(SidebarContext);
+
 const AdminLayout = ({ children }) => {
   const location = useLocation();
   const { user, logout } = useAuth();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false); // Mobile sidebar
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    // Load from localStorage or default to false
+    const saved = localStorage.getItem('adminSidebarCollapsed');
+    return saved ? JSON.parse(saved) : false;
+  });
+
+  // Save sidebar state to localStorage
+  useEffect(() => {
+    localStorage.setItem('adminSidebarCollapsed', JSON.stringify(sidebarCollapsed));
+  }, [sidebarCollapsed]);
 
   const navItems = [
     {
@@ -94,9 +111,10 @@ const AdminLayout = ({ children }) => {
     <div className="min-h-screen bg-slate-100 flex">
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-72 bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900
+        className={`fixed inset-y-0 left-0 z-50 bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900
         transform transition-all duration-300 lg:static lg:translate-x-0 shadow-2xl
-        ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
+        ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
+        ${sidebarCollapsed ? "lg:w-20" : "lg:w-72"} w-72`}
       >
         {/* Decorative background elements */}
         <div className="absolute inset-0 overflow-hidden">
@@ -105,11 +123,11 @@ const AdminLayout = ({ children }) => {
         </div>
 
         <div className="flex flex-col h-full relative z-10">
-          {/* Logo + Close button (mobile) */}
-          <div className="px-6 py-6 border-b border-white/10 flex items-center justify-between gap-3">
+          {/* Logo + Close button (mobile) + Toggle (desktop) */}
+          <div className={`px-6 py-6 border-b border-white/10 flex items-center ${sidebarCollapsed ? 'lg:justify-center' : 'lg:justify-between'} justify-between gap-3`}>
             <Link
               to="/admin"
-              className="group flex items-center gap-4 transition-all duration-300 hover:scale-105"
+              className={`group flex items-center gap-4 transition-all duration-300 hover:scale-105 ${sidebarCollapsed ? 'lg:w-full lg:justify-center' : ''}`}
               onClick={() => setSidebarOpen(false)}
             >
               <div className="relative">
@@ -119,7 +137,7 @@ const AdminLayout = ({ children }) => {
                 <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-slate-900"></div>
               </div>
 
-              <div>
+              <div className={`${sidebarCollapsed ? 'lg:hidden' : ''}`}>
                 <h1 className="text-white font-black text-xl bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">
                   QuizSmart
                 </h1>
@@ -127,17 +145,39 @@ const AdminLayout = ({ children }) => {
               </div>
             </Link>
 
-            <button
-              type="button"
-              onClick={() => setSidebarOpen(false)}
-              className="lg:hidden p-2 rounded-xl hover:bg-white/10 text-slate-200"
-              aria-label="Đóng menu"
-              title="Đóng"
-            >
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+            <div className="flex items-center gap-2">
+              {/* Desktop toggle button */}
+              <button
+                type="button"
+                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                className="hidden lg:flex p-2 rounded-xl hover:bg-white/10 text-slate-200 transition-all duration-200"
+                aria-label={sidebarCollapsed ? "Mở sidebar" : "Đóng sidebar"}
+                title={sidebarCollapsed ? "Mở sidebar" : "Đóng sidebar"}
+              >
+                {sidebarCollapsed ? (
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                  </svg>
+                )}
+              </button>
+
+              {/* Mobile close button */}
+              <button
+                type="button"
+                onClick={() => setSidebarOpen(false)}
+                className="lg:hidden p-2 rounded-xl hover:bg-white/10 text-slate-200"
+                aria-label="Đóng menu"
+                title="Đóng"
+              >
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
           </div>
 
           {/* Nav */}
@@ -150,13 +190,14 @@ const AdminLayout = ({ children }) => {
                   key={item.path}
                   to={item.path}
                   onClick={() => setSidebarOpen(false)} // ✅ fix typo + close on click
-                  className={`group relative flex items-center px-4 py-2 rounded-2xl transition-all duration-300 transform hover:scale-[1.01]
+                  className={`group relative flex items-center ${sidebarCollapsed ? 'lg:justify-center lg:px-2' : 'px-4'} py-2 rounded-2xl transition-all duration-300 transform hover:scale-[1.01]
                   ${
                     active
                       ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-xl shadow-blue-500/25"
                       : "text-slate-300 hover:bg-white/5 hover:text-white"
                   }`}
                   style={{ animationDelay: `${index * 50}ms` }}
+                  title={sidebarCollapsed ? item.title : undefined}
                 >
                   {/* Active indicator */}
                   {active && (
@@ -164,9 +205,9 @@ const AdminLayout = ({ children }) => {
                   )}
 
                   {/* Content */}
-                  <div className="relative flex items-center w-full">
+                  <div className={`relative flex items-center ${sidebarCollapsed ? 'lg:w-full lg:justify-center' : 'w-full'}`}>
                     <div
-                      className={`flex items-center justify-center w-8 h-8 rounded-xl mr-3 transition-all duration-300
+                      className={`flex items-center justify-center w-8 h-8 rounded-xl ${sidebarCollapsed ? 'lg:mr-0' : 'mr-3'} transition-all duration-300
                       ${
                         active
                           ? "bg-white/20 text-white"
@@ -176,7 +217,7 @@ const AdminLayout = ({ children }) => {
                       <span className="text-lg">{item.icon}</span>
                     </div>
 
-                    <div className="flex-1 min-w-0">
+                    <div className={`flex-1 min-w-0 ${sidebarCollapsed ? 'lg:hidden' : ''}`}>
                       <p
                         className={`font-semibold text-sm truncate transition-colors duration-300
                         ${active ? "text-white" : "text-slate-300 group-hover:text-white"}`}
@@ -193,7 +234,7 @@ const AdminLayout = ({ children }) => {
 
                     {/* Arrow indicator */}
                     <div
-                      className={`transition-all duration-300 ${
+                      className={`transition-all duration-300 ${sidebarCollapsed ? 'lg:hidden' : ''} ${
                         active
                           ? "opacity-100 translate-x-0"
                           : "opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0"
@@ -297,7 +338,11 @@ const AdminLayout = ({ children }) => {
 
         {/* Content */}
         <main className="flex-1 p-6 bg-gradient-to-br from-gray-50 to-gray-100/50">
-          <div className="max-w-7xl mx-auto">{children}</div>
+          <SidebarContext.Provider value={{ sidebarCollapsed }}>
+            <div className={`mx-auto transition-all duration-300 ${sidebarCollapsed ? 'max-w-[calc(100vw-5rem)]' : 'max-w-7xl'}`}>
+              {children}
+            </div>
+          </SidebarContext.Provider>
         </main>
 
         <Footer />

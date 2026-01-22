@@ -85,7 +85,6 @@ const UserInfoCard = ({ user }) => {
           </div>
 
           <div className="hidden sm:flex sm:flex-col sm:items-end sm:gap-2">
-            <button className="px-4 py-2 bg-gradient-to-r from-sky-500 to-emerald-400 text-white rounded-lg text-sm font-medium hover:from-sky-600 hover:to-emerald-500 transition">Chỉnh sửa</button>
             <button className="px-4 py-2 border border-teal-200 rounded-lg text-sm text-teal-700 hover:bg-teal-50">Đổi mật khẩu</button>
           </div>
         </div>

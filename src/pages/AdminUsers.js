@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
-import AdminLayout from "../layout/AdminLayout";
+import AdminLayout, { useSidebar } from "../layout/AdminLayout";
 import userService from "../services/userService";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
@@ -331,7 +331,7 @@ const AdminUsers = () => {
 
   return (
     <AdminLayout>
-      <div className="max-w-7xl mx-auto px-2 sm:px-5 lg:px-8 py-2 space-y-4">
+      <div className="w-full px-2 sm:px-5 lg:px-8 py-2 space-y-4">
         {/* Toolbar card */}
         <div className="bg-white border border-slate-200 rounded-xl shadow-sm">
           <div className="px-4 py-3">

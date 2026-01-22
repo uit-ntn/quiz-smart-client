@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import AdminLayout from '../layout/AdminLayout';
+import AdminLayout, { useSidebar } from '../layout/AdminLayout';
 import testService from '../services/testService';
 import vocabularyService from '../services/vocabularyService';
 import CreateVocabularyTestButton from '../components/CreateVocabularyTestButton';
@@ -13,6 +13,7 @@ import ExportVocabularyModal from '../components/ExportVocabularyModal';
 
 const AdminVocabularyTests = () => {
   const { user } = useAuth();
+  const { sidebarCollapsed } = useSidebar();
   const [tests, setTests] = useState([]);
   const [filteredTests, setFilteredTests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -289,7 +290,7 @@ const AdminVocabularyTests = () => {
 
   return (
     <AdminLayout>
-      <div className="space-y-4">
+      <div className="w-full px-2 sm:px-6 lg:px-8 py-2 space-y-4">
         {/* Stats Cards and Button */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex-1">
@@ -439,24 +440,26 @@ const AdminVocabularyTests = () => {
           
           {/* Bulk Actions */}
           {selectedTests.size > 0 && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-blue-800">
-                  Đã chọn {selectedTests.size} bài test
-                </span>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleBulkExport}
-                    className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded-md transition-colors"
-                  >
-                    Xuất file
-                  </button>
-                  <button
-                    onClick={() => setShowBulkDeleteModal(true)}
-                    className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded-md transition-colors"
-                  >
-                    Xóa tất cả
-                  </button>
+            <div className="px-4 py-3">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-blue-800">
+                    Đã chọn {selectedTests.size} bài test
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleBulkExport}
+                      className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded-md transition-colors"
+                    >
+                      Xuất file
+                    </button>
+                    <button
+                      onClick={() => setShowBulkDeleteModal(true)}
+                      className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded-md transition-colors"
+                    >
+                      Xóa tất cả
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

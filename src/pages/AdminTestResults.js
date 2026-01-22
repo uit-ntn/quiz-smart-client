@@ -342,6 +342,16 @@ const AdminTestResults = () => {
       setResultToDelete(null);
     } catch (err) {
       console.error("Error deleting result:", err);
+
+      // Nếu BE trả 404 (Not found) thì coi như đã bị xóa trước đó -> cứ xóa khỏi UI
+      const msg = err?.message || "";
+      if (msg.includes("Not found") || msg.includes("404")) {
+        setResults((prev) => prev.filter((r) => r._id !== resultToDelete._id));
+        setShowDeleteModal(false);
+        setResultToDelete(null);
+        return;
+      }
+
       alert("Không thể xóa kết quả. Vui lòng thử lại!");
     }
   };
@@ -374,7 +384,24 @@ const AdminTestResults = () => {
 
     try {
       setLoading(true);
-      await Promise.all(selectedIds.map((id) => testResultService.hardDeleteTestResult(id))); // Hard delete for admin
+
+      // Thử xóa từng result, bỏ qua lỗi 404 (đã không còn trong DB)
+      await Promise.all(
+        selectedIds.map(async (id) => {
+          try {
+            await testResultService.hardDeleteTestResult(id); // Hard delete for admin
+          } catch (err) {
+            const msg = err?.message || "";
+            if (msg.includes("Not found") || msg.includes("404")) {
+              // Bỏ qua, coi như đã bị xóa
+              console.warn("Result already deleted, skip id =", id);
+              return;
+            }
+            throw err;
+          }
+        })
+      );
+
       setResults((prev) => prev.filter((r) => !selectedIds.includes(r._id)));
       setSelectedIds([]);
       setShowBulkDeleteModal(false);

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import AdminLayout from "../layout/AdminLayout";
+import AdminLayout, { useSidebar } from "../layout/AdminLayout";
 import vocabularyService from "../services/vocabularyService";
 import testService from "../services/testService";
 import LoadingSpinner from "../components/LoadingSpinner";
@@ -86,6 +86,7 @@ const ModalShell = ({ title, subtitle, onClose, children, maxWidth = "max-w-2xl"
 ========================= */
 
 const AdminVocabularies = () => {
+  const { sidebarCollapsed } = useSidebar();
   const [vocabularies, setVocabularies] = useState([]);
   const [testsById, setTestsById] = useState({});
   const [allTests, setAllTests] = useState([]);
@@ -377,7 +378,7 @@ const AdminVocabularies = () => {
 
   return (
     <AdminLayout>
-      <div className="max-w-7xl mx-auto px-2 sm:px-5 lg:px-8 py-2 space-y-4">
+      <div className="w-full px-2 sm:px-5 lg:px-8 py-2 space-y-4">
         {/* Content */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
           {/* Compact Filter Toolbar */}
@@ -511,7 +512,7 @@ const AdminVocabularies = () => {
                     </th>
                     <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Từ vựng</th>
                     <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nghĩa</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ví dụ</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[200px] max-w-[200px]">Ví dụ</th>
                     <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Loại từ</th>
                     <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CEFR</th>
                     <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bài kiểm tra</th>
@@ -551,15 +552,15 @@ const AdminVocabularies = () => {
                             </div>
                           </td>
 
-                          <td className="px-4 py-3">
+                          <td className="px-4 py-3 w-[200px] max-w-[200px]">
                             <div className="text-xs text-slate-700">
                               {v.example_sentence ? (
                                 <>
-                                  <div className="truncate max-w-[360px]" title={v.example_sentence}>
-                                    “{v.example_sentence}”
+                                  <div className="truncate max-w-[180px]" title={v.example_sentence}>
+                                    "{v.example_sentence}"
                                   </div>
                                   {v.example_meaning ? (
-                                    <div className="text-slate-500 mt-1 truncate max-w-[360px]" title={v.example_meaning}>
+                                    <div className="text-slate-500 mt-1 truncate max-w-[180px]" title={v.example_meaning}>
                                       → {v.example_meaning}
                                     </div>
                                   ) : null}
