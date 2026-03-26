@@ -4,18 +4,32 @@ import { Link, useNavigate } from "react-router-dom";
 // ================= Utils =================
 const cx = (...a) => a.filter(Boolean).join(" ");
 
-// ================= Color Variants =================
-// Only 2 colors: one for vocabulary, one for multiple-choice
-const COLOR_VARIANTS = {
+// ================= Color Themes =================
+// Unified neutral-first palette:
+// - Blue is primary accent for light metadata
+// - Orange is the only strong CTA color
+const THEME = {
   vocabulary: {
-    badgeColor: "bg-gradient-to-r from-cyan-500 to-sky-600 text-white border-cyan-600",
-    topicBox: "bg-gradient-to-r from-cyan-50 to-sky-50 border-cyan-200/60",
-    topicText: "text-cyan-800",
+    cardBorder: "border-slate-200 hover:border-slate-300",
+    headerStrip: "bg-gradient-to-r from-blue-500 to-indigo-500",
+    typeBadge: "bg-slate-100 border-slate-200 text-slate-700 font-semibold",
+    qBox: "bg-slate-50 border-slate-200 text-slate-700",
+    tBox: "bg-slate-50 border-slate-200 text-slate-700",
+    topicBox: "bg-slate-50 border-slate-200",
+    topicText: "text-slate-600 font-medium",
+    divider: "border-slate-200",
+    visLabel: "text-slate-500",
   },
   "multiple-choice": {
-    badgeColor: "bg-gradient-to-r from-teal-500 to-cyan-600 text-white border-teal-600",
-    topicBox: "bg-gradient-to-r from-teal-50 to-cyan-50 border-teal-200/60",
-    topicText: "text-teal-800",
+    cardBorder: "border-slate-200 hover:border-slate-300",
+    headerStrip: "bg-gradient-to-r from-blue-500 to-indigo-500",
+    typeBadge: "bg-slate-100 border-slate-200 text-slate-700 font-semibold",
+    qBox: "bg-slate-50 border-slate-200 text-slate-700",
+    tBox: "bg-slate-50 border-slate-200 text-slate-700",
+    topicBox: "bg-slate-50 border-slate-200",
+    topicText: "text-slate-600 font-medium",
+    divider: "border-slate-200",
+    visLabel: "text-slate-500",
   },
 };
 
@@ -24,61 +38,33 @@ const TYPE = {
   vocabulary: {
     route: "/vocabulary/test",
     action: "Làm bài",
-    header: "bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600",
-    headerAccent: "from-emerald-400/20 to-teal-600/20",
-    btnSoft: "border-emerald-200/60 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300",
-    iconBox: "bg-gradient-to-br from-emerald-50 to-teal-50 text-emerald-600 border-emerald-200/50",
+    btnPrimary: "bg-orange-500 hover:bg-orange-600 text-white font-bold shadow-sm",
   },
   "multiple-choice": {
     route: "/multiple-choice/test",
     action: "Làm bài",
-    header: "bg-gradient-to-br from-violet-500 via-purple-500 to-indigo-600",
-    headerAccent: "from-violet-400/20 to-indigo-600/20",
-    btnSoft: "border-violet-200/60 text-violet-700 hover:bg-violet-50 hover:border-violet-300",
-    iconBox: "bg-gradient-to-br from-violet-50 to-purple-50 text-violet-600 border-violet-200/50",
+    btnPrimary: "bg-orange-500 hover:bg-orange-600 text-white font-bold shadow-sm",
   },
   multiple_choice: {
     route: "/multiple-choice/test",
     action: "Làm bài",
-    header: "bg-gradient-to-br from-violet-500 via-purple-500 to-indigo-600",
-    headerAccent: "from-violet-400/20 to-indigo-600/20",
-    btnSoft: "border-violet-200/60 text-violet-700 hover:bg-violet-50 hover:border-violet-300",
-    iconBox: "bg-gradient-to-br from-violet-50 to-purple-50 text-violet-600 border-violet-200/50",
+    btnPrimary: "bg-orange-500 hover:bg-orange-600 text-white font-bold shadow-sm",
   },
 };
 
-// Unified button color for all test types
-const UNIFIED_BTN_COLOR = "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/30";
+const UNIFIED_PREVIEW_BTN =
+  "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm font-semibold";
 
+// Semantic colors for difficulty — kept meaningful but not competing with card tone
 const DIFFICULTY = {
-  easy: { 
-    label: "Dễ", 
-    color: "text-white bg-gradient-to-r from-emerald-500 to-emerald-600 border-emerald-700 shadow-sm",
-    icon: "🟢"
-  },
-  medium: { 
-    label: "Trung bình", 
-    color: "text-white bg-gradient-to-r from-amber-500 to-amber-600 border-amber-700 shadow-sm",
-    icon: "🟡"
-  },
-  hard: { 
-    label: "Khó", 
-    color: "text-white bg-gradient-to-r from-rose-500 to-rose-600 border-rose-700 shadow-sm",
-    icon: "🔴"
-  },
+  easy:   { label: "Dễ",        color: "bg-slate-100 border-slate-200 text-emerald-700 font-semibold",  icon: "🟢" },
+  medium: { label: "Trung bình", color: "bg-slate-100 border-slate-200 text-amber-700 font-semibold", icon: "🟡" },
+  hard:   { label: "Khó",       color: "bg-slate-100 border-slate-200 text-rose-700 font-semibold",  icon: "🔴" },
 };
 
 const VISIBILITY = {
-  public: { 
-    label: "Công khai", 
-    className: "text-white bg-gradient-to-r from-cyan-500 to-blue-600 border-cyan-700 shadow-sm",
-    icon: "🌐"
-  },
-  private: { 
-    label: "Riêng tư", 
-    className: "text-white bg-gradient-to-r from-slate-500 to-slate-600 border-slate-700 shadow-sm",
-    icon: "🔒"
-  },
+  public:  { label: "Công khai", className: "bg-slate-50 border-slate-200 text-slate-600 font-medium", icon: "🌐" },
+  private: { label: "Riêng tư",  className: "bg-slate-50 border-slate-200 text-slate-600 font-medium", icon: "🔒" },
 };
 
 // ================= Icons =================
@@ -132,12 +118,8 @@ const TestCard = ({
 
   const cfg = TYPE[safeTypeKey] || TYPE.vocabulary;
   const diff = DIFFICULTY[test?.difficulty] || DIFFICULTY.medium;
-  
-  // Get color variant - only 2 colors: one for vocabulary, one for multiple-choice
-  const colorVariant = COLOR_VARIANTS[safeTypeKey] || COLOR_VARIANTS.vocabulary;
-  
-  // Fixed colors for elements that don't vary
-  const attemptBoxColor = "bg-gradient-to-r from-orange-500 to-amber-600 border-orange-700";
+  const theme = THEME[safeTypeKey] || THEME.vocabulary;
+  const hasTopic = Boolean(test?.main_topic || test?.sub_topic);
 
   const toSettings = `${cfg.route}/${testId}/settings`;
 
@@ -151,71 +133,80 @@ const TestCard = ({
       <div
         onClick={handleClick}
         className={cx(
-          "group cursor-pointer rounded-2xl border border-slate-200/60 bg-white",
-          "shadow-md hover:shadow-lg",
-          "hover:-translate-y-0.5 hover:border-slate-300/60",
-          "transition-shadow duration-200 ease-out",
-          "relative overflow-hidden",
-          dense ? "p-4" : "p-5",
+          "group cursor-pointer rounded-2xl border bg-white",
+          theme.cardBorder,
+          "shadow-sm hover:shadow-md transition-all duration-200 ease-out",
+          "p-3 sm:p-4",
           className
         )}
       >
-        <div className={cx("relative flex items-center gap-4", dense ? "gap-3" : "gap-5")}>
+        {/* Top: badges */}
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-2">
+          <span className={cx(
+            "inline-flex items-center gap-1 rounded-full border text-[11px] px-2 py-0.5 shrink-0",
+            theme.typeBadge
+          )}>
+            {safeTypeKey === "vocabulary" ? "📚" : "📝"}
+            <span>{safeTypeKey === "vocabulary" ? "Từ vựng" : "Trắc nghiệm"}</span>
+          </span>
+
+          <span className={cx(
+            "inline-flex items-center gap-1 rounded-full border text-[11px] px-2 py-0.5 shrink-0",
+            diff.color
+          )}>
+            {diff.icon} {diff.label}
+          </span>
+
+          <span className={cx(
+            "inline-flex items-center gap-1 rounded-full border text-[11px] px-2 py-0.5 shrink-0",
+            visibilityCfg.className
+          )}>
+            {visibilityCfg.icon} {visibilityCfg.label}
+          </span>
+        </div>
+
+        {/* Main row: info + actions */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+          {/* Info */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-2">
-              <h3 className={cx("font-bold text-slate-900 truncate group-hover:text-slate-700", dense ? "text-base" : "text-lg")}>
-                {test?.test_title}
-              </h3>
+            <h3 className="font-bold text-sm sm:text-base text-slate-800 group-hover:text-slate-900 line-clamp-1 mb-1.5">
+              {test?.test_title}
+            </h3>
 
-              <span className={cx("inline-flex items-center font-semibold rounded-full border transition-all duration-200 whitespace-nowrap", dense ? "px-2.5 py-1 text-xs gap-1" : "px-3 py-1.5 text-xs gap-1.5", diff.color)}>
-                <span>{diff.icon}</span>
-                {diff.label}
-              </span>
-
-              <span className={cx("inline-flex items-center rounded-full font-medium border transition-all duration-200 whitespace-nowrap", dense ? "px-2.5 py-1 text-xs gap-1" : "px-3 py-1.5 text-xs gap-1.5", visibilityCfg.className)}>
-                <span>{visibilityCfg.icon}</span>
-                {visibilityCfg.label}
-              </span>
-            </div>
-
-            <div className={cx("flex items-center flex-wrap text-slate-600 group-hover:text-slate-500", dense ? "gap-x-4 gap-y-2 text-sm" : "gap-x-5 gap-y-2 text-sm")}>
-              <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg border border-slate-200 bg-white">
-                <Icon.Check className={cx(dense ? "h-4 w-4" : "h-4 w-4", "text-slate-700")} />
-                <span className="font-medium text-slate-900">{test?.total_questions || 0} câu hỏi</span>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <div className={cx("inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs border", theme.qBox)}>
+                <Icon.Check className="h-3.5 w-3.5" />
+                <span className="font-bold">{test?.total_questions || 0} câu</span>
               </div>
 
-              <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg border border-slate-200 bg-white">
-                <Icon.Clock className={cx(dense ? "h-4 w-4" : "h-4 w-4", "text-slate-700")} />
-                <span className="font-medium text-slate-900">{test?.time_limit_minutes ? `${test.time_limit_minutes} phút` : "Không giới hạn"}</span>
+              <div className={cx("inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs border", theme.tBox)}>
+                <Icon.Clock className="h-3.5 w-3.5" />
+                <span className="font-bold">
+                  {test?.time_limit_minutes ? `${test.time_limit_minutes} phút` : "Không giới hạn"}
+                </span>
               </div>
 
               {test?.attempt_count > 0 && (
-                <div className={cx(
-                  "flex items-center gap-1.5 px-2 py-1 rounded-lg",
-                  attemptBoxColor
-                )}>
-                  <Icon.Users className={cx(dense ? "h-4 w-4" : "h-4 w-4", "text-white")} />
-                  <span className="font-medium text-white">{test.attempt_count} lượt thực hiện</span>
+                <div className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs border bg-slate-100 border-slate-200 text-slate-700 font-semibold">
+                  <Icon.Users className="h-3.5 w-3.5" />
+                  <span>{test.attempt_count} lượt</span>
                 </div>
               )}
 
-              <div className="text-slate-500 ml-auto">
-                Tạo bởi <span className="font-semibold text-slate-700">{createdBy}</span>
-              </div>
+              <span className="text-[11px] text-slate-400 hidden sm:inline">
+                · <span className="font-semibold text-slate-600">{createdBy}</span>
+              </span>
             </div>
           </div>
 
-          <div className="flex gap-3 shrink-0">
+          {/* Actions */}
+          <div className="flex items-center gap-2 shrink-0">
             {onPreview && (
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onPreview(test);
-                }}
+                onClick={(e) => { e.stopPropagation(); onPreview(test); }}
                 className={cx(
-                  "inline-flex items-center justify-center rounded-xl border border-slate-700 text-white bg-slate-600",
-                  "hover:bg-slate-700 hover:border-slate-800 transition-all duration-300 font-medium",
-                  dense ? "px-4 py-2 text-xs" : "px-4 py-2 text-sm"
+                  "inline-flex items-center justify-center rounded-xl transition-all duration-200 text-xs px-3 py-2",
+                  UNIFIED_PREVIEW_BTN
                 )}
               >
                 Xem trước
@@ -225,9 +216,8 @@ const TestCard = ({
               to={toSettings}
               onClick={(e) => e.stopPropagation()}
               className={cx(
-                "rounded-xl transition-all duration-300 font-semibold text-center transform hover:scale-105 active:scale-95",
-                UNIFIED_BTN_COLOR,
-                dense ? "px-5 py-2.5 text-sm" : "px-6 py-3 text-sm"
+                "inline-flex items-center justify-center rounded-xl text-xs transition-all duration-200 px-3 py-2",
+                cfg.btnPrimary
               )}
             >
               {cfg.action}
@@ -246,40 +236,49 @@ const TestCard = ({
       <div
         onClick={handleClick}
         className={cx(
-          "group cursor-pointer bg-white rounded-2xl border border-slate-200/60",
-          "shadow-md hover:shadow-lg",
-          "hover:-translate-y-1 hover:scale-[1.02] hover:border-slate-300/60",
-          "transition-transform duration-200 ease-out overflow-hidden h-full flex flex-col relative",
+          "group cursor-pointer rounded-2xl border bg-white",
+          theme.cardBorder,
+          "shadow-sm hover:shadow-lg hover:-translate-y-0.5",
+          "transition-all duration-300 ease-out overflow-hidden h-full flex flex-col relative",
           className
         )}
       >
+        {/* Colored header strip matching card's primary tone */}
+        <div className={cx("h-1 w-full", theme.headerStrip)} />
 
         {/* Content */}
-        <div className={cx("flex-1 flex flex-col relative", dense ? "p-3 pt-6" : "p-4 pt-8")}>
-          {/* Type & Badges Row - Divided evenly */}
-          <div className="flex items-center justify-between mb-3">
-            <span className={cx("inline-flex items-center gap-1.5 rounded-full font-bold border shadow-sm whitespace-nowrap", dense ? "px-2 py-1 text-xs" : "px-2.5 py-1 text-xs", colorVariant.badgeColor)}>
-              {safeTypeKey === 'vocabulary' ? '📚' : '📝'} 
-              <span className="hidden sm:inline">{safeTypeKey === 'vocabulary' ? 'Từ vựng' : 'Trắc nghiệm'}</span>
+        <div className={cx("flex-1 flex flex-col relative", dense ? "p-3.5" : "p-4")}>
+
+          {/* Type badge + Difficulty badge */}
+          <div className="flex items-center justify-between mb-2.5">
+            <span className={cx(
+              "inline-flex items-center gap-1 rounded-full border text-[11px] px-2 py-0.5",
+              theme.typeBadge
+            )}>
+              {safeTypeKey === "vocabulary" ? "📚" : "📝"}
+              <span className="hidden sm:inline">{safeTypeKey === "vocabulary" ? "Từ vựng" : "Trắc nghiệm"}</span>
             </span>
-            
-            <span className={cx("inline-flex items-center gap-1 rounded-full font-bold border whitespace-nowrap", dense ? "px-2 py-1 text-xs" : "px-2.5 py-1 text-xs", diff.color)}>
-              {diff.icon} <span className="hidden xs:inline">{diff.label}</span>
+
+            <span className={cx(
+              "inline-flex items-center gap-1 rounded-full border text-[11px] px-2 py-0.5",
+              diff.color
+            )}>
+              {diff.icon} {diff.label}
             </span>
           </div>
 
           {/* Title */}
           <h3 className={cx(
-            "font-bold text-slate-900 leading-tight line-clamp-2 group-hover:text-slate-700 transition-colors duration-300", 
+            "font-bold leading-tight line-clamp-2 text-slate-800 group-hover:text-slate-900 transition-colors",
             dense ? "text-sm min-h-[36px] mb-2" : "text-base min-h-[40px] mb-3"
           )}>
             {test?.test_title}
           </h3>
 
           {/* Description */}
-          <div className={cx(dense ? "min-h-[28px] mb-3" : "min-h-[32px] mb-4")}>
+          <div className={cx(dense ? "min-h-[24px] mb-2.5" : "min-h-[28px] mb-3")}>
             {test?.description ? (
-              <p className={cx("text-slate-600 leading-relaxed line-clamp-2 group-hover:text-slate-500 transition-colors duration-300", dense ? "text-xs" : "text-sm")}>
+              <p className={cx("text-slate-500 leading-relaxed line-clamp-2", dense ? "text-xs" : "text-sm")}>
                 {test.description}
               </p>
             ) : (
@@ -287,95 +286,74 @@ const TestCard = ({
             )}
           </div>
 
-          {/* Compact Stats Grid */}
-          <div className={cx("grid grid-cols-2 gap-2", dense ? "mb-3" : "mb-4")}>
-            <div className="rounded-lg p-2 border border-slate-200 bg-white shadow-sm">
-              <div className="flex items-center gap-1.5">
-                <Icon.Check className="h-3 w-3 text-slate-700" />
-                <div>
-                  <div className={cx("font-bold text-slate-900", dense ? "text-sm" : "text-base")}>{test?.total_questions || 0}</div>
-                  <div className="text-[10px] font-medium text-slate-600">câu hỏi</div>
-                </div>
+          {/* Stats — same color family as card */}
+          <div className={cx("grid grid-cols-2 gap-1.5", dense ? "mb-2.5" : "mb-3")}>
+            <div className={cx("rounded-lg px-2 py-1.5 border flex items-center gap-1.5", theme.qBox)}>
+              <Icon.Check className="h-3 w-3 shrink-0" />
+              <div>
+                <div className={cx("font-extrabold leading-none", dense ? "text-sm" : "text-base")}>{test?.total_questions || 0}</div>
+                <div className="text-[10px]">câu hỏi</div>
               </div>
             </div>
 
-            <div className="rounded-lg p-2 border border-slate-200 bg-white shadow-sm">
-              <div className="flex items-center gap-1.5">
-                <Icon.Clock className="h-3 w-3 text-slate-700" />
-                <div>
-                  <div className={cx("font-bold text-slate-900", dense ? "text-sm" : "text-base")}>{test?.time_limit_minutes || 0}</div>
-                  <div className="text-[10px] font-medium text-slate-600">{test?.time_limit_minutes ? 'phút' : 'không giới hạn'}</div>
+            <div className={cx("rounded-lg px-2 py-1.5 border flex items-center gap-1.5", theme.tBox)}>
+              <Icon.Clock className="h-3 w-3 shrink-0" />
+              <div>
+                <div className={cx("font-extrabold leading-none", dense ? "text-sm" : "text-base")}>
+                  {test?.time_limit_minutes || "∞"}
                 </div>
+                <div className="text-[10px]">{test?.time_limit_minutes ? "phút" : "không giới hạn"}</div>
               </div>
             </div>
           </div>
 
-          {/* Topic Tags */}
-          {(test?.main_topic || test?.sub_topic) && (
-            <div className={cx(dense ? "mb-2" : "mb-3")}>
-              <div className={cx(
-                "flex items-center gap-1.5 p-1.5 rounded border",
-                colorVariant.topicBox
-              )}>
-                <span className={cx(
-                  "text-[10px] font-medium truncate",
-                  colorVariant.topicText
-                )}>
-                  {test?.main_topic}
-                  {test?.sub_topic && ` • ${test.sub_topic}`}
-                </span>
-              </div>
+          {/* Topic */}
+          <div className={cx(dense ? "mb-2" : "mb-2.5")}>
+            <div
+              className={cx(
+                "px-2 py-1 rounded border",
+                hasTopic ? theme.topicBox : "bg-transparent border-transparent"
+              )}
+            >
+              <span
+                className={cx("text-[10px] truncate block", theme.topicText, !hasTopic && "invisible")}
+              >
+                {test?.main_topic}
+                {test?.sub_topic && ` · ${test.sub_topic}`}
+              </span>
             </div>
-          )}
+          </div>
 
-          {/* Attempt Count Badge */}
-          {test?.attempt_count > 0 && (
-            <div className={cx(dense ? "mb-2" : "mb-3")}>
-              <div className={cx(
-                "inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border shadow-sm",
-                attemptBoxColor
-              )}>
-                <Icon.Users className="h-3 w-3 text-white" />
-                <span className="text-xs font-bold text-white">
-                  🔥 {test.attempt_count}
+          {/* Footer row: attempt + creator + visibility */}
+          <div className={cx("border-t flex items-center justify-between gap-2 flex-wrap", theme.divider, dense ? "pt-2 mb-2" : "pt-2 mb-2.5")}>
+            <div className="flex items-center gap-1.5 min-w-0 min-h-[20px]">
+              {test?.attempt_count > 0 && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-700 bg-slate-100 border border-slate-200 rounded-full px-1.5 py-0.5">
+                  🔥 {test.attempt_count} lượt
                 </span>
-              </div>
+              )}
+              {createdBy && createdBy !== "Ẩn danh" && (
+                <span className="text-[10px] text-slate-500 truncate">
+                  {test?.attempt_count > 0 ? "" : ""}<span className="font-semibold text-slate-600">{createdBy}</span>
+                </span>
+              )}
             </div>
-          )}
-
-          {/* Visibility Mode */}
-          <div className={cx("border-t border-slate-200/60 flex items-center justify-between text-slate-500", dense ? "pt-2 mb-2" : "pt-2 mb-2")}>
-            <span className="text-[10px] font-medium text-slate-600">Chế độ hiển thị:</span>
-            <span className={cx("inline-flex items-center gap-1 rounded-full font-medium border whitespace-nowrap", dense ? "px-2 py-0.5 text-[10px]" : "px-2 py-1 text-xs", visibilityCfg.className)}>
+            <span className={cx(
+              "inline-flex items-center gap-1 rounded-full border text-[10px] px-1.5 py-0.5 shrink-0",
+              visibilityCfg.className
+            )}>
               {visibilityCfg.icon} {visibilityCfg.label}
             </span>
           </div>
 
-          {/* Creator Info */}
-          {createdBy && createdBy !== 'Ẩn danh' && (
-            <div className={cx("flex items-center gap-1.5 text-slate-500", dense ? "mb-2" : "mb-3")}>
-              <div className={cx("rounded-full bg-gradient-to-br from-slate-100 to-slate-200 border border-slate-300/50 flex items-center justify-center shadow-sm", dense ? "w-4 h-4" : "w-5 h-5")}>
-                <span className={cx("font-bold text-slate-700", dense ? "text-[8px]" : "text-[10px]")}>  
-                  {createdBy?.charAt(0)?.toUpperCase() || "A"}
-                </span>
-              </div>
-              <span className="text-[10px]">
-                Được tạo bởi <span className="font-semibold text-slate-700">{createdBy}</span>
-              </span>
-            </div>
-          )}
-
-          {/* Compact Action Button */}
+          {/* Action buttons */}
           <div className="mt-auto flex items-center gap-2">
             {onPreview && (
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onPreview(test);
-                }}
+                onClick={(e) => { e.stopPropagation(); onPreview(test); }}
                 className={cx(
-                  "flex-1 items-center justify-center rounded-lg border border-slate-700 text-white bg-slate-600",
-                  "hover:bg-slate-700 hover:border-slate-800 transition-all duration-300 font-medium flex",
+                  "flex-1 flex items-center justify-center rounded-xl transition-all duration-200",
+                  UNIFIED_PREVIEW_BTN,
                   dense ? "h-8 text-[11px]" : "h-9 text-xs"
                 )}
               >
@@ -386,9 +364,8 @@ const TestCard = ({
               to={toSettings}
               onClick={(e) => e.stopPropagation()}
               className={cx(
-                "flex-1 text-center font-bold transition-all duration-300 rounded-lg",
-                "transform hover:scale-[1.02] active:scale-95",
-                UNIFIED_BTN_COLOR,
+                "flex-1 text-center transition-all duration-200 rounded-xl hover:scale-[1.02] active:scale-95",
+                cfg.btnPrimary,
                 dense ? "h-8 text-xs leading-8" : "h-10 text-sm leading-10"
               )}
             >

@@ -24,6 +24,8 @@ const TestLayout = ({
   containerClassName = "",
   type = "vocabulary",
   hideHeader = false,
+  /** Bật theme tối (class `dark` + nền) cho vùng dưới header */
+  darkMode = false,
 }) => {
   const maxW = MAX_WIDTH_CLASS[maxWidth] || "max-w-full";
 
@@ -34,21 +36,25 @@ const TestLayout = ({
   };
 
   return (
-    <>
+    <div
+      className={[
+        "min-h-[100dvh] flex flex-col",
+        darkMode ? "bg-zinc-950" : "bg-slate-100",
+      ].join(" ")}
+    >
       <Header />
 
-      {/* ===== Page background (NO GRADIENT) ===== */}
-      <div className="min-h-screen bg-slate-100">
-        {/* ===== Container ===== */}
-        <div
-          className={[
-            "w-full mx-auto",
-            maxW,
-            "px-4 sm:px-6 lg:px-8",
-            "py-6",
-            containerClassName,
-          ].join(" ")}
-        >
+      {/* ===== Page content fills remaining viewport height ===== */}
+      <div
+        className={[
+          "flex-1 flex flex-col min-h-0 w-full mx-auto",
+          maxW,
+          "px-4 sm:px-6 lg:px-8",
+          "py-6",
+          darkMode ? "dark bg-zinc-950 text-zinc-100" : "",
+          containerClassName,
+        ].filter(Boolean).join(" ")}
+      >
           {/* ===== Page header ===== */}
           {!hideHeader && (breadcrumbItems?.length > 0 || title || description) && (
             <div className="mb-6">
@@ -112,11 +118,10 @@ const TestLayout = ({
             </div>
           )}
 
-          {/* ===== Page content ===== */}
-          {children}
-        </div>
+        {/* ===== Page content ===== */}
+        {children}
       </div>
-    </>
+    </div>
   );
 };
 

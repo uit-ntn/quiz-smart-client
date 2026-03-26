@@ -6,9 +6,9 @@ const Avatar = ({
   fallback = '👤', 
   size = 'md',
   className = '',
-  borderColor = 'border-blue-200',
-  gradientFrom = 'from-blue-500',
-  gradientTo = 'to-indigo-600'
+  borderColor = 'border-indigo-400',
+  gradientFrom = 'from-violet-600',
+  gradientTo = 'to-indigo-700'
 }) => {
   const [imageStatus, setImageStatus] = useState('loading'); // 'loading', 'loaded', 'error'
 
@@ -37,47 +37,45 @@ const Avatar = ({
 
   // Tạo fallback text từ alt (tên người dùng) nếu không có fallback được truyền vào
   const getFallbackText = () => {
-    // Nếu có fallback được truyền vào và không phải là emoji mặc định, dùng nó
     if (fallback && fallback !== '👤') {
       return typeof fallback === 'string' && fallback.length === 1 
         ? fallback.toUpperCase() 
         : fallback;
     }
     
-    // Nếu không có fallback, tự động tạo từ alt (tên người dùng)
     if (alt && alt !== 'User') {
-      // Lấy các chữ cái đầu của từng từ trong tên
       const words = alt.trim().split(/\s+/).filter(word => word.length > 0);
       if (words.length > 0) {
-        // Nếu có 1 từ: lấy 2 chữ cái đầu
         if (words.length === 1) {
           return words[0].substring(0, 2).toUpperCase();
         }
-        // Nếu có nhiều từ: lấy chữ cái đầu của 2 từ đầu tiên
         return (words[0][0] + words[1][0]).toUpperCase();
       }
     }
     
-    // Fallback cuối cùng
     return '👤';
   };
 
-  const baseClasses = `${sizeClasses[size]} rounded-xl object-cover border-2 ${borderColor} ${className}`;
+  // Keep a single source of truth for size: the wrapper.
+  // Img/fallback use w-full/h-full to avoid layout "jump" when loading state toggles.
+  const baseClasses = `w-full h-full rounded-xl object-cover border-[3px] ${borderColor} ${className} shadow-md`;
   const fallbackText = getFallbackText();
 
   return (
     <div className={`relative ${sizeClasses[size]} flex-shrink-0 z-0`}>
-      {/* Loading spinner - hiện khi đang loading */}
+      {/* Loading spinner */}
       {imageStatus === 'loading' && src && (
-        <div className={`${sizeClasses[size]} rounded-xl border-4 border-slate-200 border-t-blue-500 border-r-blue-500 border-b-transparent border-l-transparent animate-spin absolute inset-0`} />
+        <div
+          className="rounded-xl border-[3px] border-indigo-200 border-t-violet-600 border-r-indigo-500 border-b-transparent border-l-transparent animate-spin absolute inset-0 shadow-md"
+        />
       )}
 
-      {/* Image - hiện khi load thành công */}
+      {/* Image */}
       {src && (
         <img 
           src={src}
           alt={alt}
-          className={`${baseClasses} transition-opacity duration-300 ${
+          className={`${baseClasses} transition-opacity duration-300 block ${
             imageStatus === 'loaded' ? 'opacity-100 relative' : 'opacity-0 absolute inset-0'
           }`}
           onLoad={handleImageLoad}
@@ -85,9 +83,9 @@ const Avatar = ({
         />
       )}
 
-      {/* Fallback - hiện khi không có src hoặc load lỗi */}
+      {/* Fallback */}
       {(!src || imageStatus === 'error') && (
-        <div className={`${sizeClasses[size]} rounded-xl flex items-center justify-center font-bold ${textSizeClasses[size]} bg-gradient-to-br ${gradientFrom} ${gradientTo} text-white border-2 ${borderColor} ${
+        <div className={`w-full h-full rounded-xl flex items-center justify-center font-extrabold ${textSizeClasses[size]} bg-gradient-to-br ${gradientFrom} ${gradientTo} text-white border-[3px] ${borderColor} shadow-md ${
           imageStatus === 'error' && src ? 'transition-opacity duration-300 opacity-100' : ''
         }`}>
           {fallbackText}

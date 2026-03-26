@@ -15,7 +15,7 @@ const UserInfoCard = ({ user }) => {
   const getStatusColor = (status) => {
     switch (status) {
       case "active":
-        return "text-emerald-700 bg-emerald-100";
+        return "text-emerald-700 bg-emerald-100"; 
       case "inactive":
         return "text-zinc-700 bg-zinc-200";
       default:

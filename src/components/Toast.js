@@ -20,13 +20,13 @@ const Toast = ({ message, type = 'success', isVisible, onClose, duration = 3000 
     const baseStyles = "fixed top-4 right-4 z-50 px-6 py-4 rounded-lg shadow-lg border-l-4 flex items-center space-x-3 max-w-md transition-all duration-300 transform";
     
     if (type === 'success') {
-      return `${baseStyles} bg-green-50 border-green-500 text-green-800`;
+      return `${baseStyles} bg-green-50 dark:bg-green-950/90 border-green-500 text-green-800 dark:text-green-200`;
     } else if (type === 'error') {
-      return `${baseStyles} bg-red-50 border-red-500 text-red-800`;
+      return `${baseStyles} bg-red-50 dark:bg-red-950/90 border-red-500 text-red-800 dark:text-red-200`;
     } else if (type === 'warning') {
-      return `${baseStyles} bg-yellow-50 border-yellow-500 text-yellow-800`;
+      return `${baseStyles} bg-yellow-50 dark:bg-yellow-950/90 border-yellow-500 text-yellow-800 dark:text-yellow-200`;
     } else {
-      return `${baseStyles} bg-blue-50 border-blue-500 text-blue-800`;
+      return `${baseStyles} bg-blue-50 dark:bg-blue-950/90 border-blue-500 text-blue-800 dark:text-blue-200`;
     }
   };
 
@@ -71,7 +71,7 @@ const Toast = ({ message, type = 'success', isVisible, onClose, duration = 3000 
           setIsShowing(false);
           setTimeout(onClose, 300);
         }}
-        className="flex-shrink-0 ml-4 text-gray-400 hover:text-gray-600 transition-colors"
+        className="flex-shrink-0 ml-4 text-gray-400 hover:text-gray-600 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />

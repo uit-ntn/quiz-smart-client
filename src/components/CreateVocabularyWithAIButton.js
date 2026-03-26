@@ -562,25 +562,25 @@ const CreateVocabularyWithAIButton = ({ className = '' }) => {
             ref={cardRef}
             onMouseDown={(e) => e.stopPropagation()}
             className={cx(
-              'w-full max-w-5xl overflow-hidden rounded-2xl bg-white shadow-2xl border border-slate-200',
+              'w-full max-w-5xl overflow-hidden rounded-2xl bg-white shadow-2xl border-[3px] border-violet-400 ring-2 ring-violet-200',
               'flex flex-col max-h-[92vh]'
             )}
           >
-            {/* Top accent + progress */}
-            <div className="h-1.5 bg-slate-100">
-              <div className="h-1.5 bg-indigo-600 transition-all" style={{ width: `${progress}%` }} />
+            {/* Top progress bar */}
+            <div className="h-1.5 bg-violet-100">
+              <div className="h-1.5 bg-violet-600 transition-all" style={{ width: `${progress}%` }} />
             </div>
 
             {/* Header */}
-            <div className="border-b border-slate-100 px-5 py-4">
+            <div className="bg-gradient-to-r from-violet-600 to-purple-700 px-5 py-4 flex-shrink-0">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-3 min-w-0">
-                  <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-indigo-600 to-slate-900 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                  <div className="h-10 w-10 rounded-2xl bg-white/20 border-2 border-white/40 text-white flex items-center justify-center shrink-0">
                     <Icon.Spark className="h-5 w-5" />
                   </div>
                   <div className="min-w-0">
-                    <h2 className="text-[17px] sm:text-lg font-bold text-slate-900 truncate">{title}</h2>
-                    <p className="text-sm text-slate-600">{subtitle}</p>
+                    <h2 className="text-base sm:text-lg font-extrabold text-white truncate">{title}</h2>
+                    <p className="text-sm text-violet-200 font-medium">{subtitle}</p>
                   </div>
                 </div>
 
@@ -588,13 +588,10 @@ const CreateVocabularyWithAIButton = ({ className = '' }) => {
                   type="button"
                   onClick={handleClose}
                   disabled={loading}
-                  className={cx(
-                    'rounded-xl p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition',
-                    'disabled:opacity-50'
-                  )}
+                  className="w-8 h-8 rounded-xl bg-white/20 border-2 border-white/40 flex items-center justify-center text-white hover:bg-white/30 transition disabled:opacity-50 shrink-0"
                   aria-label="Đóng"
                 >
-                  <Icon.Close className="h-5 w-5" />
+                  <Icon.Close className="h-4 w-4" />
                 </button>
               </div>
 
@@ -1061,44 +1058,50 @@ const CreateVocabularyWithAIButton = ({ className = '' }) => {
 
             {/* Footer (sticky) */}
             {canShowFooter && (
-              <div className="border-t border-slate-100 px-5 py-3 bg-white sticky bottom-0">
+              <div className="border-t-2 border-violet-200 px-5 py-3 bg-violet-50 sticky bottom-0 flex-shrink-0">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     {currentStep !== 'ai-config' && (
-                      <Button type="button" onClick={goBack} disabled={loading} tone="secondary" size="sm">
-                        <Icon.Back className="h-4 w-4 mr-2" />
+                      <button type="button" onClick={goBack} disabled={loading}
+                        className="inline-flex items-center px-3 py-1.5 text-xs font-extrabold text-slate-700 bg-white border-[3px] border-slate-300 rounded-xl hover:bg-slate-50 disabled:opacity-50 transition-colors">
+                        <Icon.Back className="h-3.5 w-3.5 mr-1.5" />
                         Quay lại
-                      </Button>
+                      </button>
                     )}
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <Button type="button" onClick={handleClose} disabled={loading} tone="secondary" size="sm">
+                    <button type="button" onClick={handleClose} disabled={loading}
+                      className="px-3 py-1.5 text-xs font-extrabold text-slate-700 bg-white border-[3px] border-slate-300 rounded-xl hover:bg-slate-50 disabled:opacity-50 transition-colors">
                       Hủy
-                    </Button>
+                    </button>
 
                     {currentStep === 'ai-config' && (
-                      <Button type="button" onClick={handleGenerateWithAI} disabled={loading} tone="primary" size="sm">
-                        {loading ? 'Đang tạo…' : 'Tạo danh sách'}
-                      </Button>
+                      <button type="button" onClick={handleGenerateWithAI} disabled={loading}
+                        className="px-4 py-1.5 text-xs font-extrabold text-white bg-violet-600 border-[3px] border-violet-800 rounded-xl hover:bg-violet-700 disabled:opacity-50 transition-colors shadow-sm">
+                        {loading ? 'Đang tạo…' : '🤖 Tạo danh sách'}
+                      </button>
                     )}
 
                     {currentStep === 'edit-vocabulary' && (
-                      <Button type="button" onClick={handleSaveVocabularies} disabled={loading} tone="primary" size="sm">
-                        Tiếp tục
-                      </Button>
+                      <button type="button" onClick={handleSaveVocabularies} disabled={loading}
+                        className="px-4 py-1.5 text-xs font-extrabold text-white bg-violet-600 border-[3px] border-violet-800 rounded-xl hover:bg-violet-700 disabled:opacity-50 transition-colors">
+                        Tiếp tục →
+                      </button>
                     )}
 
                     {currentStep === 'test-info' && (
-                      <Button type="button" onClick={handleContinueToReview} disabled={loading} tone="primary" size="sm">
-                        Xem lại
-                      </Button>
+                      <button type="button" onClick={handleContinueToReview} disabled={loading}
+                        className="px-4 py-1.5 text-xs font-extrabold text-white bg-violet-600 border-[3px] border-violet-800 rounded-xl hover:bg-violet-700 disabled:opacity-50 transition-colors">
+                        Xem lại →
+                      </button>
                     )}
 
                     {currentStep === 'review' && (
-                      <Button type="button" onClick={handleCreateTest} disabled={loading} tone="success" size="sm">
-                        {loading ? 'Đang tạo…' : 'Tạo bài test'}
-                      </Button>
+                      <button type="button" onClick={handleCreateTest} disabled={loading}
+                        className="px-4 py-1.5 text-xs font-extrabold text-white bg-gradient-to-r from-emerald-600 to-teal-600 border-[3px] border-emerald-800 rounded-xl hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 transition-colors shadow-sm">
+                        {loading ? 'Đang tạo…' : '✅ Tạo bài test'}
+                      </button>
                     )}
                   </div>
                 </div>

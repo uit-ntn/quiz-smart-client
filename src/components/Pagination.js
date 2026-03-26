@@ -39,7 +39,7 @@ const Pagination = ({
   return (
     <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
       {/* Items info */}
-      <div className="text-sm text-gray-600">
+      <div className="text-sm text-zinc-300">
         Trang <span className="font-medium">{currentPage}</span> trên <span className="font-medium">{totalPages}</span> | Hiển thị <span className="font-medium">{startIndex}</span> đến{' '}
         <span className="font-medium">{endIndex}</span> trong tổng số{' '}
         <span className="font-medium">{totalItems}</span> mục
@@ -48,18 +48,18 @@ const Pagination = ({
       <div className="flex items-center gap-4">
         {/* Items per page selector */}
         <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-600">Hiển thị:</span>
+          <span className="text-sm text-zinc-300">Hiển thị:</span>
           <select
             value={itemsPerPage}
             onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
-            className="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            className="px-3 py-1 border border-zinc-600 bg-zinc-950 text-zinc-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
           >
             <option value={4}>4</option>
             <option value={8}>8</option>
             <option value={12}>12</option>
             <option value={16}>16</option>
           </select>
-          <span className="text-sm text-gray-600">mục</span>
+          <span className="text-sm text-zinc-300">mục</span>
         </div>
 
         {/* Page navigation */}
@@ -71,8 +71,8 @@ const Pagination = ({
               disabled={currentPage === 1}
               className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                 currentPage === 1
-                  ? 'text-gray-400 cursor-not-allowed'
-                  : 'text-gray-600 hover:text-indigo-600 hover:bg-indigo-50'
+                  ? 'text-zinc-600 cursor-not-allowed'
+                  : 'text-zinc-300 hover:text-indigo-300 hover:bg-indigo-900/30'
               }`}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -85,12 +85,12 @@ const Pagination = ({
               <>
                 <button
                   onClick={() => onPageChange(1)}
-                  className="px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200"
+                  className="px-3 py-2 rounded-lg text-sm font-medium text-zinc-300 hover:text-indigo-300 hover:bg-indigo-900/30 transition-all duration-200"
                 >
                   1
                 </button>
                 {pageNumbers[0] > 2 && (
-                  <span className="px-2 py-2 text-gray-400">...</span>
+                  <span className="px-2 py-2 text-zinc-500">...</span>
                 )}
               </>
             )}
@@ -103,7 +103,7 @@ const Pagination = ({
                 className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                   pageNum === currentPage
                     ? 'bg-indigo-600 text-white shadow-md'
-                    : 'text-gray-600 hover:text-indigo-600 hover:bg-indigo-50'
+                    : 'text-zinc-300 hover:text-indigo-300 hover:bg-indigo-900/30'
                 }`}
               >
                 {pageNum}
@@ -114,11 +114,11 @@ const Pagination = ({
             {pageNumbers[pageNumbers.length - 1] < totalPages && (
               <>
                 {pageNumbers[pageNumbers.length - 1] < totalPages - 1 && (
-                  <span className="px-2 py-2 text-gray-400">...</span>
+                  <span className="px-2 py-2 text-zinc-500">...</span>
                 )}
                 <button
                   onClick={() => onPageChange(totalPages)}
-                  className="px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200"
+                  className="px-3 py-2 rounded-lg text-sm font-medium text-zinc-300 hover:text-indigo-300 hover:bg-indigo-900/30 transition-all duration-200"
                 >
                   {totalPages}
                 </button>
@@ -131,8 +131,8 @@ const Pagination = ({
               disabled={currentPage === totalPages}
               className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                 currentPage === totalPages
-                  ? 'text-gray-400 cursor-not-allowed'
-                  : 'text-gray-600 hover:text-indigo-600 hover:bg-indigo-50'
+                  ? 'text-zinc-600 cursor-not-allowed'
+                  : 'text-zinc-300 hover:text-indigo-300 hover:bg-indigo-900/30'
               }`}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
