@@ -611,272 +611,177 @@ const ExportMCPModal = ({
 
   return (
     <div className="fixed inset-0 z-[70]">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
 
       <div className="relative flex min-h-screen items-center justify-center p-3">
-        {/* ✅ 90vw/90vh thật sự */}
-        <div className="w-[90vw] h-[90vh] max-w-none bg-white rounded-2xl shadow-2xl ring-1 ring-black/5 overflow-hidden flex flex-col">
+        <div className="w-[90vw] h-[90vh] max-w-none bg-white rounded-2xl shadow-2xl border-[3px] border-violet-400 ring-2 ring-violet-200 overflow-hidden flex flex-col">
+
           {/* Header */}
-          <div className="px-3 py-2 border-b border-slate-200 flex-none">
-            <div className="flex items-start justify-between gap-2 mb-2">
+          <div className="bg-gradient-to-r from-violet-600 to-purple-700 px-4 py-3 flex-none">
+            <div className="flex items-start justify-between gap-3 mb-3">
               <div>
-                <h2 className="text-sm font-semibold text-slate-900">
-                  Xuất danh sách câu hỏi trắc nghiệm
-                </h2>
-                <p className="text-xs text-slate-600 mt-0.5">
+                <h2 className="text-base font-extrabold text-white">📤 Xuất câu hỏi trắc nghiệm</h2>
+                <p className="text-xs text-violet-200 font-medium mt-0.5">
                   {previewMode ? "Xem trước nội dung sẽ được xuất" : "Chọn định dạng và trường dữ liệu muốn xuất"}
                 </p>
               </div>
-
-              <button
-                type="button"
-                onClick={onClose}
-                className="h-9 w-9 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center"
-                aria-label="Đóng"
-              >
+              <button type="button" onClick={onClose}
+                className="w-8 h-8 rounded-xl bg-white/20 border-2 border-white/40 flex items-center justify-center text-white hover:bg-white/30 transition-colors shrink-0">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
-            
-            {/* Navigation Tabs */}
-            <div className="flex bg-slate-100 rounded-lg p-0.5">
-              <button
-                type="button"
-                onClick={() => setPreviewMode(false)}
-                className={cx(
-                  "flex-1 px-2 py-1.5 text-xs font-medium rounded-md transition-all",
-                  !previewMode
-                    ? "bg-white text-slate-900 shadow-sm"
-                    : "text-slate-600 hover:text-slate-900"
-                )}
-              >
+            {/* Tabs */}
+            <div className="flex bg-white/10 rounded-xl p-0.5 gap-0.5">
+              <button type="button" onClick={() => setPreviewMode(false)}
+                className={cx("flex-1 px-3 py-1.5 text-xs font-extrabold rounded-lg transition-all",
+                  !previewMode ? "bg-white text-violet-800 shadow-sm" : "text-white/80 hover:text-white hover:bg-white/10")}>
                 ⚙️ Cấu hình
               </button>
-              <button
-                type="button"
-                onClick={() => setPreviewMode(true)}
-                disabled={selectedCount === 0}
-                className={cx(
-                  "flex-1 px-2 py-1.5 text-xs font-medium rounded-md transition-all",
-                  previewMode
-                    ? "bg-white text-slate-900 shadow-sm"
-                    : "text-slate-600 hover:text-slate-900",
-                  selectedCount === 0 && "opacity-50 cursor-not-allowed"
-                )}
-              >
+              <button type="button" onClick={() => setPreviewMode(true)} disabled={selectedCount === 0}
+                className={cx("flex-1 px-3 py-1.5 text-xs font-extrabold rounded-lg transition-all",
+                  previewMode ? "bg-white text-violet-800 shadow-sm" : "text-white/80 hover:text-white hover:bg-white/10",
+                  selectedCount === 0 && "opacity-40 cursor-not-allowed")}>
                 👁️ Xem trước
               </button>
             </div>
           </div>
 
           {/* Body */}
-          <div className="flex-1 min-h-0 overflow-y-auto px-3 py-2">
+          <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3">
             {errorBanner && (
-              <div className="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1.5 text-xs text-rose-800 mb-2">
+              <div className="rounded-xl border-2 border-rose-400 bg-rose-100 px-3 py-2 text-xs text-rose-800 font-bold mb-3">
                 {errorBanner}
                 {!user && errorBanner.includes("hết 3 lần") && (
                   <div className="mt-2">
-                    <a href="/login" className="text-blue-600 hover:text-blue-700 font-semibold underline">
-                      Đăng nhập ngay
-                    </a>
+                    <a href="/login" className="text-blue-700 hover:text-blue-800 font-extrabold underline">Đăng nhập ngay</a>
                   </div>
                 )}
               </div>
             )}
-            
             {!user && !errorBanner && (
-              <div className="rounded-lg border border-blue-200 bg-blue-50 px-2 py-1.5 text-xs text-blue-800 mb-2">
-                {(() => {
-                  const { remaining } = canExport(!!user);
-                  return remaining > 0 
-                    ? `Bạn còn ${remaining} lần xuất file miễn phí. Đăng nhập để xuất không giới hạn.`
-                    : null;
-                })()}
+              <div className="rounded-xl border-2 border-indigo-300 bg-indigo-100 px-3 py-2 text-xs text-indigo-800 font-bold mb-3">
+                {(() => { const { remaining } = canExport(!!user); return remaining > 0 ? `Bạn còn ${remaining} lần xuất file miễn phí. Đăng nhập để xuất không giới hạn.` : null; })()}
               </div>
             )}
 
             {previewMode ? (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-slate-900">Xem trước nội dung</h3>
-                  <span className="text-xs text-slate-500">Định dạng: {exportFormat.toUpperCase()}</span>
+                  <h3 className="text-sm font-extrabold text-slate-900">Xem trước nội dung</h3>
+                  <span className="inline-flex items-center rounded-full border-2 border-violet-300 bg-violet-100 px-2.5 py-0.5 text-xs font-bold text-violet-700">{exportFormat.toUpperCase()}</span>
                 </div>
                 {renderPreview()}
               </div>
             ) : (
-              <div className="space-y-3">
-                {/* Export Format */}
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-2">
-                Định dạng xuất
-              </label>
-
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setExportFormat("pdf")}
-                  className={cx(
-                    "p-3 rounded-xl border-2 text-left transition",
-                    exportFormat === "pdf"
-                      ? "border-indigo-500 bg-indigo-50 text-indigo-900"
-                      : "border-slate-200 hover:border-slate-300"
-                  )}
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-xl bg-red-100 flex items-center justify-center">
-                      <span className="text-red-600 font-bold text-xs">PDF</span>
-                    </div>
-                    <div>
-                      <div className="text-sm font-semibold">PDF</div>
-                      <div className="text-xs text-slate-500">Portable Document Format</div>
-                    </div>
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setExportFormat("word")}
-                  className={cx(
-                    "p-3 rounded-xl border-2 text-left transition",
-                    exportFormat === "word"
-                      ? "border-indigo-500 bg-indigo-50 text-indigo-900"
-                      : "border-slate-200 hover:border-slate-300"
-                  )}
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-xl bg-blue-100 flex items-center justify-center">
-                      <span className="text-blue-600 font-bold text-xs">DOC</span>
-                    </div>
-                    <div>
-                      <div className="text-sm font-semibold">Word</div>
-                      <div className="text-xs text-slate-500">Microsoft Word Document</div>
-                    </div>
-                  </div>
-                </button>
-              </div>
-            </div>
-
-            {/* Fields */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-xs font-medium text-slate-700">
-                  Chọn trường dữ liệu ({selectedCount}/{availableFields.length})
-                </label>
-                <button
-                  type="button"
-                  onClick={handleSelectAll}
-                  className="text-xs text-indigo-600 hover:text-indigo-700 font-semibold"
-                >
-                  {selectedCount === availableFields.length ? "Bỏ chọn tất cả" : "Chọn tất cả"}
-                </button>
-              </div>
-
-              <div className="border border-slate-200 rounded-xl p-2">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-[260px] overflow-y-auto pr-1">
-                  {availableFields.map((field) => (
-                    <label
-                      key={field.key}
-                      className={cx(
-                        "flex items-center gap-2 rounded-xl border px-3 py-2 cursor-pointer select-none transition",
-                        selectedFields[field.key]
-                          ? "border-indigo-200 bg-indigo-50"
-                          : "border-slate-200 bg-white hover:bg-slate-50"
-                      )}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={!!selectedFields[field.key]}
-                        onChange={() => handleFieldToggle(field.key)}
-                        className="h-4 w-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
-                      />
-
-                      <div className="min-w-0">
-                        <div className="text-sm font-semibold text-slate-900 leading-5 truncate">
-                          {field.label}
+              <div className="space-y-4">
+                {/* Format */}
+                <div>
+                  <label className="block text-xs font-extrabold text-slate-700 mb-2 uppercase tracking-wide">Định dạng xuất</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button type="button" onClick={() => setExportFormat("pdf")}
+                      className={cx("p-2.5 rounded-xl border-[3px] text-left transition-all",
+                        exportFormat === "pdf" ? "border-rose-500 bg-rose-50 shadow-md" : "border-slate-200 hover:border-rose-300 bg-white")}>
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-xl bg-rose-600 border-2 border-rose-800 flex items-center justify-center">
+                          <span className="text-white font-extrabold text-[10px]">PDF</span>
                         </div>
-                        <div className="text-[11px] text-slate-500 leading-4 truncate">
-                          {field.description}
+                        <div>
+                          <div className={cx("text-xs font-extrabold", exportFormat === "pdf" ? "text-rose-800" : "text-slate-800")}>PDF</div>
+                          <div className="text-[10px] text-slate-500">Portable Document Format</div>
                         </div>
                       </div>
-                    </label>
-                  ))}
+                    </button>
+                    <button type="button" onClick={() => setExportFormat("word")}
+                      className={cx("p-2.5 rounded-xl border-[3px] text-left transition-all",
+                        exportFormat === "word" ? "border-blue-500 bg-blue-50 shadow-md" : "border-slate-200 hover:border-blue-300 bg-white")}>
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-xl bg-blue-700 border-2 border-blue-900 flex items-center justify-center">
+                          <span className="text-white font-extrabold text-[10px]">DOC</span>
+                        </div>
+                        <div>
+                          <div className={cx("text-xs font-extrabold", exportFormat === "word" ? "text-blue-800" : "text-slate-800")}>Word</div>
+                          <div className="text-[10px] text-slate-500">Microsoft Word Document</div>
+                        </div>
+                      </div>
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </div>
 
-            {/* Summary */}
-            <div className="rounded-xl bg-slate-50 p-3 border border-slate-200">
-              <div className="text-sm text-slate-700 space-y-1">
-                <div className="flex justify-between">
-                  <span>Số câu hỏi:</span>
-                  <span className="font-semibold">{questions.length}</span>
+                {/* Fields */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wide">
+                      Chọn trường dữ liệu ({selectedCount}/{availableFields.length})
+                    </label>
+                    <button type="button" onClick={handleSelectAll}
+                      className="text-xs text-violet-700 hover:text-violet-900 font-extrabold border-b border-violet-400">
+                      {selectedCount === availableFields.length ? "Bỏ chọn tất cả" : "Chọn tất cả"}
+                    </button>
+                  </div>
+                  <div className="border-2 border-violet-200 rounded-xl p-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-[260px] overflow-y-auto pr-1">
+                      {availableFields.map((field) => (
+                        <label key={field.key}
+                          className={cx("flex items-center gap-2 rounded-xl border-2 px-3 py-2 cursor-pointer select-none transition-all",
+                            selectedFields[field.key] ? "border-violet-400 bg-violet-50 shadow-sm" : "border-slate-200 bg-white hover:border-violet-300 hover:bg-violet-50/50")}>
+                          <input type="checkbox" checked={!!selectedFields[field.key]}
+                            onChange={() => handleFieldToggle(field.key)}
+                            className="h-4 w-4 text-violet-600 rounded border-violet-300 focus:ring-violet-500" />
+                          <div className="min-w-0">
+                            <div className={cx("text-xs font-extrabold leading-5 truncate", selectedFields[field.key] ? "text-violet-800" : "text-slate-900")}>{field.label}</div>
+                            <div className="text-[10px] text-slate-500 leading-4 truncate">{field.description}</div>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span>Định dạng:</span>
-                  <span className="font-semibold uppercase">{exportFormat}</span>
+
+                {/* Summary */}
+                <div className="rounded-xl bg-violet-50 border-2 border-violet-300 p-3">
+                  <p className="text-[10px] font-extrabold text-violet-700 uppercase tracking-wide mb-2">Tóm tắt xuất</p>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="inline-flex items-center rounded-full border-2 border-sky-300 bg-sky-100 px-2.5 py-0.5 text-xs font-bold text-sky-700">📝 {questions.length} câu hỏi</span>
+                    <span className="inline-flex items-center rounded-full border-2 border-rose-300 bg-rose-100 px-2.5 py-0.5 text-xs font-bold text-rose-700">📄 {exportFormat.toUpperCase()}</span>
+                    <span className="inline-flex items-center rounded-full border-2 border-violet-400 bg-violet-100 px-2.5 py-0.5 text-xs font-bold text-violet-700">✅ {selectedCount} trường</span>
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span>Trường được chọn:</span>
-                  <span className="font-semibold">{selectedCount}</span>
-                </div>
-              </div>
-            </div>
               </div>
             )}
           </div>
 
           {/* Footer */}
-          <div className="px-3 py-2 border-t border-slate-200 flex-none bg-white">
+          <div className="px-4 py-3 border-t-2 border-violet-200 flex-none bg-violet-50">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  disabled={isExporting}
-                  className="px-4 py-2 text-sm font-semibold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 disabled:opacity-50"
-                >
-                  Hủy
-                </button>
-              </div>
-              
+              <button type="button" onClick={onClose} disabled={isExporting}
+                className="px-4 py-2 text-xs font-extrabold text-slate-700 bg-white border-[3px] border-slate-300 rounded-xl hover:bg-slate-50 disabled:opacity-50 transition-colors">
+                Hủy
+              </button>
               <div className="flex items-center gap-2">
                 {previewMode && (
-                  <button
-                    type="button"
-                    onClick={() => setPreviewMode(false)}
-                    disabled={isExporting}
-                    className="px-4 py-2 text-sm font-semibold text-slate-700 bg-slate-100 rounded-xl hover:bg-slate-200 disabled:opacity-50"
-                  >
-                    ← Quay lại cấu hình
+                  <button type="button" onClick={() => setPreviewMode(false)} disabled={isExporting}
+                    className="px-4 py-2 text-xs font-extrabold text-slate-700 bg-white border-[3px] border-slate-300 rounded-xl hover:bg-slate-50 disabled:opacity-50 transition-colors">
+                    ← Quay lại
                   </button>
                 )}
-                
                 {!previewMode ? (
-                  <button
-                    type="button"
-                    onClick={() => setPreviewMode(true)}
-                    disabled={selectedCount === 0 || questions.length === 0}
-                    className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 disabled:opacity-50"
-                  >
+                  <button type="button" onClick={() => setPreviewMode(true)} disabled={selectedCount === 0 || questions.length === 0}
+                    className="px-4 py-2 text-xs font-extrabold text-white bg-blue-700 border-[3px] border-blue-900 rounded-xl hover:bg-blue-800 disabled:opacity-50 transition-colors">
                     Xem trước →
                   </button>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={handleExport}
+                  <button type="button" onClick={handleExport}
                     disabled={isExporting || selectedCount === 0 || questions.length === 0 || (!user && !canExport(!!user).canExport)}
-                    className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2"
-                  >
+                    className="px-4 py-2 text-xs font-extrabold text-white bg-violet-700 border-[3px] border-violet-900 rounded-xl hover:bg-violet-800 disabled:opacity-50 flex items-center gap-2 transition-colors">
                     {isExporting && (
                       <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                         <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25" />
                         <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" className="opacity-75" />
                       </svg>
                     )}
-                    {isExporting ? "Đang xuất..." : "Xuất file"}
+                    {isExporting ? "Đang xuất..." : "⬇️ Xuất file"}
                   </button>
                 )}
               </div>

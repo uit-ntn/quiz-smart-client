@@ -119,6 +119,24 @@ const ProfileResultsPage = () => {
   return (
     <ProfileLayout>
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Page Header */}
+        <div className="mb-6">
+          <h1 className="text-2xl md:text-3xl font-black text-slate-900 mb-1.5">
+            Kết quả <span className="text-fuchsia-700">bài test</span>
+          </h1>
+          <p className="text-slate-600 text-sm font-medium mb-3">Xem lại lịch sử và kết quả các bài test của bạn</p>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-fuchsia-800 bg-fuchsia-600 px-2.5 py-0.5 text-[11px] font-bold text-white shadow-md">
+              📊 {results.length} kết quả
+            </span>
+            {statistics?.total_tests > 0 && (
+              <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-emerald-800 bg-emerald-600 px-2.5 py-0.5 text-[11px] font-bold text-white shadow-md">
+                ⭐ TB {Number(statistics?.average_score || 0).toFixed(1)}%
+              </span>
+            )}
+          </div>
+        </div>
+
         {/* Statistics Cards */}
         <ProfileStatisticsCards statistics={statistics} loading={statisticsLoading} />
 
@@ -134,39 +152,34 @@ const ProfileResultsPage = () => {
 
         {/* Delete Confirmation Modal */}
         {showDeleteConfirm && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
-              <div className="flex items-center gap-4 mb-4">
-                <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
-                  <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Xác nhận xóa</h3>
-                  <p className="text-sm text-gray-500">Hành động này không thể hoàn tác</p>
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl border-[3px] border-rose-500 ring-2 ring-rose-200 shadow-2xl max-w-md w-full overflow-hidden">
+              <div className="bg-gradient-to-r from-rose-600 to-red-700 px-5 py-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-white/20 border-2 border-white/40 flex items-center justify-center text-xl">🗑️</div>
+                  <div>
+                    <h3 className="text-base font-extrabold text-white">Xác nhận xóa kết quả</h3>
+                    <p className="text-xs text-rose-200 font-medium">Hành động này không thể hoàn tác</p>
+                  </div>
                 </div>
               </div>
-              
-              <p className="text-gray-700 mb-6">
-                Bạn có chắc chắn muốn xóa kết quả bài test "{resultToDelete?.test?.test_title}" không?
-              </p>
-              
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowDeleteConfirm(false)}
-                  disabled={deleteLoading}
-                  className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50"
-                >
-                  Hủy
-                </button>
-                <button
-                  onClick={confirmDeleteResult}
-                  disabled={deleteLoading}
-                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
-                >
-                  {deleteLoading ? 'Đang xóa...' : 'Xóa'}
-                </button>
+              <div className="p-5">
+                <div className="bg-rose-50 border-2 border-rose-300 rounded-xl p-3 mb-4">
+                  <p className="text-sm text-slate-800 font-bold">
+                    Bạn có chắc muốn xóa kết quả bài test{' '}
+                    <span className="text-rose-700">"{resultToDelete?.test?.test_title}"</span>?
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => setShowDeleteConfirm(false)} disabled={deleteLoading}
+                    className="flex-1 px-4 py-2.5 text-slate-700 bg-white border-[3px] border-slate-300 rounded-xl font-extrabold text-sm hover:bg-slate-50 disabled:opacity-50 transition-colors">
+                    Hủy
+                  </button>
+                  <button onClick={confirmDeleteResult} disabled={deleteLoading}
+                    className="flex-1 px-4 py-2.5 bg-gradient-to-r from-rose-600 to-red-600 border-[3px] border-red-900 text-white rounded-xl font-extrabold text-sm hover:from-rose-700 hover:to-red-700 disabled:opacity-50 transition-colors shadow-md">
+                    {deleteLoading ? 'Đang xóa...' : '🗑️ Xóa ngay'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

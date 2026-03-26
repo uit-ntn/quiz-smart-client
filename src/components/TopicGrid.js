@@ -7,10 +7,10 @@ const TopicGrid = ({ topics, onOpenModal }) => {
   if (topics.length === 0) {
     return (
       <div className="text-center py-20">
-        <div className="w-32 h-32 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6">
+        <div className="w-32 h-32 bg-slate-100 border border-slate-200 rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
           <span className="text-6xl">📂</span>
         </div>
-        <h3 className="text-2xl font-bold text-slate-900 mb-2">Không tìm thấy chủ đề</h3>
+        <h3 className="text-2xl font-bold text-slate-800 mb-2">Không tìm thấy chủ đề</h3>
         <p className="text-slate-600">Thử thay đổi từ khóa tìm kiếm hoặc tạo chủ đề mới</p>
       </div>
     );

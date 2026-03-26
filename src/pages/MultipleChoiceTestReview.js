@@ -368,10 +368,10 @@ const MultipleChoiceTestReview = () => {
 
   if (pageLoading) {
     return (
-      <div className="min-h-screen bg-slate-100 flex items-center justify-center">
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-md p-6 text-center">
-          <div className="w-10 h-10 border-4 border-slate-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-slate-600 text-sm">Đang tải dữ liệu bài làm…</p>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "linear-gradient(to bottom right, #bae6fd, #dbeafe, #d1fae5)" }}>
+        <div className="rounded-2xl border-[3px] border-indigo-400 bg-white shadow-xl p-6 text-center">
+          <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-indigo-900 text-sm font-extrabold">Đang tải dữ liệu bài làm…</p>
         </div>
       </div>
     );
@@ -379,14 +379,12 @@ const MultipleChoiceTestReview = () => {
 
   if (!test || questions.length === 0) {
     return (
-      <div className="min-h-screen bg-slate-100 flex items-center justify-center">
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 shadow-md p-6 text-center max-w-md">
-          <p className="text-rose-700 text-sm font-semibold">Không có dữ liệu bài làm để hiển thị.</p>
-          <p className="text-rose-600 text-xs mt-2">{error || "Vui lòng làm bài lại."}</p>
-          <button
-            onClick={() => navigate(`/multiple-choice/test/${testId}/settings`)}
-            className="mt-4 rounded-xl bg-rose-600 text-white px-4 py-2 text-sm font-semibold hover:bg-rose-700"
-          >
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "linear-gradient(to bottom right, #bae6fd, #dbeafe, #d1fae5)" }}>
+        <div className="rounded-2xl border-[3px] border-rose-500 bg-white shadow-xl p-6 text-center max-w-md">
+          <p className="text-rose-700 text-sm font-extrabold">Không có dữ liệu bài làm để hiển thị.</p>
+          <p className="text-rose-600 text-xs mt-2 font-bold">{error || "Vui lòng làm bài lại."}</p>
+          <button onClick={() => navigate(`/multiple-choice/test/${testId}/settings`)}
+            className="mt-4 rounded-xl bg-rose-600 border-[3px] border-rose-900 text-white px-4 py-2 text-sm font-extrabold hover:bg-rose-500 shadow-lg">
             Về trang cài đặt
           </button>
         </div>
@@ -395,155 +393,144 @@ const MultipleChoiceTestReview = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100">
-      {/* container */}
-      <div className="w-full h-full px-2 sm:px-4 py-1 sm:py-2 flex flex-col">
-        <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-1 sm:gap-2">
-          {/* SIDEBAR - Mobile: First, Desktop: Last */}
-          <div className="lg:col-span-4 min-h-0 order-1 lg:order-2">
-            <div className="lg:sticky lg:top-4 min-h-0 flex flex-col gap-2 lg:max-h-[calc(100vh-2rem)] lg:overflow-auto">
-              {/* score card */}
-              <div className="rounded-2xl border border-slate-200 bg-white shadow-md p-3 sm:p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <p className="text-xs text-slate-500">Điểm số</p>
-                    <p className="text-lg sm:text-xl font-extrabold text-slate-900">{score}%</p>
-                    <p className="text-xs font-semibold text-slate-700">{getScoreMessage(score)}</p>
-                  </div>
+    <div className="min-h-screen" style={{ background: "linear-gradient(to bottom right, #bae6fd, #dbeafe, #d1fae5)" }}>
+      <div className="w-full h-full px-2 sm:px-4 py-2 sm:py-3 flex flex-col pb-6 lg:pb-3">
 
+        {/* Top bar */}
+        <div className="mb-2 flex flex-wrap items-center gap-1.5">
+          <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-violet-800 bg-violet-600 px-2.5 py-0.5 text-[11px] font-bold text-white shadow-md">
+            <span className="inline-flex h-2 w-2 rounded-full bg-lime-400" />
+            Xem lại bài
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-sky-800 bg-sky-600 px-2.5 py-0.5 text-[11px] font-bold text-white shadow-md">
+            📌 {questions.length} câu
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-emerald-800 bg-emerald-600 px-2.5 py-0.5 text-[11px] font-bold text-white shadow-md">
+            ✅ {correctCount} đúng • ❌ {incorrectCount} sai
+          </span>
+          <span className="hidden sm:inline text-[10px] text-slate-800 font-bold ml-auto">(←→: chuyển câu)</span>
+        </div>
+
+        <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-2 sm:gap-3">
+          {/* SIDEBAR */}
+          <div className="lg:col-span-4 min-h-0 order-2 lg:order-2">
+            <div className="lg:sticky lg:top-4 flex flex-col gap-2 lg:max-h-[calc(100vh-5rem)] lg:overflow-auto">
+
+              {/* Score card — fuchsia */}
+              <div className="rounded-2xl border-[3px] border-fuchsia-500 bg-gradient-to-br from-fuchsia-100 to-purple-200 shadow-xl ring-2 ring-fuchsia-300/60 p-3">
+                {/* Score row — on mobile show as horizontal strip */}
+                <div className="flex items-center gap-3">
                   <Ring value={score} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-extrabold text-fuchsia-900">Điểm số</p>
+                    <p className="text-2xl font-extrabold text-slate-900 leading-none">{score}%</p>
+                    <p className="text-xs font-extrabold text-purple-800 mt-0.5">{getScoreMessage(score)}</p>
+                  </div>
+                  {/* Mini stats on same row for mobile */}
+                  <div className="flex flex-col gap-1 shrink-0 text-right">
+                    <span className="text-[11px] font-extrabold text-emerald-700">✅ {correctCount} đúng</span>
+                    <span className="text-[11px] font-extrabold text-rose-700">❌ {incorrectCount} sai</span>
+                    <span className="text-[11px] font-extrabold text-amber-700">— {unansweredCount} bỏ</span>
+                  </div>
                 </div>
 
-                <div className="mt-2 grid grid-cols-3 gap-2">
+                <div className="mt-2 grid grid-cols-3 gap-1.5">
                   <StatMini label="Đúng" value={correctCount} tone="emerald" />
                   <StatMini label="Sai" value={incorrectCount} tone="rose" />
-                  <StatMini label="Chưa làm" value={unansweredCount} tone="amber" />
+                  <StatMini label="Bỏ qua" value={unansweredCount} tone="amber" />
                 </div>
 
-                <div className="mt-2 flex flex-col gap-2">
+                <div className="mt-2 flex flex-col gap-1.5">
                   {draftResultId && !isSaved && (
-                    <button
-                      onClick={saveResult}
-                      disabled={loading}
-                      className={`w-full rounded-xl px-3 py-2 text-sm font-semibold text-white shadow-md transition ${
-                        loading ? "bg-emerald-400" : "bg-emerald-600 hover:bg-emerald-700"
-                      }`}
-                    >
-                      {loading ? "Đang lưu…" : "Lưu kết quả"}
+                    <button onClick={saveResult} disabled={loading}
+                      className={`w-full rounded-xl px-3 py-2 text-sm font-extrabold text-white shadow-lg border-[3px] transition ${loading ? "bg-emerald-400 border-emerald-600" : "bg-emerald-600 border-emerald-900 hover:bg-emerald-500"}`}>
+                      {loading ? "Đang lưu…" : "💾 Lưu kết quả"}
                     </button>
                   )}
-
                   {isSaved && (
-                    <div className="w-full rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 text-center">
-                      ✓ Đã lưu kết quả
+                    <div className="w-full rounded-xl border-[3px] border-emerald-700 bg-emerald-500 px-3 py-2 text-sm font-extrabold text-emerald-950 text-center shadow">
+                      ✅ Đã lưu kết quả
                     </div>
                   )}
 
-                  <button
-                    onClick={handleExportQuestions}
-                    className="w-full rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-md hover:opacity-95 active:opacity-90 mb-2"
-                  >
+                  <button onClick={handleExportQuestions}
+                    className="w-full rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 border-[3px] border-emerald-900 px-3 py-2 text-sm font-extrabold text-white shadow-lg hover:brightness-110">
                     📄 Xuất câu hỏi PDF/DOCX
                   </button>
 
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => navigate(`/multiple-choice/test/${testId}/settings`)}
-                      className="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-md hover:from-blue-700 hover:to-indigo-700 transition-all"
-                    >
-                      Làm lại
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <button onClick={() => navigate(`/multiple-choice/test/${testId}/settings`)}
+                      className="rounded-xl bg-blue-700 border-[3px] border-blue-900 px-3 py-2 text-sm font-extrabold text-white shadow-lg hover:bg-blue-600">
+                      🔄 Làm lại
                     </button>
-                    <button
-                      onClick={() => navigate("/topics")}
-                      className="rounded-xl bg-gradient-to-r from-slate-600 to-slate-700 px-3 py-2 text-sm font-semibold text-white shadow-md hover:from-slate-700 hover:to-slate-800 transition-all flex items-center justify-center gap-2"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                      </svg>
-                      <span>Thoát</span>
+                    <button onClick={() => navigate("/topics")}
+                      className="rounded-xl border-[3px] border-teal-800 bg-teal-600 px-3 py-2 text-sm font-extrabold text-white shadow-lg hover:bg-teal-500 flex items-center justify-center gap-1">
+                      ← Thoát
                     </button>
                   </div>
 
                   {error && (
-                    <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
-                      {error}
-                    </div>
+                    <div className="rounded-xl border-2 border-rose-600 bg-rose-100 px-3 py-2 text-xs font-extrabold text-rose-900">{error}</div>
                   )}
                 </div>
 
-                {/* Test Info inside score card */}
-                <div className="mt-3 pt-3 border-t border-slate-200">
-                  <h4 className="text-xs font-bold text-slate-900 mb-2">Thông tin bài kiểm tra</h4>
-                  <div className="space-y-1 text-xs">
+                <div className="mt-3 pt-3 border-t-2 border-fuchsia-300">
+                  <h4 className="text-xs font-extrabold text-slate-900 mb-2">Thông tin bài kiểm tra</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-1.5 text-xs">
                     <InfoRow label="Tiêu đề" value={testInfo?.test_title || test?.test_title || "—"} />
-                    <InfoRow
-                      label="Chủ đề"
-                      value={`${testInfo?.main_topic || test?.main_topic || "—"} - ${testInfo?.sub_topic || test?.sub_topic || "—"}`}
-                    />
+                    <InfoRow label="Chủ đề" value={`${testInfo?.main_topic || test?.main_topic || "—"} - ${testInfo?.sub_topic || test?.sub_topic || "—"}`} />
                     <InfoRow label="Độ khó" value={(test?.difficulty || "—").toString()} badge />
                     <InfoRow label="Giới hạn" value={`${testInfo?.time_limit_minutes ?? test?.time_limit_minutes ?? "—"} phút`} />
                   </div>
                 </div>
               </div>
 
-              {/* question grid */}
-              <div className="rounded-2xl border border-slate-200 bg-white shadow-md overflow-hidden">
-                <div className="px-2 sm:px-2 py-1 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-slate-900">Danh sách câu</h4>
-                  <span className="text-xs text-slate-500">{questions.length} câu</span>
+              {/* Question grid — amber/orange */}
+              <div className="rounded-2xl border-[3px] border-orange-600 bg-gradient-to-br from-amber-200 to-orange-300 shadow-lg ring-2 ring-orange-400 overflow-hidden">
+                <div className="px-3 py-2 bg-gradient-to-r from-orange-600 to-amber-600 flex items-center justify-between">
+                  <h4 className="text-xs font-extrabold text-white">Danh sách câu</h4>
+                  <span className="text-xs font-extrabold text-orange-100">{questions.length} câu</span>
                 </div>
 
-                <div className="p-3 sm:p-3 max-h-64 overflow-y-auto">
-                  <div className="grid grid-cols-8 sm:grid-cols-10 lg:grid-cols-12 gap-1.5">
+                <div className="p-3 max-h-52 sm:max-h-60 overflow-y-auto">
+                  <div className="grid grid-cols-10 sm:grid-cols-12 lg:grid-cols-10 gap-1">
                     {questionsToDisplay.map((question, i) => {
                       const actualIndex = startIndex + i;
                       const result = results[actualIndex];
                       const isCurrent = actualIndex === selectedQuestion;
                       const answered = isAnswered(result.userAnswer);
 
-                      let tone = "bg-amber-500";
-                      if (result.isCorrect) tone = "bg-emerald-600";
-                      else if (answered) tone = "bg-rose-600";
+                      let cls = "aspect-square rounded-lg text-white text-[10px] font-extrabold shadow transition border-2 ";
+                      if (result.isCorrect) cls += "bg-emerald-500 border-emerald-800";
+                      else if (answered) cls += "bg-rose-500 border-rose-800";
+                      else cls += "bg-amber-400 text-amber-950 border-amber-700";
 
                       return (
-                        <button
-                          key={String(question._id)}
-                          onClick={() => setSelectedQuestion(actualIndex)}
-                          className={`aspect-square rounded-xl text-white text-xs font-bold shadow-md transition hover:opacity-90 ${tone} ${
-                            isCurrent ? "ring-2 ring-blue-500 ring-offset-2" : "ring-0"
-                          }`}
-                          title={`Câu ${actualIndex + 1}`}
-                        >
+                        <button key={String(question._id)} onClick={() => setSelectedQuestion(actualIndex)}
+                          className={`${cls} ${isCurrent ? "ring-[3px] ring-blue-700 ring-offset-1 ring-offset-amber-100 scale-105" : "hover:brightness-95"}`}
+                          title={`Câu ${actualIndex + 1}`}>
                           {actualIndex + 1}
                         </button>
                       );
                     })}
                   </div>
 
-                  <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-600">
-                    <LegendDot color="bg-emerald-600" label={`Đúng (${correctCount})`} />
-                    <LegendDot color="bg-rose-600" label={`Sai (${incorrectCount})`} />
-                    <LegendDot color="bg-amber-500" label={`Chưa làm (${unansweredCount})`} />
+                  <div className="mt-2 flex flex-wrap gap-2 text-[10px] text-slate-900 font-bold">
+                    <LegendDot color="bg-emerald-500 border border-emerald-800" label={`Đúng (${correctCount})`} />
+                    <LegendDot color="bg-rose-500 border border-rose-800" label={`Sai (${incorrectCount})`} />
+                    <LegendDot color="bg-amber-400 border border-amber-700" label={`Chưa làm (${unansweredCount})`} />
                   </div>
 
                   {totalQuestionPages > 1 && (
-                    <div className="mt-3 flex items-center justify-between">
-                      <button
-                        onClick={() => setQuestionPage((p) => Math.max(0, p - 1))}
-                        disabled={questionPage === 0}
-                        className="px-3 py-1 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Trước
+                    <div className="mt-2 flex items-center justify-between gap-2">
+                      <button onClick={() => setQuestionPage((p) => Math.max(0, p - 1))} disabled={questionPage === 0}
+                        className="px-2.5 py-1 text-xs font-extrabold text-white bg-teal-600 border-2 border-teal-900 rounded-lg hover:bg-teal-500 disabled:opacity-50">
+                        ← Trước
                       </button>
-                      <span className="text-xs text-slate-500">
-                        Trang {questionPage + 1} / {totalQuestionPages}
-                      </span>
-                      <button
-                        onClick={() => setQuestionPage((p) => Math.min(totalQuestionPages - 1, p + 1))}
-                        disabled={questionPage === totalQuestionPages - 1}
-                        className="px-3 py-1 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Sau
+                      <span className="text-xs font-bold text-slate-900">Trang {questionPage + 1}/{totalQuestionPages}</span>
+                      <button onClick={() => setQuestionPage((p) => Math.min(totalQuestionPages - 1, p + 1))} disabled={questionPage === totalQuestionPages - 1}
+                        className="px-2.5 py-1 text-xs font-extrabold text-white bg-fuchsia-600 border-2 border-fuchsia-900 rounded-lg hover:bg-fuchsia-500 disabled:opacity-50">
+                        Sau →
                       </button>
                     </div>
                   )}
@@ -551,33 +538,21 @@ const MultipleChoiceTestReview = () => {
               </div>
             </div>
           </div>
-          {/* end sidebar */}
 
-          {/* MAIN - Mobile: Second, Desktop: First */}
-          <div className="lg:col-span-8 min-h-0 flex flex-col order-2 lg:order-1">
-            <div className="flex-1 min-h-0 rounded-2xl border border-slate-200 bg-white shadow-md overflow-hidden flex flex-col">
+          {/* MAIN */}
+          <div className="lg:col-span-8 min-h-0 flex flex-col order-1 lg:order-1">
+            <div className="flex-1 min-h-0 rounded-2xl border-[3px] border-indigo-400 bg-white shadow-xl overflow-hidden flex flex-col ring-2 ring-indigo-200/60">
               {/* header */}
-              <div className="px-3 sm:px-4 py-2 border-b border-slate-200 bg-slate-50 shrink-0">
+              <div className="px-3 sm:px-4 py-2 bg-gradient-to-r from-indigo-600 to-violet-700 shrink-0">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-xs text-slate-500">Câu hỏi</p>
-                    <h3 className="text-xs sm:text-sm font-bold text-slate-800">
+                    <p className="text-xs text-indigo-200 font-bold">Câu hỏi</p>
+                    <h3 className="text-xs sm:text-sm font-extrabold text-white">
                       Câu {selectedQuestion + 1} / {questions.length}
                     </h3>
                   </div>
-
-                  <div
-                    className={`shrink-0 inline-flex items-center gap-3 rounded-xl px-3 py-1.5 text-xs font-semibold border ${
-                      currentResult?.isCorrect
-                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                        : "bg-rose-50 text-rose-700 border-rose-200"
-                    }`}
-                  >
-                    <span
-                      className={`inline-flex h-8 w-8 items-center justify-center rounded-lg text-white font-bold text-lg border-2 border-white ${
-                        currentResult?.isCorrect ? "bg-emerald-600" : "bg-rose-600"
-                      }`}
-                    >
+                  <div className={`shrink-0 inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-extrabold border-2 ${currentResult?.isCorrect ? "bg-emerald-500 text-white border-emerald-900 shadow" : "bg-rose-500 text-white border-rose-900 shadow"}`}>
+                    <span className={`inline-flex h-7 w-7 items-center justify-center rounded-lg text-white font-extrabold border-2 border-white/40 ${currentResult?.isCorrect ? "bg-emerald-700" : "bg-rose-700"}`}>
                       {currentResult?.isCorrect ? "✓" : "✗"}
                     </span>
                     {currentResult?.isCorrect ? "Đúng" : "Sai"}
@@ -586,76 +561,55 @@ const MultipleChoiceTestReview = () => {
               </div>
 
               {/* scrollable content */}
-              <div className="p-3 sm:p-3 flex-1 min-h-0 overflow-auto">
+              <div className="p-3 sm:p-4 flex-1 min-h-0 overflow-auto">
                 <h4 className="text-xs sm:text-sm font-semibold text-slate-900 leading-relaxed pb-3">
                   {currentQuestion?.question_text}
                 </h4>
 
-                {/* options */}
-                <div className="mt-3 space-y-1.5">
+                <div className="mt-2 space-y-2">
                   {(currentQuestion?.options || []).map((option) => {
                     const isUserAnswer = selectedLabels.includes(option.label);
                     const isAnswerCorrect = isCorrectAnswer(currentQuestion?.correct_answers, option.label);
 
-                    const tone = isAnswerCorrect
-                      ? "border-emerald-600 bg-emerald-600 text-white"
+                    const rowCls = isAnswerCorrect
+                      ? "border-[3px] border-emerald-700 bg-emerald-500 text-white shadow-md"
                       : isUserAnswer
-                      ? "border-rose-600 bg-rose-600 text-white"
-                      : "border-slate-200 bg-white";
+                      ? "border-[3px] border-rose-700 bg-rose-500 text-white shadow-md"
+                      : "border-[3px] border-indigo-200 bg-indigo-50";
 
-                    const badgeTone = isAnswerCorrect
-                      ? "border-emerald-700 text-white bg-emerald-700"
+                    const badgeCls = isAnswerCorrect
+                      ? "border-2 border-emerald-900 bg-emerald-700 text-white"
                       : isUserAnswer
-                      ? "border-rose-700 text-white bg-rose-700"
-                      : "border-slate-200 text-slate-600 bg-white";
+                      ? "border-2 border-rose-900 bg-rose-700 text-white"
+                      : "border-2 border-indigo-400 bg-indigo-500 text-white";
 
                     return (
-                      <div
-                        key={option.label}
-                        className={`rounded-2xl border ${tone} px-3 py-2 transition hover:shadow-md`}
-                      >
+                      <div key={option.label} className={`rounded-2xl ${rowCls} px-3 py-2`}>
                         <div className="flex items-start gap-3">
-                          <div
-                            className={`h-8 w-8 rounded-xl border ${badgeTone} flex items-center justify-center font-bold text-sm shadow-md`}
-                          >
+                          <div className={`h-8 w-8 rounded-xl ${badgeCls} flex items-center justify-center font-extrabold text-sm shadow-md shrink-0`}>
                             {option.label}
                           </div>
-
                           <div className="flex-1">
-                            <p className={`text-xs leading-relaxed ${isAnswerCorrect || isUserAnswer ? 'text-white' : 'text-slate-800'}`}>{option.text}</p>
-
+                            <p className={`text-xs leading-relaxed font-semibold ${isAnswerCorrect || isUserAnswer ? 'text-white' : 'text-slate-800'}`}>{option.text}</p>
                             <div className="mt-1.5 flex flex-wrap gap-1.5">
                               {isAnswerCorrect && (
-                                <span className="inline-flex items-center rounded-full bg-emerald-600 px-1 py-0.5 text-[10px] font-semibold text-white">
-                                  Đáp án đúng
-                                </span>
+                                <span className="inline-flex items-center rounded-full bg-emerald-700 border border-emerald-900 px-1.5 py-0.5 text-[10px] font-extrabold text-white">✓ Đáp án đúng</span>
                               )}
                               {isUserAnswer && !isAnswerCorrect && (
-                                <span className="inline-flex items-center rounded-full bg-rose-600 px-1 py-0.5 text-[10px] font-semibold text-white">
-                                  Bạn chọn
-                                </span>
+                                <span className="inline-flex items-center rounded-full bg-rose-700 border border-rose-900 px-1.5 py-0.5 text-[10px] font-extrabold text-white">✗ Bạn chọn</span>
                               )}
                               {isUserAnswer && isAnswerCorrect && (
-                                <span className="inline-flex items-center rounded-full bg-slate-900 px-1 py-0.5 text-[10px] font-semibold text-white">
-                                  Bạn chọn đúng
-                                </span>
+                                <span className="inline-flex items-center rounded-full bg-emerald-900 px-1.5 py-0.5 text-[10px] font-extrabold text-white">✓ Bạn chọn đúng</span>
                               )}
                             </div>
                           </div>
-
                           <div className="shrink-0 pt-0.5">
                             {isAnswerCorrect ? (
-                              <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-md">
-                                ✓
-                              </span>
+                              <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-700 text-white font-extrabold shadow">✓</span>
                             ) : isUserAnswer ? (
-                              <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-rose-600 text-white shadow-md">
-                                ✗
-                              </span>
+                              <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-rose-700 text-white font-extrabold shadow">✗</span>
                             ) : (
-                              <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 text-slate-400 bg-white">
-                                •
-                              </span>
+                              <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg border-2 border-indigo-300 text-indigo-400 bg-white">•</span>
                             )}
                           </div>
                         </div>
@@ -666,40 +620,32 @@ const MultipleChoiceTestReview = () => {
 
                 {/* Explanation */}
                 {currentQuestion?.explanation && (
-                  <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-xl space-y-2">
-                    <h5 className="text-xs font-semibold text-blue-900 mb-2">Giải thích</h5>
-                    
-                    {/* Correct answer explanations */}
+                  <div className="mt-3 p-3 bg-gradient-to-br from-blue-100 to-indigo-100 border-[3px] border-indigo-400 rounded-xl space-y-2">
+                    <h5 className="text-xs font-extrabold text-indigo-900 mb-2">💡 Giải thích</h5>
                     {currentQuestion.explanation.correct && (
-                      <div className="bg-green-50 border border-green-200 rounded-lg p-2">
-                        <p className="text-xs font-semibold text-green-800 mb-1">
+                      <div className="bg-emerald-100 border-2 border-emerald-500 rounded-lg p-2">
+                        <p className="text-xs font-extrabold text-emerald-900 mb-1">
                           Đáp án đúng ({getCorrectAnswerLabels(currentQuestion.correct_answers).join(', ')})
                         </p>
                         {typeof currentQuestion.explanation.correct === 'object' && Object.keys(currentQuestion.explanation.correct).length > 0 ? (
                           <div className="space-y-1">
                             {Object.entries(currentQuestion.explanation.correct).map(([option, text]) => (
-                              <p key={option} className="text-xs text-green-700">
-                                <span className="font-medium text-green-800">{option}:</span> {text}
-                              </p>
+                              <p key={option} className="text-xs text-emerald-800 font-semibold"><span className="font-extrabold">{option}:</span> {text}</p>
                             ))}
                           </div>
                         ) : typeof currentQuestion.explanation.correct === 'string' && currentQuestion.explanation.correct.trim() ? (
-                          <p className="text-xs text-green-700">{currentQuestion.explanation.correct}</p>
+                          <p className="text-xs text-emerald-800 font-semibold">{currentQuestion.explanation.correct}</p>
                         ) : null}
                       </div>
                     )}
-                    
-                    {/* Incorrect answer explanations */}
                     {currentQuestion.explanation.incorrect_choices && Object.keys(currentQuestion.explanation.incorrect_choices).length > 0 && (
-                      <div className="bg-red-50 border border-red-200 rounded-lg p-2">
-                        <p className="text-xs font-semibold text-red-800 mb-1">Giải thích các đáp án sai:</p>
+                      <div className="bg-rose-100 border-2 border-rose-500 rounded-lg p-2">
+                        <p className="text-xs font-extrabold text-rose-900 mb-1">Giải thích đáp án sai:</p>
                         <div className="space-y-1">
                           {Object.entries(currentQuestion.explanation.incorrect_choices)
-                            .filter(([label, value]) => value && value.trim())
+                            .filter(([, value]) => value && value.trim())
                             .map(([label, value]) => (
-                              <p key={label} className="text-xs text-red-700">
-                                <span className="font-medium text-red-800">{label}:</span> {value}
-                              </p>
+                              <p key={label} className="text-xs text-rose-800 font-semibold"><span className="font-extrabold">{label}:</span> {value}</p>
                             ))}
                         </div>
                       </div>
@@ -709,32 +655,30 @@ const MultipleChoiceTestReview = () => {
               </div>
 
               {/* bottom nav */}
-              <div className="shrink-0 px-1 sm:px-2 py-1 border-t border-slate-200 bg-white">
-                <div className="flex items-center justify-between gap-3">
-                  <button
-                    onClick={goPrev}
-                    disabled={selectedQuestion === 0}
-                    className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-md hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
+              <div className="shrink-0 px-2 py-2 border-t-2 border-indigo-200 bg-indigo-50">
+                <div className="flex items-center justify-between gap-2">
+                  <button onClick={goPrev} disabled={selectedQuestion === 0}
+                    className="inline-flex items-center justify-center rounded-xl border-[3px] border-teal-800 bg-teal-600 px-3 sm:px-4 py-2 text-xs sm:text-sm font-extrabold text-white shadow-lg hover:bg-teal-500 disabled:opacity-40 disabled:cursor-not-allowed">
                     ← Trước
                   </button>
-
-                  <div className="text-xs text-slate-500">
-                    {selectedQuestion + 1} / {questions.length}
+                  <div className="flex flex-col items-center gap-0.5">
+                    <div className="text-xs font-extrabold text-indigo-900">
+                      {selectedQuestion + 1} / {questions.length}
+                    </div>
+                    {currentResult && (
+                      <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${currentResult.isCorrect ? "bg-emerald-100 border-emerald-400 text-emerald-800" : "bg-rose-100 border-rose-400 text-rose-800"}`}>
+                        {currentResult.isCorrect ? "✓ Đúng" : "✗ Sai"}
+                      </span>
+                    )}
                   </div>
-
-                  <button
-                    onClick={goNext}
-                    disabled={selectedQuestion === questions.length - 1}
-                    className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-md hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
+                  <button onClick={goNext} disabled={selectedQuestion === questions.length - 1}
+                    className="inline-flex items-center justify-center rounded-xl border-[3px] border-fuchsia-900 bg-fuchsia-600 px-3 sm:px-4 py-2 text-xs sm:text-sm font-extrabold text-white shadow-lg hover:bg-fuchsia-500 disabled:opacity-40 disabled:cursor-not-allowed">
                     Tiếp →
                   </button>
                 </div>
               </div>
             </div>
           </div>
-          {/* end main */}
         </div>
       </div>
 
@@ -759,16 +703,12 @@ const MultipleChoiceTestReview = () => {
 
 function Ring({ value = 0 }) {
   const v = Math.max(0, Math.min(100, Number(value) || 0));
+  const color = v >= 90 ? '#059669' : v >= 75 ? '#2563eb' : v >= 50 ? '#f59e0b' : '#e11d48';
   return (
-    <div className="relative h-14 w-14 sm:h-16 sm:w-16 shrink-0">
-      <div
-        className="absolute inset-0 rounded-full"
-        style={{
-          background: `conic-gradient(#10b981 ${v * 3.6}deg, #e2e8f0 0deg)`,
-        }}
-      />
+    <div className="relative h-16 w-16 shrink-0">
+      <div className="absolute inset-0 rounded-full" style={{ background: `conic-gradient(${color} ${v * 3.6}deg, #c4b5fd 0deg)` }} />
       <div className="absolute inset-[6px] rounded-full bg-white flex items-center justify-center shadow-md">
-        <span className="text-xs font-bold text-slate-700">{v}%</span>
+        <span className="text-xs font-extrabold text-slate-900">{v}%</span>
       </div>
     </div>
   );
@@ -776,28 +716,28 @@ function Ring({ value = 0 }) {
 
 function StatMini({ label, value, tone }) {
   const map = {
-    emerald: "border-emerald-200 bg-emerald-50 text-emerald-700",
-    rose: "border-rose-200 bg-rose-50 text-rose-700",
-    amber: "border-amber-200 bg-amber-50 text-amber-700",
+    emerald: "border-emerald-700 bg-emerald-500 text-white",
+    rose: "border-rose-700 bg-rose-500 text-white",
+    amber: "border-amber-700 bg-amber-400 text-amber-950",
   };
   return (
-    <div className={`rounded-2xl border px-3 py-2 text-center ${map[tone] || ""}`}>
+    <div className={`rounded-xl border-2 px-2 py-2 text-center shadow-sm ${map[tone] || ""}`}>
       <div className="text-lg font-extrabold leading-none">{value}</div>
-      <div className="mt-1 text-[11px] font-semibold">{label}</div>
+      <div className="mt-0.5 text-[10px] font-extrabold">{label}</div>
     </div>
   );
 }
 
 function InfoRow({ label, value, badge }) {
   return (
-    <div className="flex items-start justify-between gap-3">
-      <span className="text-xs text-slate-500">{label}</span>
+    <div className="flex items-start justify-between gap-2">
+      <span className="text-xs text-purple-800 font-bold">{label}</span>
       {badge ? (
-        <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs font-semibold text-slate-700 capitalize">
+        <span className="inline-flex items-center rounded-full border-2 border-indigo-400 bg-indigo-600 text-white px-2 py-0.5 text-xs font-extrabold capitalize shadow-sm">
           {value}
         </span>
       ) : (
-        <span className="text-sm font-semibold text-slate-800 text-right">{value}</span>
+        <span className="text-xs font-extrabold text-slate-900 text-right">{value}</span>
       )}
     </div>
   );
@@ -805,7 +745,7 @@ function InfoRow({ label, value, badge }) {
 
 function LegendDot({ color, label }) {
   return (
-    <span className="inline-flex items-center gap-3">
+    <span className="inline-flex items-center gap-1.5">
       <span className={`h-2.5 w-2.5 rounded-full ${color}`} />
       {label}
     </span>

@@ -100,22 +100,20 @@ const MultipleChoiceTestSettings = () => {
 
   if (error || !test) {
     return (
-      <div className="min-h-screen bg-slate-50 py-4">
-        <div className="max-w-xl mx-auto px-4">
-          <div className="rounded-2xl border border-red-200 bg-white shadow-sm">
-            <div className="p-4">
-              <ErrorMessage
-                error={error || "Không tìm thấy bài kiểm tra"}
-                onRetry={error ? () => window.location.reload() : null}
-              />
-              <div className="mt-4 text-center">
-                <button
-                  onClick={() => navigate(-1)}
-                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
-                >
-                  <span className="text-lg leading-none">←</span> Quay lại
-                </button>
-              </div>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "linear-gradient(to bottom right, #bae6fd, #dbeafe, #d1fae5)" }}>
+        <div className="max-w-xl w-full mx-4">
+          <div className="rounded-2xl border-[3px] border-rose-500 bg-white shadow-xl p-4">
+            <ErrorMessage
+              error={error || "Không tìm thấy bài kiểm tra"}
+              onRetry={error ? () => window.location.reload() : null}
+            />
+            <div className="mt-4 text-center">
+              <button
+                onClick={() => navigate(-1)}
+                className="inline-flex items-center gap-2 rounded-xl border-[3px] border-teal-800 bg-teal-600 px-3 py-2 text-sm font-extrabold text-white shadow-lg hover:bg-teal-500"
+              >
+                ← Quay lại
+              </button>
             </div>
           </div>
         </div>
@@ -152,42 +150,49 @@ const MultipleChoiceTestSettings = () => {
 
   return (
     <MultipleChoiceLayout>
-        {/* Top header */}
-        <div className="mb-2 sm:mb-4 flex items-start justify-between gap-3">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm">
-              <span className="inline-flex h-2 w-2 rounded-full bg-blue-600" />
+      <div style={{ background: "linear-gradient(to bottom right, #bae6fd, #dbeafe, #d1fae5)", borderRadius: "1rem", padding: "0.75rem" }}>
+
+        {/* Top bar */}
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-violet-800 bg-violet-600 px-2.5 py-0.5 text-[11px] font-bold text-white shadow-md">
+              <span className="inline-flex h-2 w-2 rounded-full bg-lime-400" />
               Multiple Choice
-            </div>
-
-            <h1 className="mt-1 text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-              Cấu hình bài test
-            </h1>
-
-            <p className="mt-0.5 text-sm text-slate-600">
-              <span className="font-semibold text-slate-800">{title}</span>
-              <span className="mx-2 text-slate-300">•</span>
-              {effective.totalQuestions} câu hỏi
-            </p>
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-sky-800 bg-sky-600 px-2.5 py-0.5 text-[11px] font-bold text-white shadow-md">
+              📌 {effective.totalQuestions} câu
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-emerald-800 bg-emerald-600 px-2.5 py-0.5 text-[11px] font-bold text-white shadow-md">
+              ⏱️ {effective.timeLimitMinutes} phút
+            </span>
           </div>
 
           <button
             onClick={() => navigate(-1)}
-            className="shrink-0 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+            className="self-start sm:self-auto shrink-0 inline-flex items-center gap-2 rounded-xl border-[3px] border-teal-800 bg-teal-600 px-3 py-1.5 text-sm font-extrabold text-white shadow-lg hover:bg-teal-500"
           >
-            <span className="text-lg leading-none">←</span> Quay lại
+            ← Quay lại
           </button>
         </div>
 
+        {/* Title */}
+        <div className="mb-3">
+          <h1 className="text-lg sm:text-2xl font-extrabold text-slate-900 tracking-tight">Cấu hình bài test</h1>
+          <p className="mt-0.5 text-xs sm:text-sm text-indigo-900 font-bold line-clamp-2">{title}</p>
+        </div>
+
         {/* Content */}
-        <div className="mt-2 sm:mt-4 grid grid-cols-1 lg:grid-cols-2 gap-3">
-          {/* Left: Test Info */}
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-3 sm:p-5">
-            <h2 className="text-base sm:text-lg font-extrabold text-slate-900 mb-3">Thông tin bài test</h2>
-            <div className="space-y-2">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          {/* Left: Test Info — fuchsia card */}
+          <div className="rounded-2xl border-[3px] border-fuchsia-500 bg-gradient-to-br from-fuchsia-100 to-purple-200 shadow-xl ring-2 ring-fuchsia-300/60 p-4">
+            <h2 className="text-sm sm:text-base font-extrabold text-slate-900 mb-3 flex items-center gap-2">
+              <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-fuchsia-600 text-white text-xs font-extrabold shadow">📋</span>
+              Thông tin bài test
+            </h2>
+            <div className="space-y-1.5">
               <InfoLine icon="📝" label="Tiêu đề" value={test?.test_title || "—"} />
               <InfoLine icon="📖" label="Mô tả" value={test?.description || "—"} />
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-1.5">
                 <InfoLine icon="🏷️" label="Chủ đề chính" value={test?.main_topic || "—"} />
                 <InfoLine icon="📂" label="Chủ đề phụ" value={test?.sub_topic || "—"} />
                 <InfoLine icon="🔧" label="Loại test" value={test?.test_type || "—"} />
@@ -196,63 +201,65 @@ const MultipleChoiceTestSettings = () => {
                 <InfoLine icon="📊" label="Độ khó" value={test?.difficulty || "—"} />
                 <InfoLine icon="🔒" label="Trạng thái" value={test?.status || "—"} />
                 <InfoLine icon="👁️" label="Hiển thị" value={test?.visibility || "—"} />
-                <InfoLine icon="👤" label="Tạo bởi" value={test?.created_by_full_name || "—"} />
+                <InfoLine icon="👤" label="Tạo bởi" value={test?.created_by_full_name || "—"} className="col-span-2" />
               </div>
             </div>
           </div>
 
-          {/* Right: Settings */}
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-3 sm:p-5">
+          {/* Right: Settings — indigo/amber card */}
+          <div className="rounded-2xl border-[3px] border-indigo-500 bg-gradient-to-br from-indigo-100 to-violet-200 shadow-xl ring-2 ring-indigo-300/60 p-4">
             <div className="flex items-start justify-between gap-3 mb-3">
               <div>
-                <h2 className="text-base sm:text-lg font-extrabold text-slate-900">Tùy chọn hiển thị</h2>
-                <p className="text-sm text-slate-600 mt-0.5">
-                  Bật/tắt một số yếu tố giao diện khi làm bài.
-                </p>
+                <h2 className="text-sm sm:text-base font-extrabold text-slate-900 flex items-center gap-2">
+                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-indigo-600 text-white text-xs shadow">⚙️</span>
+                  Tùy chọn hiển thị
+                </h2>
+                <p className="text-xs text-indigo-900 font-bold mt-0.5">Bật/tắt các yếu tố giao diện khi làm bài.</p>
               </div>
-
-              <span className="hidden sm:inline-flex items-center rounded-xl px-3 py-1 text-xs font-semibold bg-blue-50 text-blue-700">
+              <span className="hidden sm:inline-flex items-center rounded-full border-2 border-indigo-700 bg-indigo-600 px-2.5 py-0.5 text-[10px] font-extrabold text-white shadow">
                 Kiểm tra: sau mỗi câu
               </span>
             </div>
 
-            <div className="grid grid-cols-1 gap-1 mb-3">
+            <div className="grid grid-cols-1 gap-1.5 mb-3">
               {displayOptions.map((item) => (
                 <label
                   key={item.id}
                   htmlFor={item.id}
-                  className="flex items-start gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5 shadow-sm hover:bg-slate-50 transition cursor-pointer"
+                  className={`flex items-start gap-2.5 rounded-xl px-3 py-2 shadow-sm transition cursor-pointer border-[3px] ${
+                    settings[item.key]
+                      ? 'border-indigo-600 bg-white ring-2 ring-indigo-300'
+                      : 'border-white/70 bg-white/60 hover:bg-white hover:border-indigo-300'
+                  }`}
                 >
                   <input
                     id={item.id}
                     type="checkbox"
                     checked={!!settings[item.key]}
                     onChange={(e) => handleSettingChange(item.key, e.target.checked)}
-                    className="mt-1 w-3.5 h-3.5 accent-blue-600 rounded border-slate-300"
+                    className="mt-0.5 w-4 h-4 accent-indigo-600 rounded border-indigo-400"
                   />
                   <div className="min-w-0">
                     <div className="text-sm font-extrabold text-slate-900">{item.label}</div>
-                    <div className="mt-0.5 text-xs text-slate-600 leading-tight">{item.desc}</div>
+                    <div className="mt-0.5 text-xs text-indigo-900 font-bold leading-tight">{item.desc}</div>
                   </div>
                 </label>
               ))}
             </div>
 
-            {/* optional: per-question time limit */}
-            <div className="rounded-lg border border-slate-200 bg-white p-2">
-              <div className="flex items-start justify-between gap-3">
+            {/* Per-question time limit */}
+            <div className="rounded-xl border-[3px] border-amber-500 bg-amber-100 p-3 shadow-md">
+              <div className="flex items-start justify-between gap-3 mb-2">
                 <div>
                   <h3 className="text-sm font-extrabold text-slate-900">Giới hạn thời gian mỗi câu</h3>
-                  <p className="text-xs text-slate-600 mt-0.5">
-                    Để trống nếu muốn theo tổng thời gian bài.
-                  </p>
+                  <p className="text-xs text-amber-900 font-bold mt-0.5">Để trống nếu muốn theo tổng thời gian bài.</p>
                 </div>
-                <span className="text-xs font-semibold text-slate-500">
+                <span className="text-xs font-extrabold text-amber-800 bg-white px-2 py-0.5 rounded-full border-2 border-amber-500">
                   {effective.perQuestion}
                 </span>
               </div>
 
-              <div className="mt-2 flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <input
                   type="number"
                   min={5}
@@ -263,14 +270,13 @@ const MultipleChoiceTestSettings = () => {
                     handleSettingChange("questionTimeLimit", v === "" ? null : Number(v));
                   }}
                   placeholder="Ví dụ: 30"
-                  className="w-28 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-blue-500"
+                  className="w-24 sm:w-28 rounded-lg border-2 border-amber-400 bg-white px-2 py-1.5 text-sm font-bold outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-300"
                 />
-                <span className="text-sm text-slate-600">giây</span>
-
+                <span className="text-sm font-extrabold text-amber-900">giây</span>
                 <button
                   type="button"
                   onClick={() => handleSettingChange("questionTimeLimit", null)}
-                  className="ml-auto inline-flex items-center rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                  className="ml-auto inline-flex items-center rounded-lg border-2 border-rose-600 bg-rose-500 px-2.5 py-1.5 text-xs font-extrabold text-white shadow hover:bg-rose-400"
                 >
                   Reset
                 </button>
@@ -279,24 +285,25 @@ const MultipleChoiceTestSettings = () => {
 
             <button
               onClick={handleStartTest}
-              className="mt-4 w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-3 py-2 text-sm font-bold text-white shadow-lg hover:opacity-95 active:opacity-90"
+              className="mt-4 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-600 via-red-600 to-rose-700 px-3 py-2.5 text-sm font-extrabold text-white shadow-lg border-[3px] border-red-900 hover:brightness-110"
             >
-              Bắt đầu làm bài <span className="text-lg">→</span>
+              Bắt đầu làm bài →
             </button>
           </div>
         </div>
+      </div>
     </MultipleChoiceLayout>
   );
 };
 
-function InfoLine({ icon, label, value }) {
+function InfoLine({ icon, label, value, className = "" }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-2 py-1.5">
-      <div className="flex items-center gap-2 text-sm text-slate-700">
-        <span className="text-base">{icon}</span>
-        <span className="text-slate-500">{label}</span>
+    <div className={`flex items-center justify-between gap-2 rounded-lg border-2 border-purple-300 bg-white px-2 py-1.5 shadow-sm ${className}`}>
+      <div className="flex items-center gap-1.5 text-xs min-w-0">
+        <span className="text-sm shrink-0">{icon}</span>
+        <span className="text-purple-800 font-bold truncate">{label}</span>
       </div>
-      <div className="text-sm font-bold text-slate-900">{value}</div>
+      <div className="text-xs font-extrabold text-slate-900 truncate text-right ml-2 max-w-[50%]">{value}</div>
     </div>
   );
 }

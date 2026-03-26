@@ -640,28 +640,28 @@ const CreateVocabularyTestButton = ({ className = '' }) => {
     >
       <div
         ref={cardRef}
-        className="bg-white rounded-xl shadow-2xl max-w-7xl w-full h-[92vh] overflow-hidden border border-neutral-200 flex flex-col"
+        className="bg-white rounded-2xl shadow-2xl max-w-7xl w-full h-[92vh] overflow-hidden border-[3px] border-indigo-400 ring-2 ring-indigo-200 flex flex-col"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200 bg-neutral-50">
+        <div className="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-indigo-600 to-violet-700 flex-shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-indigo-600 text-white flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-white/20 border-2 border-white/40 text-white flex items-center justify-center shrink-0">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253" />
               </svg>
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-neutral-900">
+              <h2 className="text-base font-extrabold text-white">
                 {currentStep === 'test-info' && 'Thông Tin Bài Test'}
                 {currentStep === 'vocabulary' && 'Nhập Danh Sách Từ Vựng'}
                 {currentStep === 'review' && 'Xem Lại Thông Tin'}
                 {currentStep === 'creating' && 'Đang Tạo Bài Test'}
-                {currentStep === 'success' && 'Hoàn Thành!'}
+                {currentStep === 'success' && 'Hoàn Thành! 🎉'}
               </h2>
-              <p className="text-xs text-neutral-600">
-                {currentStep === 'test-info' && 'Bước 1/3 - Cấu hình bài test'}
-                {currentStep === 'vocabulary' && 'Bước 2/3 - Chuẩn bị từ vựng'}
-                {currentStep === 'review' && 'Bước 3/3 - Kiểm tra thông tin'}
+              <p className="text-xs text-indigo-100 font-medium">
+                {currentStep === 'test-info' && 'Bước 1/3 — Cấu hình bài test'}
+                {currentStep === 'vocabulary' && 'Bước 2/3 — Chuẩn bị từ vựng'}
+                {currentStep === 'review' && 'Bước 3/3 — Kiểm tra thông tin'}
                 {currentStep === 'creating' && 'Đang xử lý...'}
                 {currentStep === 'success' && 'Bài test đã được tạo thành công'}
               </p>
@@ -670,27 +670,27 @@ const CreateVocabularyTestButton = ({ className = '' }) => {
           <button
             onClick={handleClose}
             disabled={loading}
-            className="p-2 text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 rounded-md transition disabled:opacity-50"
+            className="w-8 h-8 rounded-xl bg-white/20 border-2 border-white/40 flex items-center justify-center text-white hover:bg-white/30 transition disabled:opacity-50"
             aria-label="Đóng"
             type="button"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
         {/* Progress */}
         {(currentStep === 'vocabulary' || currentStep === 'test-info' || currentStep === 'review') && (
-          <div className="px-6 py-3 bg-neutral-50 border-b border-neutral-200">
-            <div className="flex items-center gap-2">
-              <div className="flex-1 bg-neutral-200 rounded-full h-2">
+          <div className="px-5 py-2.5 bg-indigo-50 border-b-2 border-indigo-200 flex-shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="flex-1 bg-indigo-200 rounded-full h-2.5">
                 <div
-                  className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
+                  className="bg-indigo-600 h-2.5 rounded-full transition-all duration-300"
                   style={{ width: `${progressPct}%` }}
                 />
               </div>
-              <span className="text-xs font-medium text-neutral-700">
+              <span className="inline-flex items-center rounded-full border-2 border-indigo-400 bg-indigo-100 px-2 py-0.5 text-[11px] font-extrabold text-indigo-700">
                 {currentStep === 'test-info' ? '1/3' : currentStep === 'vocabulary' ? '2/3' : '3/3'}
               </span>
             </div>
@@ -698,7 +698,7 @@ const CreateVocabularyTestButton = ({ className = '' }) => {
         )}
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto bg-neutral-50">
+        <div className="flex-1 overflow-y-auto bg-gradient-to-br from-sky-50 to-indigo-50">
           <div className="p-6 space-y-6">
             {/* STEP 2 - VOCABULARY */}
             {currentStep === 'vocabulary' && (
@@ -1168,28 +1168,21 @@ const CreateVocabularyTestButton = ({ className = '' }) => {
 
           {/* Footer */}
           {(currentStep === 'vocabulary' || currentStep === 'test-info' || currentStep === 'review') && (
-            <div className="border-t border-neutral-200 bg-white">
-              {/* Error Message - Hiển thị ở đây để gần nút actions */}
+            <div className="border-t-2 border-indigo-200 bg-indigo-50 flex-shrink-0">
               {errMsg && (
-                <div className="px-6 pt-4 pb-3">
-                  <div className="bg-rose-50 border border-rose-200 rounded-lg p-4" role="alert" aria-live="assertive">
-                    <div className="flex items-start gap-3">
-                      <svg className="w-5 h-5 text-rose-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <div className="px-5 pt-3 pb-2">
+                  <div className="bg-rose-100 border-2 border-rose-400 rounded-xl p-3" role="alert" aria-live="assertive">
+                    <div className="flex items-start gap-2">
+                      <svg className="w-4 h-4 text-rose-600 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                       </svg>
                       <div className="flex-1">
-                        <p className="text-sm font-semibold text-rose-900 mb-2">Lỗi xảy ra!</p>
-                        <p className="text-sm text-rose-800 whitespace-pre-line mb-3">{errMsg}</p>
+                        <p className="text-xs font-extrabold text-rose-900 mb-1">Lỗi xảy ra!</p>
+                        <p className="text-xs text-rose-800 whitespace-pre-line mb-2">{errMsg}</p>
                         {errMsg.includes('đã tồn tại') && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setCurrentStep('test-info');
-                              setErrMsg('');
-                            }}
-                            className="px-4 py-2 text-sm font-medium text-rose-700 bg-white border border-rose-300 rounded-lg hover:bg-rose-50 transition-colors"
-                          >
-                            ← Quay lại để đổi tên bài test
+                          <button type="button" onClick={() => { setCurrentStep('test-info'); setErrMsg(''); }}
+                            className="px-3 py-1.5 text-xs font-extrabold text-rose-700 bg-white border-2 border-rose-400 rounded-lg hover:bg-rose-50 transition-colors">
+                            ← Quay lại để đổi tên
                           </button>
                         )}
                       </div>
@@ -1197,72 +1190,42 @@ const CreateVocabularyTestButton = ({ className = '' }) => {
                   </div>
                 </div>
               )}
-              
-              {/* Action Buttons */}
-              <div className="flex items-center justify-between px-6 pb-4">
-                <div className="flex gap-3">
+              <div className="flex items-center justify-between px-5 py-3">
+                <div className="flex gap-2">
                   {currentStep === 'vocabulary' && (
-                    <button
-                      type="button"
-                      onClick={() => { setCurrentStep('test-info'); setErrMsg(''); }}
-                      disabled={loading}
-                      className="px-4 py-2 text-sm font-medium text-neutral-800 bg-white border border-neutral-300 rounded-md hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-                    >
-                      Quay lại
+                    <button type="button" onClick={() => { setCurrentStep('test-info'); setErrMsg(''); }} disabled={loading}
+                      className="px-4 py-2 text-xs font-extrabold text-slate-700 bg-white border-[3px] border-slate-300 rounded-xl hover:bg-slate-50 disabled:opacity-50 transition-colors">
+                      ← Quay lại
                     </button>
                   )}
                   {currentStep === 'review' && (
-                    <button
-                      type="button"
-                      onClick={() => { setCurrentStep('vocabulary'); setErrMsg(''); }}
-                      disabled={loading}
-                      className="px-4 py-2 text-sm font-medium text-neutral-800 bg-white border border-neutral-300 rounded-md hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-                    >
-                      Quay lại
+                    <button type="button" onClick={() => { setCurrentStep('vocabulary'); setErrMsg(''); }} disabled={loading}
+                      className="px-4 py-2 text-xs font-extrabold text-slate-700 bg-white border-[3px] border-slate-300 rounded-xl hover:bg-slate-50 disabled:opacity-50 transition-colors">
+                      ← Quay lại
                     </button>
                   )}
                 </div>
-
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={handleClose}
-                    disabled={loading}
-                    className="px-4 py-2 text-sm font-medium text-neutral-800 bg-white border border-neutral-300 rounded-md hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-                  >
+                <div className="flex gap-2">
+                  <button type="button" onClick={handleClose} disabled={loading}
+                    className="px-4 py-2 text-xs font-extrabold text-slate-700 bg-white border-[3px] border-slate-300 rounded-xl hover:bg-slate-50 disabled:opacity-50 transition-colors">
                     Hủy
                   </button>
-
                   {currentStep === 'test-info' && (
-                    <button
-                      type="button"
-                      onClick={handleContinueToVocabulary}
-                      disabled={loading}
-                      className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-                    >
-                      Tiếp tục
+                    <button type="button" onClick={handleContinueToVocabulary} disabled={loading}
+                      className="px-4 py-2 text-xs font-extrabold text-white bg-indigo-600 border-[3px] border-indigo-800 rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors">
+                      Tiếp tục →
                     </button>
                   )}
-
                   {currentStep === 'vocabulary' && (
-                    <button
-                      type="button"
-                      onClick={handleContinueToReview}
-                      disabled={loading}
-                      className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-                    >
-                      Xem lại
+                    <button type="button" onClick={handleContinueToReview} disabled={loading}
+                      className="px-4 py-2 text-xs font-extrabold text-white bg-indigo-600 border-[3px] border-indigo-800 rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors">
+                      Xem lại →
                     </button>
                   )}
-
                   {currentStep === 'review' && (
-                    <button
-                      type="button"
-                      onClick={handleCreateTest}
-                      disabled={loading}
-                      className="px-5 py-2 text-sm font-semibold text-white bg-emerald-600 border border-transparent rounded-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-600 disabled:opacity-50"
-                    >
-                      {loading ? 'Đang tạo...' : 'Tạo bài test'}
+                    <button type="button" onClick={handleCreateTest} disabled={loading}
+                      className="px-5 py-2 text-xs font-extrabold text-white bg-gradient-to-r from-emerald-600 to-teal-600 border-[3px] border-emerald-800 rounded-xl hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 transition-colors shadow-md">
+                      {loading ? 'Đang tạo...' : '✅ Tạo bài test'}
                     </button>
                   )}
                 </div>
@@ -1279,11 +1242,7 @@ const CreateVocabularyTestButton = ({ className = '' }) => {
     <>
       <button
         onClick={handleClick}
-        className={`inline-flex items-center px-4 py-2 
-          bg-blue-600 hover:bg-blue-700 
-          text-white text-sm font-medium rounded-lg shadow-md 
-          hover:shadow-lg transform hover:scale-105 
-          transition-all duration-200 ${className}`}
+        className={`inline-flex items-center px-4 py-2 bg-indigo-600 border-[3px] border-indigo-800 hover:bg-indigo-700 text-white text-sm font-extrabold rounded-xl shadow-md hover:shadow-lg transition-all duration-200 ${className}`}
         title="Tạo bài test từ vựng của riêng bạn"
       >
         <span aria-hidden className="mr-2 text-lg">📝</span>

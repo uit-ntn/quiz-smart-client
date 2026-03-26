@@ -5,89 +5,50 @@ import CreateMultipleChoiceTestButton from './CreateMultipleChoiceTestButton';
 
 const SmartFilterBar = ({ filters, setFilters }) => {
   return (
-    <div className="sticky top-4 z-40 mb-6">
-      {/* Search & Filter Bar */}
-      <div className="bg-white/95 backdrop-blur-xl rounded-xl shadow-lg border border-white/50 p-3">
-        {/* Search & Buttons Row */}
-        <div className="flex items-center gap-3 mb-3 flex-wrap">
-          <div className="flex-1 relative min-w-[200px]">
-            <input
-              type="text"
-              placeholder="🔍 Tìm kiếm chủ đề..."
-              value={filters.searchTerm}
-              onChange={(e) => setFilters(prev => ({ ...prev, searchTerm: e.target.value }))}
-              className="w-full pl-10 pr-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-300"
-            />
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
+    <div className="sticky top-4 z-40">
+      <div className="bg-gradient-to-r from-indigo-700 via-violet-700 to-purple-700 rounded-2xl shadow-2xl shadow-indigo-900/50 overflow-hidden">
+        {/* Shine line */}
+        <div className="h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+
+        <div className="px-4 py-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Search */}
+            <div className="flex-1 relative min-w-[200px]">
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-700 pointer-events-none">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              <input
+                type="text"
+                placeholder="Tìm kiếm chủ đề..."
+                value={filters.searchTerm}
+                onChange={(e) => setFilters(prev => ({ ...prev, searchTerm: e.target.value }))}
+                className="w-full pl-10 pr-9 py-2.5 text-sm rounded-xl bg-white border-[3px] border-amber-300 text-slate-900 placeholder:text-slate-500 focus:border-amber-500 focus:outline-none focus:ring-4 focus:ring-amber-200/60 transition-all duration-200 shadow-md shadow-black/10"
+              />
+              {filters.searchTerm && (
+                <button
+                  onClick={() => setFilters(prev => ({ ...prev, searchTerm: '' }))}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-amber-700 transition-colors"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex items-center gap-1.5 flex-shrink-0 flex-wrap">
+              <CreateVocabularyWithAIButton className="hidden lg:inline-flex items-center justify-center !h-9 !min-h-0 !min-w-[200px] !px-3 !py-2 !text-[11px] !font-extrabold !rounded-xl !bg-emerald-600 !hover:bg-emerald-700 !border-[3px] !border-emerald-900 !text-white !shadow-md !shadow-emerald-900/30 !transition-all !duration-200 whitespace-nowrap !gap-2 overflow-visible [&>span:first-child]:!w-5 [&>span:first-child]:!h-5 [&>span:first-child]:!text-xs [&>span:last-child]:!inline-block" />
+              <CreateVocabularyTestButton className="hidden lg:inline-flex items-center justify-center !h-9 !min-h-0 !px-3 !py-2 !text-[11px] !font-extrabold !rounded-xl !bg-orange-600 !hover:bg-orange-700 !border-[3px] !border-orange-900 !text-white !shadow-md !shadow-orange-900/30 !transition-all !duration-200 whitespace-nowrap !gap-1.5 [&>span]:!text-xs" />
+              <CreateMultipleChoiceTestButton className="hidden lg:inline-flex items-center justify-center !h-9 !min-h-0 !px-3 !py-2 !text-[11px] !font-extrabold !rounded-xl !bg-rose-600 !hover:bg-rose-700 !border-[3px] !border-rose-900 !text-white !shadow-md !shadow-rose-900/30 !transition-all !duration-200 whitespace-nowrap !gap-1.5 [&>span]:!text-xs" />
             </div>
           </div>
-
-          {/* Create Test Buttons - Right side */}
-          <div className="flex items-center gap-1.5 flex-shrink-0 flex-wrap">
-            <CreateVocabularyWithAIButton className="hidden lg:inline-flex items-center justify-center !h-8 !min-h-0 !min-w-[200px] !px-1.5 !py-1.5 !text-[11px] !font-bold !rounded-lg bg-gradient-to-r from-violet-500 to-purple-600 text-white hover:from-violet-600 hover:to-purple-700 transition-all duration-300 shadow-sm hover:shadow-md hover:-translate-y-0.5 whitespace-nowrap !gap-2 overflow-visible [&>span:first-child]:!w-6 [&>span:first-child]:!h-6 [&>span:first-child]:!text-sm [&>span:last-child]:!inline-block [&>span:last-child]:!select-none" />
-            <CreateVocabularyTestButton className="hidden lg:inline-flex items-center justify-center !h-8 !min-h-0 !px-2.5 !py-1.5 !text-[10px] !font-bold !rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:from-emerald-600 hover:to-teal-700 transition-all duration-300 shadow-sm hover:shadow-md hover:-translate-y-0.5 whitespace-nowrap !gap-1.5 [&>span]:!text-sm [&>span]:!mr-1" />
-            <CreateMultipleChoiceTestButton className="hidden lg:inline-flex items-center justify-center !h-8 !min-h-0 !px-2.5 !py-1.5 !text-[10px] !font-bold !rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 transition-all duration-300 shadow-sm hover:shadow-md hover:-translate-y-0.5 whitespace-nowrap !gap-1.5 [&>span]:!text-sm" />
-          </div>
         </div>
 
-        {/* Advanced Filters - Hidden on mobile */}
-        <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 pt-3 border-t border-slate-200">
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Loại test</label>
-            <select
-              value={filters.testType || 'all'}
-              onChange={(e) => setFilters(prev => ({ ...prev, testType: e.target.value }))}
-              className="w-full p-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-300"
-            >
-              <option value="all">Tất cả</option>
-              <option value="vocabulary">Từ vựng</option>
-              <option value="multiple-choice">Trắc nghiệm</option>
-              <option value="grammar">Ngữ pháp</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Trạng thái</label>
-            <select
-              value={filters.status || 'all'}
-              onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-              className="w-full p-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-300"
-            >
-              <option value="all">Tất cả</option>
-              <option value="active">Có bài test</option>
-              <option value="empty">Chưa có bài test</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Sắp xếp</label>
-            <select
-              value={filters.sortBy}
-              onChange={(e) => setFilters(prev => ({ ...prev, sortBy: e.target.value }))}
-              className="w-full p-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-300"
-            >
-              <option value="name">Theo tên</option>
-              <option value="testCount">Theo số lượng test</option>
-              <option value="questions">Theo số câu hỏi</option>
-              <option value="views">Theo lượt xem</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Thứ tự</label>
-            <select
-              value={filters.sortOrder}
-              onChange={(e) => setFilters(prev => ({ ...prev, sortOrder: e.target.value }))}
-              className="w-full p-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-300"
-            >
-              <option value="asc">Tăng dần</option>
-              <option value="desc">Giảm dần</option>
-            </select>
-          </div>
-        </div>
+        <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
       </div>
     </div>
   );

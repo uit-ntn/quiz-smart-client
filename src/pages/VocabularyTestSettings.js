@@ -54,8 +54,25 @@ const VocabularyTestSettings = () => {
         if (saved) {
           try {
             const parsed = JSON.parse(saved);
-            if (parsed?.mode) setMode(parsed.mode);
-            if (parsed?.shuffleQuestions !== undefined) setShuffleQuestions(parsed.shuffleQuestions);
+            if (parsed?.mode) {
+              const m = parsed.mode === "listen_and_type" ? "listen_and_write_sentence" : parsed.mode;
+              setMode(m);
+              if (parsed.mode === "listen_and_type") {
+                localStorage.setItem(
+                  `vocab_settings_${testId}`,
+                  JSON.stringify({ ...parsed, mode: "listen_and_write_sentence" })
+                );
+              }
+            }
+            if (parsed?.shuffleQuestions !== undefined) {
+              const parsedShuffle =
+                parsed.shuffleQuestions === true || parsed.shuffleQuestions === "true"
+                  ? true
+                  : parsed.shuffleQuestions === false || parsed.shuffleQuestions === "false"
+                  ? false
+                  : true;
+              setShuffleQuestions(parsedShuffle);
+            }
           } catch {}
         }
       } catch (err) {
@@ -147,20 +164,6 @@ const VocabularyTestSettings = () => {
       text: 'text-emerald-700',
     },
     {
-      value: 'listen_and_type',
-      title: 'Nghe & Viết',
-      desc: 'Nghe âm thanh và gõ từ tiếng Anh',
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M6 10v4a1 1 0 001 1h1l4 4V5l-4 4H7a1 1 0 00-1 1z" />
-        </svg>
-      ),
-      accent: 'from-orange-500 to-rose-600',
-      ring: 'ring-orange-200',
-      bg: 'bg-orange-50',
-      text: 'text-orange-700',
-    },
-    {
       value: 'listen_and_write_sentence',
       title: 'Nghe câu & Viết câu',
       desc: 'Nghe câu ví dụ và viết lại câu hoàn chỉnh',
@@ -183,69 +186,76 @@ const VocabularyTestSettings = () => {
 
   return (
     <VocabularyLayout>
-      <div className="mx-auto max-w-7xl">
-        {/* Top header */}
-        <div className="mb-3 sm:mb-4 flex items-start justify-between gap-3">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm">
-              <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+      <div className="mx-auto max-w-7xl" style={{ background: "linear-gradient(to bottom right, #bae6fd, #dbeafe, #d1fae5)", borderRadius: "1rem", padding: "0.75rem" }}>
+
+        {/* Top bar */}
+        <div className="mb-2.5 flex flex-wrap items-center justify-between gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-violet-800 bg-violet-600 px-2.5 py-0.5 text-[11px] font-bold text-white shadow-md">
+              <span className="inline-flex h-2 w-2 rounded-full bg-lime-400" />
               Vocabulary Test
-            </div>
-
-            <h1 className="mt-1.5 text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
-              Cấu hình bài test
-            </h1>
-
-            <p className="mt-0.5 text-xs sm:text-sm text-slate-600">
-              <span className="font-semibold text-slate-800">{testInfo?.test_title}</span>
-              <span className="mx-2 text-slate-300">•</span>
-              {vocabularyCount} từ vựng
-            </p>
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-sky-800 bg-sky-600 px-2.5 py-0.5 text-[11px] font-bold text-white shadow-md">
+              📌 {vocabularyCount} từ
+            </span>
+            <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border-2 border-emerald-800 bg-emerald-600 px-2.5 py-0.5 text-[11px] font-bold text-white shadow-md">
+              ⏱️ {testInfo?.time_limit_minutes || 0} phút
+            </span>
           </div>
 
           <button
             onClick={() => navigate(-1)}
-            className="shrink-0 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+            className="shrink-0 self-start inline-flex items-center gap-1.5 rounded-xl border-[3px] border-teal-800 bg-teal-600 px-3 py-1.5 text-xs sm:text-sm font-extrabold text-white shadow-lg hover:bg-teal-500"
           >
-            <span className="text-lg leading-none">←</span> Quay lại
+            ← Quay lại
           </button>
+        </div>
+
+        {/* Title */}
+        <div className="mb-2.5">
+          <h1 className="text-lg sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+            Cấu hình bài test
+          </h1>
+          <p className="mt-0.5 text-xs sm:text-sm text-indigo-900 font-bold line-clamp-2">
+            {testInfo?.test_title}
+          </p>
         </div>
 
         {/* Content */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          {/* Left: Test Info */}
-          <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-3">
-            <h2 className="text-sm sm:text-base font-extrabold text-slate-900 mb-2.5">Thông tin bài test</h2>
+          {/* Left: Test Info — fuchsia card like Voice card in Voca */}
+          <div className="rounded-2xl border-[3px] border-fuchsia-500 bg-gradient-to-br from-fuchsia-100 to-purple-200 shadow-xl ring-2 ring-fuchsia-300/60 p-3 sm:p-4">
+            <h2 className="text-sm sm:text-base font-extrabold text-slate-900 mb-2.5 flex items-center gap-2">
+              <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-fuchsia-600 text-white text-xs font-extrabold shadow">📋</span>
+              Thông tin bài test
+            </h2>
             <div className="space-y-1.5">
               <InfoLine icon="📝" label="Tiêu đề" value={testInfo?.test_title || "—"} />
               <InfoLine icon="📖" label="Mô tả" value={testInfo?.description || "—"} />
               <div className="grid grid-cols-2 gap-1.5">
-                <InfoLine icon="🏷️" label="Chủ đề chính" value={testInfo?.main_topic || "—"} />
-                <InfoLine icon="📂" label="Chủ đề phụ" value={testInfo?.sub_topic || "—"} />
-                <InfoLine icon="🔧" label="Loại test" value={testInfo?.test_type || "—"} />
+                <InfoLine icon="🏷️" label="Chủ đề" value={testInfo?.main_topic || "—"} />
+                <InfoLine icon="📂" label="Phụ đề" value={testInfo?.sub_topic || "—"} />
                 <InfoLine icon="❓" label="Số từ" value={vocabularyCount || "—"} />
                 <InfoLine icon="⏱️" label="Thời gian" value={`${testInfo?.time_limit_minutes || 0} phút`} />
                 <InfoLine icon="📊" label="Độ khó" value={testInfo?.difficulty || "—"} />
-                <InfoLine icon="🔒" label="Trạng thái" value={testInfo?.status || "—"} />
                 <InfoLine icon="👁️" label="Hiển thị" value={testInfo?.visibility || "—"} />
-                <InfoLine icon="👤" label="Tạo bởi" value={testInfo?.created_by_full_name || "—"} />
+                <InfoLine icon="👤" label="Tạo bởi" value={testInfo?.created_by_full_name || "—"} className="col-span-2" />
               </div>
-              
-              {/* Vocabulary level statistics */}
+
+              {/* Vocabulary statistics */}
               {vocabularies.length > 0 && (
                 <div className="mt-3 grid grid-cols-2 gap-2">
-                  {/* CEFR Level Distribution */}
-                  <div className="p-2 rounded-lg border border-slate-200 bg-slate-50">
-                    <div className="text-[10px] font-semibold text-slate-600 mb-1.5">Phân bố CEFR</div>
-                    <div className="flex flex-wrap gap-0.5">
+                  <div className="p-2.5 rounded-xl border-2 border-indigo-400 bg-white shadow-sm">
+                    <div className="text-[10px] font-extrabold text-indigo-900 mb-1.5">Phân bố CEFR</div>
+                    <div className="flex flex-wrap gap-1">
                       {['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map(level => {
                         const count = vocabularies.filter(v => v.cefr_level === level).length;
                         if (count === 0) return null;
                         return (
-                          <span key={level} className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium ${
-                            ['A1', 'A2'].includes(level) ? 'bg-green-100 text-green-700' :
-                            ['B1', 'B2'].includes(level) ? 'bg-yellow-100 text-yellow-700' :
-                            'bg-red-100 text-red-700'
+                          <span key={level} className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-extrabold border ${
+                            ['A1', 'A2'].includes(level) ? 'bg-emerald-500 text-white border-emerald-800' :
+                            ['B1', 'B2'].includes(level) ? 'bg-amber-500 text-amber-950 border-amber-800' :
+                            'bg-red-600 text-white border-red-900'
                           }`}>
                             {level}: {count}
                           </span>
@@ -253,24 +263,15 @@ const VocabularyTestSettings = () => {
                       })}
                     </div>
                   </div>
-
-                  {/* Part of Speech Distribution */}
-                  <div className="p-2 rounded-lg border border-slate-200 bg-slate-50">
-                    <div className="text-[10px] font-semibold text-slate-600 mb-1.5">Phân bố loại từ</div>
-                    <div className="flex flex-wrap gap-0.5">
+                  <div className="p-2.5 rounded-xl border-2 border-blue-400 bg-white shadow-sm">
+                    <div className="text-[10px] font-extrabold text-blue-900 mb-1.5">Phân bố loại từ</div>
+                    <div className="flex flex-wrap gap-1">
                       {['noun', 'verb', 'adjective', 'adverb', 'preposition', 'conjunction', 'pronoun', 'interjection'].map(pos => {
                         const count = vocabularies.filter(v => v.part_of_speech === pos).length;
                         if (count === 0) return null;
-                        const label = pos === 'noun' ? 'Danh từ' :
-                                     pos === 'verb' ? 'Động từ' :
-                                     pos === 'adjective' ? 'Tính từ' :
-                                     pos === 'adverb' ? 'Trạng từ' :
-                                     pos === 'preposition' ? 'Giới từ' :
-                                     pos === 'conjunction' ? 'Liên từ' :
-                                     pos === 'pronoun' ? 'Đại từ' :
-                                     pos === 'interjection' ? 'Thán từ' : pos;
+                        const label = pos === 'noun' ? 'D.từ' : pos === 'verb' ? 'Đ.từ' : pos === 'adjective' ? 'T.từ' : pos === 'adverb' ? 'Tr.từ' : pos === 'preposition' ? 'G.từ' : pos === 'conjunction' ? 'L.từ' : pos === 'pronoun' ? 'Đ.từ' : 'Th.từ';
                         return (
-                          <span key={pos} className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-700">
+                          <span key={pos} className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-600 text-white border border-blue-900">
                             {label}: {count}
                           </span>
                         );
@@ -282,73 +283,58 @@ const VocabularyTestSettings = () => {
             </div>
           </div>
 
-          {/* Right: Settings */}
-          <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-3">
-            <div className="flex items-center justify-between gap-3 mb-2">
+          {/* Right: Settings — indigo/amber card */}
+          <div className="rounded-2xl border-[3px] border-indigo-500 bg-gradient-to-br from-indigo-100 to-violet-200 shadow-xl ring-2 ring-indigo-300/60 p-3 sm:p-4">
+            <div className="flex items-center justify-between gap-3 mb-2.5">
               <div>
-                <h2 className="text-sm sm:text-base font-extrabold text-slate-900">Chế độ bài test</h2>
-                <p className="text-xs text-slate-600 mt-0.5">Chọn 1 chế độ. Hệ thống sẽ lưu lại cho lần sau.</p>
+                <h2 className="text-sm sm:text-base font-extrabold text-slate-900 flex items-center gap-2">
+                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-indigo-600 text-white text-xs shadow">⚙️</span>
+                  Chế độ bài test
+                </h2>
+                <p className="text-xs text-indigo-900 font-bold mt-0.5">Chọn 1 chế độ. Hệ thống sẽ lưu lại cho lần sau.</p>
               </div>
-              <span
-                className={`hidden sm:inline-flex items-center rounded-lg px-2 py-1 text-[10px] font-semibold ${selectedMode.bg} ${selectedMode.text}`}
-              >
-                Đang chọn: {selectedMode.title}
+              <span className="hidden sm:inline-flex items-center rounded-full border-2 border-indigo-700 bg-indigo-600 px-2.5 py-0.5 text-[10px] font-extrabold text-white shadow">
+                {selectedMode.title}
               </span>
             </div>
 
             {/* Mode picker */}
-            <div className="grid grid-cols-2 gap-2 items-stretch auto-rows-fr mb-3">
+            <div className="grid grid-cols-3 sm:grid-cols-2 gap-2 items-stretch auto-rows-fr mb-3">
               {modes.map((m) => {
                 const active = mode === m.value;
-
                 return (
                   <button
                     key={m.value}
                     type="button"
                     onClick={() => {
                       setMode(m.value);
-                      localStorage.setItem(
-                        `vocab_settings_${testId}`,
-                        JSON.stringify({ ...effective, mode: m.value })
-                      );
+                      localStorage.setItem(`vocab_settings_${testId}`, JSON.stringify({ ...effective, mode: m.value }));
                     }}
-                    className={`
-                      h-full min-h-[100px] text-left rounded-xl border p-2 transition
-                      flex flex-col shadow-sm hover:shadow
-                      ${active ? `border-transparent ring-2 ${m.ring} bg-white` : 'border-slate-200 bg-white hover:bg-slate-50'}
-                    `}
+                    className={`h-full min-h-[80px] sm:min-h-[100px] text-left rounded-xl p-2 sm:p-2.5 transition flex flex-col shadow-md border-[3px] ${
+                      active
+                        ? 'border-indigo-600 bg-white ring-2 ring-indigo-300 shadow-lg'
+                        : 'border-white/70 bg-white/60 hover:bg-white hover:border-indigo-300'
+                    }`}
                   >
-                    {/* header */}
                     <div className="flex items-start justify-between gap-2">
-                      <div
-                        className={`inline-flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br ${m.accent} text-white shadow-sm`}
-                      >
+                      <div className={`inline-flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-xl bg-gradient-to-br ${m.accent} text-white shadow-md`}>
                         {m.icon}
                       </div>
-
-                      <div
-                        className={`h-4 w-4 rounded-full border flex items-center justify-center ${
-                          active ? 'border-blue-500 bg-blue-50' : 'border-slate-200 bg-white'
-                        }`}
-                      >
-                        <span className={`h-1.5 w-1.5 rounded-full ${active ? 'bg-blue-600' : 'bg-slate-200'}`} />
+                      <div className={`h-4 w-4 sm:h-5 sm:w-5 rounded-full border-2 flex items-center justify-center shadow-sm shrink-0 ${
+                        active ? 'border-indigo-600 bg-indigo-600' : 'border-indigo-300 bg-white'
+                      }`}>
+                        {active && <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-white" />}
                       </div>
                     </div>
-
-                    {/* body */}
                     <div className="mt-1.5 flex-1">
-                      <div className="font-extrabold text-slate-900 text-xs">{m.title}</div>
-                      <div className="mt-0.5 text-[10px] text-slate-600 leading-snug">{m.desc}</div>
+                      <div className="font-extrabold text-slate-900 text-[11px] sm:text-xs leading-tight">{m.title}</div>
+                      <div className="hidden sm:block mt-0.5 text-[10px] text-slate-700 leading-snug font-semibold">{m.desc}</div>
                     </div>
-
-                    {/* footer */}
-                    <div className="mt-2">
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold
-                          ${active ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-700'}
-                        `}
-                      >
-                        {active ? '✓ Đang chọn' : 'Chọn'}
+                    <div className="mt-1.5">
+                      <span className={`inline-flex items-center gap-1 rounded-full px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-extrabold border ${
+                        active ? 'bg-indigo-600 text-white border-indigo-900' : 'bg-white/80 text-indigo-700 border-indigo-300'
+                      }`}>
+                        {active ? '✓ Chọn' : 'Chọn'}
                       </span>
                     </div>
                   </button>
@@ -357,23 +343,20 @@ const VocabularyTestSettings = () => {
             </div>
 
             {/* Shuffle setting */}
-            <div className="mt-3 p-2.5 rounded-lg border border-slate-200 bg-slate-50">
-              <label className="flex items-center gap-2 cursor-pointer">
+            <div className="p-3 rounded-xl border-[3px] border-amber-500 bg-amber-100 shadow-md">
+              <label className="flex items-center gap-2.5 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={shuffleQuestions}
                   onChange={(e) => {
                     setShuffleQuestions(e.target.checked);
-                    localStorage.setItem(
-                      `vocab_settings_${testId}`,
-                      JSON.stringify({ ...effective, shuffleQuestions: e.target.checked })
-                    );
+                    localStorage.setItem(`vocab_settings_${testId}`, JSON.stringify({ ...effective, shuffleQuestions: e.target.checked }));
                   }}
-                  className="w-3.5 h-3.5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                  className="w-4 h-4 accent-amber-600 rounded border-amber-400"
                 />
                 <div>
-                  <div className="text-xs font-semibold text-slate-900">Đảo thứ tự câu hỏi</div>
-                  <div className="text-[10px] text-slate-600">Trộn ngẫu nhiên thứ tự các từ vựng trong bài test.</div>
+                  <div className="text-xs font-extrabold text-slate-900">Đảo thứ tự câu hỏi</div>
+                  <div className="text-[10px] text-amber-900 font-bold">Trộn ngẫu nhiên thứ tự các từ vựng trong bài test.</div>
                 </div>
               </label>
             </div>
@@ -381,16 +364,16 @@ const VocabularyTestSettings = () => {
             <div className="mt-3 space-y-2">
               <button
                 onClick={() => setShowPreviewModal(true)}
-                className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50"
+                className="w-full inline-flex items-center justify-center gap-2 rounded-xl border-[3px] border-fuchsia-700 bg-fuchsia-500 px-3 py-2 text-xs font-extrabold text-white shadow-lg hover:bg-fuchsia-400"
               >
                 👁️ Xem trước từ vựng
               </button>
-              
+
               <button
                 onClick={handleStartTest}
-                className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-3 py-2 text-xs font-bold text-white shadow-lg hover:opacity-95 active:opacity-90"
+                className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-600 via-red-600 to-rose-700 px-3 py-2.5 text-sm font-extrabold text-white shadow-lg border-[3px] border-red-900 hover:brightness-110"
               >
-                Bắt đầu bài test <span className="text-base">→</span>
+                Bắt đầu bài test →
               </button>
             </div>
           </div>
@@ -420,14 +403,14 @@ const VocabularyTestSettings = () => {
   );
 };
 
-function InfoLine({ icon, label, value }) {
+function InfoLine({ icon, label, value, className = "" }) {
   return (
-    <div className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5">
-      <div className="flex items-center gap-1.5 text-xs text-slate-700 min-w-0">
+    <div className={`flex items-center justify-between gap-2 rounded-lg border-2 border-purple-300 bg-white px-2 py-1.5 shadow-sm ${className}`}>
+      <div className="flex items-center gap-1.5 text-xs min-w-0">
         <span className="text-sm shrink-0">{icon}</span>
-        <span className="text-slate-500 truncate">{label}</span>
+        <span className="text-purple-800 font-bold truncate">{label}</span>
       </div>
-      <div className="text-xs font-bold text-slate-900 truncate text-right ml-2">{value}</div>
+      <div className="text-xs font-extrabold text-slate-900 truncate text-right ml-2 max-w-[55%]">{value}</div>
     </div>
   );
 }

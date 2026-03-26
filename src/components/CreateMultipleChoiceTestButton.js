@@ -635,28 +635,28 @@ export default function CreateMultipleChoiceTestButton({ label = "Tạo bài tes
     >
       <div
         ref={cardRef}
-        className="bg-white rounded-xl shadow-2xl max-w-7xl w-full h-[92vh] overflow-hidden border border-neutral-200 flex flex-col"
+        className="bg-white rounded-2xl shadow-2xl max-w-7xl w-full h-[92vh] overflow-hidden border-[3px] border-emerald-400 ring-2 ring-emerald-200 flex flex-col"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200 bg-neutral-50">
+        <div className="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-emerald-600 to-teal-700 flex-shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-emerald-600 text-white flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-white/20 border-2 border-white/40 text-white flex items-center justify-center shrink-0">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-neutral-900">
+              <h2 className="text-base font-extrabold text-white">
                 {currentStep === 'test-info' && 'Thông Tin Bài Test'}
                 {currentStep === 'questions' && 'Nhập Danh Sách Câu Hỏi'}
                 {currentStep === 'review' && 'Xem Lại Thông Tin'}
                 {currentStep === 'creating' && 'Đang Tạo Bài Test'}
-                {currentStep === 'success' && 'Hoàn Thành!'}
+                {currentStep === 'success' && 'Hoàn Thành! 🎉'}
               </h2>
-              <p className="text-xs text-neutral-600">
-                {currentStep === 'test-info' && 'Bước 1/3 - Cấu hình bài test'}
-                {currentStep === 'questions' && 'Bước 2/3 - Chuẩn bị câu hỏi trắc nghiệm'}
-                {currentStep === 'review' && 'Bước 3/3 - Kiểm tra thông tin'}
+              <p className="text-xs text-emerald-100 font-medium">
+                {currentStep === 'test-info' && 'Bước 1/3 — Cấu hình bài test'}
+                {currentStep === 'questions' && 'Bước 2/3 — Chuẩn bị câu hỏi trắc nghiệm'}
+                {currentStep === 'review' && 'Bước 3/3 — Kiểm tra thông tin'}
                 {currentStep === 'creating' && 'Đang xử lý...'}
                 {currentStep === 'success' && 'Bài test đã được tạo thành công'}
               </p>
@@ -665,27 +665,27 @@ export default function CreateMultipleChoiceTestButton({ label = "Tạo bài tes
           <button
             onClick={handleClose}
             disabled={loading}
-            className="p-2 text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 rounded-md transition disabled:opacity-50"
+            className="w-8 h-8 rounded-xl bg-white/20 border-2 border-white/40 flex items-center justify-center text-white hover:bg-white/30 transition disabled:opacity-50"
             aria-label="Đóng"
             type="button"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
         {/* Progress */}
         {(currentStep === 'test-info' || currentStep === 'questions' || currentStep === 'review') && (
-          <div className="px-6 py-3 bg-neutral-50 border-b border-neutral-200">
-            <div className="flex items-center gap-2">
-              <div className="flex-1 bg-neutral-200 rounded-full h-2">
+          <div className="px-5 py-2.5 bg-emerald-50 border-b-2 border-emerald-200 flex-shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="flex-1 bg-emerald-200 rounded-full h-2.5">
                 <div
-                  className="bg-emerald-600 h-2 rounded-full transition-all duration-300"
+                  className="bg-emerald-600 h-2.5 rounded-full transition-all duration-300"
                   style={{ width: `${progressPct}%` }}
                 />
               </div>
-              <span className="text-xs font-medium text-neutral-700">
+              <span className="inline-flex items-center rounded-full border-2 border-emerald-400 bg-emerald-100 px-2 py-0.5 text-[11px] font-extrabold text-emerald-700">
                 {currentStep === 'test-info' ? '1/3' : currentStep === 'questions' ? '2/3' : '3/3'}
               </span>
             </div>
@@ -693,7 +693,7 @@ export default function CreateMultipleChoiceTestButton({ label = "Tạo bài tes
         )}
 
         {/* Content */}
-        <div className="flex-1 flex flex-col bg-neutral-50 min-h-0">
+        <div className="flex-1 flex flex-col bg-gradient-to-br from-sky-50 to-blue-50 min-h-0">
           <div className="flex-1 p-6 overflow-y-auto">
             {/* STEP 1: TEST INFO */}
             {currentStep === 'test-info' && (
@@ -1197,28 +1197,21 @@ B`}
 
           {/* Footer */}
           {(currentStep === 'test-info' || currentStep === 'questions' || currentStep === 'review') && (
-            <div className="border-t border-neutral-200 bg-white">
-              {/* Error Message - Hiển thị ở đây để gần nút actions */}
+            <div className="border-t-2 border-emerald-200 bg-emerald-50 flex-shrink-0">
               {errMsg && (
-                <div className="px-6 pt-4 pb-3">
-                  <div className="bg-rose-50 border border-rose-200 rounded-lg p-4" role="alert" aria-live="assertive">
-                    <div className="flex items-start gap-3">
-                      <svg className="w-5 h-5 text-rose-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <div className="px-5 pt-3 pb-2">
+                  <div className="bg-rose-100 border-2 border-rose-400 rounded-xl p-3" role="alert" aria-live="assertive">
+                    <div className="flex items-start gap-2">
+                      <svg className="w-4 h-4 text-rose-600 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                       </svg>
                       <div className="flex-1">
-                        <p className="text-sm font-semibold text-rose-900 mb-2">Lỗi xảy ra!</p>
-                        <p className="text-sm text-rose-800 whitespace-pre-line mb-3">{errMsg}</p>
+                        <p className="text-xs font-extrabold text-rose-900 mb-1">Lỗi xảy ra!</p>
+                        <p className="text-xs text-rose-800 whitespace-pre-line mb-2">{errMsg}</p>
                         {errMsg.includes('đã tồn tại') && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setCurrentStep('test-info');
-                              setErrMsg('');
-                            }}
-                            className="px-4 py-2 text-sm font-medium text-rose-700 bg-white border border-rose-300 rounded-lg hover:bg-rose-50 transition-colors"
-                          >
-                            ← Quay lại để đổi tên bài test
+                          <button type="button" onClick={() => { setCurrentStep('test-info'); setErrMsg(''); }}
+                            className="px-3 py-1.5 text-xs font-extrabold text-rose-700 bg-white border-2 border-rose-400 rounded-lg hover:bg-rose-50 transition-colors">
+                            ← Quay lại để đổi tên
                           </button>
                         )}
                       </div>
@@ -1226,72 +1219,42 @@ B`}
                   </div>
                 </div>
               )}
-              
-              {/* Action Buttons */}
-              <div className="flex items-center justify-between px-6 pb-4">
-                <div className="flex gap-3">
+              <div className="flex items-center justify-between px-5 py-3">
+                <div className="flex gap-2">
                   {currentStep === 'questions' && (
-                    <button
-                      type="button"
-                      onClick={() => { setCurrentStep('test-info'); setErrMsg(''); }}
-                      disabled={loading}
-                      className="px-4 py-2 text-sm font-medium text-neutral-800 bg-white border border-neutral-300 rounded-md hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50"
-                    >
-                      Quay lại
+                    <button type="button" onClick={() => { setCurrentStep('test-info'); setErrMsg(''); }} disabled={loading}
+                      className="px-4 py-2 text-xs font-extrabold text-slate-700 bg-white border-[3px] border-slate-300 rounded-xl hover:bg-slate-50 disabled:opacity-50 transition-colors">
+                      ← Quay lại
                     </button>
                   )}
                   {currentStep === 'review' && (
-                    <button
-                      type="button"
-                      onClick={() => { setCurrentStep('questions'); setErrMsg(''); }}
-                      disabled={loading}
-                      className="px-4 py-2 text-sm font-medium text-neutral-800 bg-white border border-neutral-300 rounded-md hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50"
-                    >
-                      Quay lại
+                    <button type="button" onClick={() => { setCurrentStep('questions'); setErrMsg(''); }} disabled={loading}
+                      className="px-4 py-2 text-xs font-extrabold text-slate-700 bg-white border-[3px] border-slate-300 rounded-xl hover:bg-slate-50 disabled:opacity-50 transition-colors">
+                      ← Quay lại
                     </button>
                   )}
                 </div>
-
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={handleClose}
-                    disabled={loading}
-                    className="px-4 py-2 text-sm font-medium text-neutral-800 bg-white border border-neutral-300 rounded-md hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50"
-                  >
+                <div className="flex gap-2">
+                  <button type="button" onClick={handleClose} disabled={loading}
+                    className="px-4 py-2 text-xs font-extrabold text-slate-700 bg-white border-[3px] border-slate-300 rounded-xl hover:bg-slate-50 disabled:opacity-50 transition-colors">
                     Hủy
                   </button>
-
                   {currentStep === 'test-info' && (
-                    <button
-                      type="button"
-                      onClick={handleContinueToQuestions}
-                      disabled={loading}
-                      className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 border border-transparent rounded-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50"
-                    >
-                      Tiếp tục
+                    <button type="button" onClick={handleContinueToQuestions} disabled={loading}
+                      className="px-4 py-2 text-xs font-extrabold text-white bg-emerald-600 border-[3px] border-emerald-800 rounded-xl hover:bg-emerald-700 disabled:opacity-50 transition-colors">
+                      Tiếp tục →
                     </button>
                   )}
-
                   {currentStep === 'questions' && (
-                    <button
-                      type="button"
-                      onClick={handleContinueToReview}
-                      disabled={loading}
-                      className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 border border-transparent rounded-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50"
-                    >
-                      Xem lại
+                    <button type="button" onClick={handleContinueToReview} disabled={loading}
+                      className="px-4 py-2 text-xs font-extrabold text-white bg-emerald-600 border-[3px] border-emerald-800 rounded-xl hover:bg-emerald-700 disabled:opacity-50 transition-colors">
+                      Xem lại →
                     </button>
                   )}
-
                   {currentStep === 'review' && (
-                    <button
-                      type="button"
-                      onClick={handleCreateTest}
-                      disabled={loading}
-                      className="px-5 py-2 text-sm font-semibold text-white bg-emerald-600 border border-transparent rounded-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-600 disabled:opacity-50"
-                    >
-                      {loading ? 'Đang tạo...' : 'Tạo bài test'}
+                    <button type="button" onClick={handleCreateTest} disabled={loading}
+                      className="px-5 py-2 text-xs font-extrabold text-white bg-gradient-to-r from-emerald-600 to-teal-600 border-[3px] border-emerald-800 rounded-xl hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 transition-colors shadow-md">
+                      {loading ? 'Đang tạo...' : '✅ Tạo bài test'}
                     </button>
                   )}
                 </div>
@@ -1308,7 +1271,7 @@ B`}
     <>
       <button
         onClick={() => setOpen(true)}
-        className={`inline-flex items-center gap-2 rounded-lg px-3.5 h-10 min-h-[44px] text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${className}`}
+        className={`inline-flex items-center gap-2 rounded-xl px-3.5 h-10 min-h-[44px] text-sm font-extrabold text-white bg-emerald-600 border-[3px] border-emerald-800 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-md transition-colors ${className}`}
         type="button"
       >
         <span aria-hidden className="text-lg">🧩</span>

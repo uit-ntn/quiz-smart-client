@@ -84,7 +84,7 @@ function renderTextWithHighlights(text, highlights = []) {
     if (idx < h.start)
       parts.push(<span key={`n-${i}-${idx}`}>{t.slice(idx, h.start)}</span>);
     parts.push(
-      <mark key={`m-${i}-${h.start}`} className="rounded px-0.5 bg-yellow-200/80">
+      <mark key={`m-${i}-${h.start}`} className="rounded px-0.5 bg-amber-500/20 text-amber-100">
         {t.slice(h.start, h.end)}
       </mark>
     );
@@ -963,10 +963,10 @@ const MultipleChoiceTestTake = () => {
 
   const timerBoxClass =
     timeWarnLevel === "danger"
-      ? "bg-red-50 border-red-200 text-red-800"
+      ? "bg-red-950 border-red-600 text-red-200"
       : timeWarnLevel === "warn"
-      ? "bg-amber-50 border-amber-200 text-amber-800"
-      : "bg-indigo-50 border-indigo-100 text-indigo-800";
+      ? "bg-amber-950 border-amber-600 text-amber-200"
+      : "bg-indigo-950 border-indigo-600 text-indigo-200";
 
   const timerBarClass =
     timeWarnLevel === "danger"
@@ -984,10 +984,10 @@ const MultipleChoiceTestTake = () => {
   // ===================== render guards =====================
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-sky-200 via-blue-100 to-emerald-200">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mx-auto mb-3" />
-          <p className="text-indigo-600 text-sm font-medium">Đang tải bài kiểm tra...</p>
+          <div className="animate-spin rounded-full h-10 w-10 border-2 border-indigo-400 border-t-indigo-700 mx-auto mb-3" />
+          <p className="text-indigo-900 text-sm font-bold">Đang tải bài kiểm tra...</p>
         </div>
       </div>
     );
@@ -995,27 +995,27 @@ const MultipleChoiceTestTake = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="text-center max-w-md mx-auto p-6">
-          <div className="text-red-500 mb-4">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-sky-200 via-blue-100 to-emerald-200">
+        <div className="bg-white rounded-2xl shadow-xl p-6 max-w-md w-full mx-4 border-[3px] border-rose-400">
+          <div className="text-rose-600 mb-4">
             <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
                 d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
               />
             </svg>
           </div>
-          <h3 className="text-lg font-semibold text-red-800 mb-2">Lỗi tải bài test</h3>
-          <p className="text-sm text-red-600 mb-4">{error}</p>
-          <div className="space-x-3">
+          <h3 className="text-lg font-extrabold text-slate-900 mb-2 text-center">Lỗi tải bài test</h3>
+          <p className="text-sm text-slate-800 font-medium mb-4 text-center">{error}</p>
+          <div className="flex gap-3 justify-center">
             <button
               onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700"
+              className="px-4 py-2 bg-blue-700 text-white rounded-lg text-sm font-extrabold hover:bg-blue-600 border-2 border-blue-900 shadow-lg"
             >
               Thử lại
             </button>
             <button
               onClick={() => navigate(-1)}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700"
+              className="px-4 py-2 bg-slate-200 text-slate-900 rounded-lg text-sm font-bold hover:bg-slate-300 border-2 border-slate-400"
             >
               Quay lại
             </button>
@@ -1027,8 +1027,8 @@ const MultipleChoiceTestTake = () => {
 
   if (!currentQuestion || !test || !questions.length) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <p className="text-indigo-600 text-sm font-medium">Đang tải câu hỏi...</p>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-sky-200 via-blue-100 to-emerald-200">
+        <p className="text-indigo-900 text-sm font-bold">Đang tải câu hỏi...</p>
       </div>
     );
   }
@@ -1041,390 +1041,409 @@ const MultipleChoiceTestTake = () => {
   const multi = isMultiChoice(currentQuestion);
 
   const isLastQuestion = currentQuestionIndex === questions.length - 1;
-  const canGoPrev = settings.testMode === "flexible" && currentQuestionIndex > 0;
-  const canGoNext = currentQuestionIndex < questions.length - 1;
 
   const currentHighlights = highlights[qid] || { question: [], options: {} };
 
   // ===================== UI =====================
   return (
-    <div className="min-h-screen bg-slate-50 pb-24">
-      <div className="w-full px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6">
-        <div className="grid grid-cols-12 gap-4 lg:gap-6">
-          {/* MAIN */}
-          <div className="col-span-12 lg:col-span-9">
-            <div className="border border-slate-300 rounded-2xl bg-white shadow-sm p-4 sm:p-6">
-              {/* header */}
-              <div className="mb-4 sm:mb-6">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-3">
-                    {settings.showQuestionNumber && (
-                      <div className="bg-blue-600 text-white font-semibold w-8 h-8 rounded-lg flex items-center justify-center text-sm flex-shrink-0">
-                        {currentQuestionIndex + 1}
-                      </div>
-                    )}
+    <div className="min-h-screen flex flex-col text-slate-900" style={{ background: "linear-gradient(to bottom right, #bae6fd, #dbeafe, #d1fae5)" }}>
+      <div className="flex flex-col flex-1 min-h-0 w-full bg-gradient-to-b from-sky-100/80 to-blue-50/90">
+        <div className="w-full max-w-full flex-1 flex flex-col min-h-0 px-3 sm:px-4 lg:px-5 pt-3 sm:pt-4 lg:pt-5 pb-20 sm:pb-20 lg:pb-4">
 
-                    <div>
-                      <h2 className="text-base sm:text-lg font-medium mb-1 text-gray-900">
+          {/* TOP BAR */}
+          <div className="mb-2 flex flex-col gap-1.5 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-violet-800 bg-violet-600 px-2.5 py-0.5 text-[11px] font-bold text-white shadow-md">
+                <span className="inline-flex h-2 w-2 rounded-full bg-lime-400" />
+                Trắc nghiệm
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-sky-800 bg-sky-600 px-2.5 py-0.5 text-[11px] font-bold text-white shadow-md">
+                📌 {currentQuestionIndex + 1}/{questions.length}
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-emerald-800 bg-emerald-600 px-2.5 py-0.5 text-[11px] font-bold text-white shadow-md">
+                ✅ {Object.values(showResult).filter(r => r?.isCorrect).length} • ❌ {Object.values(showResult).filter(r => r && !r.isCorrect).length}
+              </span>
+              {settings.showTimer && (
+                <span
+                  className={`inline-flex items-center gap-2 rounded-xl border-[3px] px-3 py-1.5 text-sm font-black shadow-lg lg:hidden ${
+                    timeWarnLevel === "danger"
+                      ? "border-red-900 bg-red-600 text-white ring-2 ring-red-300 animate-pulse"
+                      : timeWarnLevel === "warn"
+                      ? "border-amber-900 bg-amber-500 text-amber-950 ring-2 ring-amber-200"
+                      : "border-indigo-900 bg-indigo-600 text-white ring-2 ring-indigo-200"
+                  }`}
+                  title="Thời gian còn lại"
+                >
+                  ⏱ <span className="tabular-nums">{formatTime(timeRemaining)}</span>
+                </span>
+              )}
+              <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border-2 border-lime-700 bg-lime-500 px-2.5 py-0.5 text-[11px] font-bold text-lime-950 shadow-md" title="Tiến trình được lưu tự động">
+                💾 Tự động lưu
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="hidden lg:inline text-[10px] text-slate-800 font-bold shrink-0">
+                (←→: chuyển câu • H: highlight • Ctrl+Z: hoàn tác)
+              </span>
+            </div>
+          </div>
+
+          {/* MAIN GRID — same as VocabularyTestTake: 2/3 left + 1/3 right */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 lg:gap-4 flex-1 min-h-0 lg:items-stretch lg:grid-rows-1">
+
+            {/* LEFT — question card */}
+            <div className="lg:col-span-2 flex flex-col min-w-0 min-h-0 flex-1">
+              <div className="relative rounded-xl border-[3px] border-indigo-400 bg-white shadow-xl shadow-indigo-200/60 overflow-hidden flex flex-col flex-1 min-h-0 ring-2 ring-indigo-200/80">
+                <div className="relative p-3 sm:p-4 md:p-5 flex flex-col flex-1 min-h-0">
+
+                  {/* header row */}
+                  <div className="flex items-center justify-between gap-2 shrink-0 mb-4">
+                    <div className="flex items-center gap-2">
+                      {settings.showQuestionNumber && (
+                        <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-700 text-white font-extrabold text-sm shadow-lg flex-shrink-0">
+                          {currentQuestionIndex + 1}
+                        </span>
+                      )}
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-indigo-600 to-violet-700 px-2.5 py-1 text-[10px] sm:text-[11px] font-bold text-white shadow-md">
+                        {multi ? "Nhiều đáp án" : "Một đáp án"}
+                      </span>
+                      {isCurrentLocked && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-600 text-white border border-rose-800">Đã khóa</span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <div className="w-20 sm:w-28 shrink-0">
+                        <div className="h-2 rounded-full bg-indigo-300 overflow-hidden">
+                          <div className="h-full bg-gradient-to-r from-indigo-600 to-blue-600" style={{ width: `${(answeredCount / Math.max(questions.length, 1)) * 100}%` }} />
+                        </div>
+                        <div className="mt-0.5 text-[10px] text-indigo-900 font-bold text-right">{answeredCount}/{questions.length} câu</div>
+                      </div>
+
+                      {/* Mark button */}
+                      <button
+                        type="button"
+                        onClick={toggleMarkCurrent}
+                        className={`hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-extrabold border-2 transition ${
+                          isMarked(qid)
+                            ? "bg-amber-500 border-amber-800 text-amber-950 shadow-md"
+                            : "bg-amber-100 border-amber-400 text-amber-800 hover:bg-amber-200"
+                        }`}
+                        title="Đánh dấu để xem lại"
+                      >
+                        {isMarked(qid) ? "★ Đánh dấu" : "☆ Đánh dấu"}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* question text — scrollable middle area */}
+                  <div className="flex-1 flex flex-col min-h-0 py-1 sm:py-2 overflow-y-auto">
+                    <div className="w-full">
+                      <h2 className="text-base sm:text-lg font-semibold mb-3 text-slate-900 leading-snug">
                         <span
                           ref={questionTextRef}
                           onMouseUp={() => addHighlightFromSelection("question")}
                           className={isHighlightMode ? "cursor-text select-text" : ""}
                         >
-                          {renderTextWithHighlights(
-                            currentQuestion.question_text,
-                            currentHighlights.question || []
-                          )}
+                          {renderTextWithHighlights(currentQuestion.question_text, currentHighlights.question || [])}
                         </span>
                       </h2>
 
-                      <p className="text-xs sm:text-sm text-gray-600">
-                        {multi ? "Chọn (có thể nhiều đáp án)" : "Chọn 1 đáp án phù hợp"}{" "}
-                        {isCurrentLocked && "(câu này đã khóa)"}
-                      </p>
-                    </div>
-                  </div>
+                      {isHighlightMode && (
+                        <div className="mb-2 text-xs text-orange-700 font-extrabold">✍️ Chọn text để đánh dấu!</div>
+                      )}
 
-                  {/* Mark button */}
-                  <button
-                    type="button"
-                    onClick={toggleMarkCurrent}
-                    className={`hidden sm:inline-block px-3 py-2 rounded-lg text-xs font-semibold border transition ${
-                      isMarked(qid)
-                        ? "bg-amber-50 border-amber-200 text-amber-800"
-                        : "bg-white border-slate-300 text-gray-700 hover:bg-gray-50"
-                    }`}
-                    title="Đánh dấu để xem lại"
-                  >
-                    {isMarked(qid) ? "★ Đã đánh dấu" : "☆ Đánh dấu"}
-                  </button>
-                </div>
-
-                {/* hint */}
-                <div className="hidden sm:block mt-3 text-xs text-gray-500 space-y-1">
-                  <div>
-                    Mẹo: dùng phím <span className="font-semibold">←</span> /{" "}
-                    <span className="font-semibold">→</span> để chuyển câu.{" "}
-                    <span className="font-semibold">H</span> để bật/tắt highlight.{" "}
-                    <span className="font-semibold">Ctrl+Z</span> để hoàn tác.
-                  </div>
-                  {isHighlightMode && (
-                    <div className="text-amber-700">✍️ Chọn text để đánh dấu!</div>
-                  )}
-                </div>
-              </div>
-
-              {/* OPTIONS */}
-              <div className="space-y-3 sm:space-y-4">
-                {currentQuestion?.options?.map((op) => {
-                  const isSelected = selectedForQ.includes(op.label);
-                  return (
-                    <div
-                      key={op.label}
-                      className={`w-full flex items-start gap-3 px-3 py-3 sm:px-4 sm:py-4 rounded-xl border text-sm sm:text-base transition-colors ${
-                        isCurrentLocked ? "cursor-not-allowed opacity-60" : "cursor-pointer"
-                      } ${
-                        isSelected
-                          ? "border-blue-500 bg-blue-50"
-                          : "border-slate-300 hover:border-gray-300 hover:bg-gray-50"
-                      }`}
-                      onClick={() => {
-                        if (!isCurrentLocked && !isSubmitted) toggleAnswer(qid, op.label);
-                      }}
-                    >
-                      <div className="flex-shrink-0 mt-0.5">
-                        <div
-                          className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 flex items-center justify-center ${
-                            isSelected ? "border-blue-500 bg-blue-600" : "border-gray-300 bg-white"
-                          }`}
-                        >
-                          {isSelected && (
-                            <svg
-                              className="w-3.5 h-3.5 text-white"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2.5"
+                      {/* OPTIONS */}
+                      <div className="space-y-2 sm:space-y-2.5">
+                        {currentQuestion?.options?.map((op) => {
+                          const isSelected = selectedForQ.includes(op.label);
+                          return (
+                            <div
+                              key={op.label}
+                              className={`w-full flex items-center gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl border-[3px] text-sm transition-all ${
+                                isCurrentLocked ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+                              } ${
+                                isSelected
+                                  ? "border-blue-600 bg-blue-200 shadow-lg ring-2 ring-blue-400"
+                                  : "border-indigo-300 bg-indigo-50 hover:border-indigo-500 hover:bg-indigo-100"
+                              }`}
+                              onClick={() => { if (!isCurrentLocked && !isSubmitted) toggleAnswer(qid, op.label); }}
                             >
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                            </svg>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex-1">
-                        <div className="flex items-start gap-2">
-                          <span className="inline-flex items-center justify-center w-7 h-7 rounded-md bg-blue-100 text-blue-700 text-xs sm:text-sm font-semibold flex-shrink-0">
-                            {op.label}
-                          </span>
-                          <p
-                            ref={(el) => {
-                              if (el) optionTextRefs.current[op.label] = el;
-                            }}
-                            onMouseUp={(e) => {
-                              if (isHighlightMode) {
-                                e.stopPropagation();
-                                addHighlightFromSelection("option", op.label);
-                              }
-                            }}
-                            className={`leading-relaxed ${
-                              isSelected ? "text-gray-900 font-medium" : "text-gray-800"
-                            } ${isHighlightMode ? "cursor-text select-text" : ""}`}
-                          >
-                            {renderTextWithHighlights(
-                              op.text,
-                              currentHighlights.options?.[op.label] || []
-                            )}
-                          </p>
-                        </div>
+                              <div className="flex-shrink-0">
+                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                                  isSelected ? "border-blue-700 bg-blue-600 ring-2 ring-blue-400" : "border-indigo-400 bg-white"
+                                }`}>
+                                  {isSelected && (
+                                    <svg className="w-3 h-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex-1 flex items-center gap-2.5">
+                                <span className={`inline-flex items-center justify-center w-6 h-6 rounded-md text-xs font-extrabold flex-shrink-0 transition-all ${
+                                  isSelected ? "bg-blue-700 text-white border-2 border-blue-900" : "bg-indigo-500 text-white border-2 border-indigo-700"
+                                }`}>
+                                  {op.label}
+                                </span>
+                                <p
+                                  ref={(el) => { if (el) optionTextRefs.current[op.label] = el; }}
+                                  onMouseUp={(e) => { if (isHighlightMode) { e.stopPropagation(); addHighlightFromSelection("option", op.label); } }}
+                                  className={`leading-relaxed font-semibold ${isSelected ? "text-slate-900" : "text-slate-800"} ${isHighlightMode ? "cursor-text select-text" : ""}`}
+                                >
+                                  {renderTextWithHighlights(op.text, currentHighlights.options?.[op.label] || [])}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
-                  );
-                })}
+                  </div>
+
+                  {/* Highlight toolbar */}
+                  <div className="mt-3 shrink-0 hidden sm:flex flex-wrap items-center gap-1.5">
+                    <button type="button" onClick={() => setIsHighlightMode((v) => !v)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-extrabold border-2 transition flex items-center gap-1.5 ${
+                        isHighlightMode ? "bg-amber-500 border-amber-800 text-amber-950 shadow-md" : "bg-amber-100 border-amber-400 text-amber-800 hover:bg-amber-200"
+                      }`}>
+                      ✏️ {isHighlightMode ? "Đang đánh dấu" : "Bật đánh dấu"}
+                    </button>
+                    <button type="button" onClick={clearHighlightsCurrent}
+                      className="px-3 py-1.5 rounded-lg text-xs font-extrabold border-2 border-rose-700 bg-rose-500 text-white hover:bg-rose-600 flex items-center gap-1.5 transition shadow-md">
+                      🗑️ Xóa
+                    </button>
+                    <button type="button" onClick={undo}
+                      className="px-3 py-1.5 rounded-lg text-xs font-extrabold border-2 border-teal-700 bg-teal-500 text-white hover:bg-teal-600 flex items-center gap-1.5 transition shadow-md">
+                      ↩️ Hoàn tác
+                    </button>
+                    <button type="button" onClick={redo}
+                      className="px-3 py-1.5 rounded-lg text-xs font-extrabold border-2 border-fuchsia-700 bg-fuchsia-500 text-white hover:bg-fuchsia-600 transition flex items-center gap-1.5 shadow-md">
+                      ↪️ Làm lại
+                    </button>
+                  </div>
+
+                  {/* ACTION BUTTONS — same position as VocabularyTestTake */}
+                  <div className="mt-auto pt-3 shrink-0 w-full">
+                    <div className="grid grid-cols-3 gap-1.5">
+                      <button
+                        type="button"
+                        onClick={handleCheckAnswer}
+                        disabled={!!currentComputed || selectedForQ.length === 0}
+                        className="w-full inline-flex items-center justify-center rounded-lg bg-blue-700 px-2 py-2 text-xs font-extrabold text-white shadow-lg border-2 border-blue-900 hover:bg-blue-600 disabled:opacity-40"
+                      >
+                        Kiểm tra
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleSubmitClick}
+                        disabled={answeredCount === 0}
+                        className="w-full inline-flex items-center justify-center rounded-lg bg-gradient-to-r from-orange-600 via-red-600 to-rose-700 px-2 py-2 text-xs font-extrabold text-white shadow-lg border-2 border-red-900 hover:brightness-110 disabled:opacity-40"
+                      >
+                        Nộp bài
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={toggleMarkCurrent}
+                        className={`w-full inline-flex items-center justify-center rounded-lg px-2 py-2 text-xs font-extrabold border-[3px] transition ${
+                          isMarked(qid) ? "bg-amber-500 border-amber-800 text-amber-950 shadow-md" : "bg-amber-100 border-amber-400 text-amber-800 hover:bg-amber-200"
+                        }`}
+                      >
+                        {isMarked(qid) ? "★ Đánh dấu" : "☆ Đánh dấu"}
+                      </button>
+                    </div>
+
+                  </div>
+                </div>
               </div>
-
-              {/* Highlight toolbar */}
-              <div className="mt-6 flex flex-wrap items-center gap-2 hidden sm:flex">
-                <button
-                  type="button"
-                  onClick={() => setIsHighlightMode((v) => !v)}
-                  className={`px-4 py-2 rounded-lg text-xs font-semibold border transition flex items-center gap-2 ${
-                    isHighlightMode
-                      ? "bg-yellow-100 border-yellow-200 text-yellow-900"
-                      : "bg-white border-slate-300 text-gray-700 hover:bg-gray-50"
-                  }`}
-                >
-                  <span>✏️</span>
-                  {isHighlightMode ? "Đang đánh dấu" : "Bật đánh dấu"}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={clearHighlightsCurrent}
-                  className="px-4 py-2 rounded-lg text-xs font-semibold border border-slate-300 bg-white text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-                >
-                  🗑️ Xóa
-                </button>
-
-                <button
-                  type="button"
-                  onClick={undo}
-                  className="px-4 py-2 rounded-lg text-xs font-semibold border border-slate-300 bg-white text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-                >
-                  ↩️ Hoàn tác
-                </button>
-
-                <button
-                  type="button"
-                  onClick={redo}
-                  className="px-4 py-2 rounded-lg text-xs font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 transition-all flex items-center gap-2"
-                >
-                  ↪️ Làm lại
-                </button>
-              </div>
-
             </div>
-          </div>
 
-          {/* SIDEBAR */}
-          <div className="hidden lg:col-span-3 lg:flex lg:flex-col">
-            <div className="flex-1 rounded-2xl border border-slate-300 shadow-sm bg-white p-4 flex flex-col gap-4">
-              {/* Header */}
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <h4 className="text-xs font-semibold text-indigo-700">
-                    {test?.main_topic} {test?.sub_topic && "·"} {test?.sub_topic}
-                  </h4>
-                  {settings.showQuestionNumber && (
-                    <div className="text-xs text-gray-600 mt-0.5 flex items-center gap-2">
-                      <span>Câu {currentQuestionIndex + 1} / {questions.length}</span>
-                      {lastSaved && (
-                        <span className="text-green-600 flex items-center gap-1" title="Tiến trình được tự động lưu">
-                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                          Đã lưu
-                        </span>
+            {/* RIGHT sidebar — two separate cards, same as VocabularyTestTake */}
+            <div className="lg:col-span-1 hidden lg:flex lg:flex-col min-w-0 min-h-0 lg:overflow-y-auto lg:max-h-[min(100%,calc(100dvh-4.5rem))]">
+              <div className="space-y-3 flex flex-col min-h-0">
+
+                {/* Card 1: Test info + Timer (fuchsia — same as Voice card in Voca) */}
+                <div className="rounded-xl border-[3px] border-fuchsia-500 bg-gradient-to-br from-fuchsia-200 to-purple-300 shadow-lg p-3 ring-2 ring-fuchsia-300/80">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <h3 className="text-xs font-extrabold text-slate-900">
+                        {test?.main_topic || "Bài test"}
+                      </h3>
+                      {test?.sub_topic && (
+                        <p className="text-[10px] text-fuchsia-900 font-bold mt-0.5">{test.sub_topic}</p>
                       )}
                     </div>
-                  )}
-                </div>
+                    <span className="inline-flex items-center rounded-full bg-fuchsia-600 px-2 py-0.5 text-[10px] font-extrabold text-white shadow-sm">
+                      {questions.length} câu
+                    </span>
+                  </div>
 
-                <div className="flex items-center gap-2 hidden sm:flex">
                   {settings.showTimer && (
-                    <div className={`px-2 py-1 rounded-md border flex flex-col items-center ${timerBoxClass}`}>
-                      <span className="text-[10px] opacity-90">Toàn bài</span>
-                      <span className="text-xs font-semibold">{formatTime(timeRemaining)}</span>
-                      <div className="w-20 h-1 bg-white/60 rounded mt-1 overflow-hidden">
+                    <div className={`mt-3 w-full rounded-xl border-2 px-3 py-2 flex items-center justify-between ${timerBoxClass}`}>
+                      <div>
+                        <div className="text-[10px] font-bold opacity-80">Toàn bài</div>
+                        <div className="text-base font-extrabold">{formatTime(timeRemaining)}</div>
+                      </div>
+                      <div className="w-20 h-2 bg-white/20 rounded mt-1 overflow-hidden">
                         <div className={`h-full ${timerBarClass}`} style={{ width: `${timePercent}%` }} />
                       </div>
                     </div>
                   )}
 
                   {settings.testMode === "question_timer" && (
-                    <div className="px-2 py-1 rounded-md bg-orange-50 border border-orange-100 flex flex-col items-center">
-                      <span className="text-[10px] text-orange-700">Mỗi câu</span>
-                      <span className="text-xs font-semibold text-orange-800">
-                        {formatTime(questionTimeRemaining)}
-                      </span>
-                      <div className="w-20 h-1 bg-orange-100 rounded mt-1 overflow-hidden">
-                        <div className="h-full bg-orange-500" style={{ width: `${questionTimePercent}%` }} />
+                    <div className="mt-2 w-full rounded-xl bg-white/30 border-2 border-purple-400 px-3 py-2 flex items-center justify-between">
+                      <div>
+                        <div className="text-[10px] text-purple-900 font-bold">Mỗi câu</div>
+                        <div className="text-base font-extrabold text-purple-950">{formatTime(questionTimeRemaining)}</div>
+                      </div>
+                      <div className="w-20 h-2 bg-purple-300 rounded overflow-hidden">
+                        <div className="h-full bg-blue-600" style={{ width: `${questionTimePercent}%` }} />
+                      </div>
+                    </div>
+                  )}
+
+                  {lastSaved && (
+                    <div className="mt-2 rounded-lg bg-cyan-300 border-2 border-cyan-700 px-2 py-1 text-center">
+                      <div className="text-[10px] text-cyan-950 font-extrabold flex items-center justify-center gap-1">
+                        💾 Tiến trình đã lưu
                       </div>
                     </div>
                   )}
                 </div>
-              </div>
 
-              {/* Progress */}
-              <div>
-                <div className="flex justify-between text-[11px] mb-1">
-                  <span>Đã trả lời</span>
-                  <span className="font-medium">
-                    {answeredCount}/{questions.length}
-                  </span>
+                {/* Card 2: Progress + Question Grid (amber/orange — same as Progress card in Voca) */}
+                <div className="rounded-2xl border-[3px] border-orange-600 bg-gradient-to-br from-amber-200 to-orange-300 shadow-lg p-4 ring-2 ring-orange-400">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-extrabold text-slate-900">Tiến độ</h3>
+                    <span className="text-xs font-extrabold text-orange-800 bg-white/80 px-2 py-0.5 rounded-full border-2 border-orange-600">
+                      {answeredCount}/{questions.length}
+                    </span>
+                  </div>
+
+                  {/* Legend */}
+                  <div className="mt-2 flex flex-wrap gap-x-2.5 gap-y-1 text-[10px] text-slate-900 font-bold">
+                    <span className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-violet-500 border border-violet-800" /> Đang làm</span>
+                    <span className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-emerald-500 border border-emerald-800" /> Đã trả lời</span>
+                    <span className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-amber-400 border border-amber-700" /> Chưa trả lời</span>
+                    <span className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-orange-600 border border-orange-900" /> Đánh dấu</span>
+                  </div>
+
+                  {/* Question grid */}
+                  <div className="mt-2 grid grid-cols-10 gap-1">
+                    {questions.map((q, idx) => {
+                      const answered = (userAnswers[q._id] || []).length > 0;
+                      const current = idx === currentQuestionIndex;
+                      const marked = !!markedQuestions[q._id];
+                      const disabled = settings.testMode === "question_timer" && idx !== currentQuestionIndex;
+
+                      let cls = "w-6 h-6 rounded-md flex items-center justify-center text-[9px] font-extrabold transition border-2 ";
+                      if (current) cls += "bg-violet-500 text-white border-violet-800 shadow-md ring-[3px] ring-blue-700 ring-offset-2 ring-offset-amber-100 scale-105";
+                      else if (marked) cls += "bg-orange-600 text-white border-orange-900 shadow-sm hover:brightness-95";
+                      else if (answered) cls += "bg-emerald-500 text-white border-emerald-800 shadow-md hover:brightness-95";
+                      else cls += "bg-amber-400 text-amber-950 border-amber-700 shadow-sm hover:brightness-95";
+
+                      return (
+                        <button
+                          key={q._id}
+                          type="button"
+                          className={cls}
+                          onClick={() => {
+                            if (settings.testMode === "flexible") {
+                              setCurrentQuestionIndex(idx);
+                              window.scrollTo({ top: 0, behavior: "smooth" });
+                            }
+                          }}
+                          disabled={disabled}
+                          title={marked ? "Đã đánh dấu xem lại" : `Câu ${idx + 1}`}
+                        >
+                          {idx + 1}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Progress bar */}
+                  <div className="mt-3 rounded-lg bg-cyan-300 border-2 border-cyan-700 p-2 shadow-inner">
+                    <div className="flex items-center justify-between text-[11px] font-extrabold text-cyan-950">
+                      <span>Hoàn thành</span>
+                      <span>{Math.round((answeredCount / Math.max(questions.length, 1)) * 100)}%</span>
+                    </div>
+                    <div className="mt-1.5 h-2 rounded-full bg-cyan-500/50 overflow-hidden">
+                      <div className="h-full bg-gradient-to-r from-indigo-600 to-blue-700 transition-all"
+                        style={{ width: `${(answeredCount / Math.max(questions.length, 1)) * 100}%` }} />
+                    </div>
+                    <div className="mt-2 flex items-center gap-3 text-[11px] text-slate-900 font-bold">
+                      <span className="inline-flex items-center gap-1">
+                        <span className="h-2 w-2 rounded-full bg-emerald-500" /> Đúng: {Object.values(showResult).filter(r => r?.isCorrect).length}
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <span className="h-2 w-2 rounded-full bg-rose-500" /> Sai: {Object.values(showResult).filter(r => r && !r.isCorrect).length}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Submit button */}
+                  <button
+                    type="button"
+                    onClick={handleSubmitClick}
+                    disabled={answeredCount === 0}
+                    className={`mt-3 w-full px-3 py-2.5 rounded-xl text-sm font-extrabold transition-all border-[3px] ${
+                      answeredCount === 0
+                        ? "bg-amber-200 text-amber-500 border-amber-400 cursor-not-allowed"
+                        : "bg-gradient-to-r from-orange-600 via-red-600 to-rose-700 text-white border-red-900 hover:brightness-110 shadow-lg"
+                    }`}
+                  >
+                    Nộp bài ({answeredCount}/{questions.length})
+                  </button>
                 </div>
-                <div className="h-1.5 bg-gray-200 rounded-full">
-                  <div
-                    className="h-full bg-blue-500 rounded-full"
-                    style={{ width: `${(answeredCount / Math.max(questions.length || 1, 1)) * 100}%` }}
-                  />
-                </div>
               </div>
-
-              {/* Auto-save indicator */}
-              <div className="px-2 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-center" title="Tiến trình tự động được lưu. Bạn có thể load lại trang mà không lo mất tiến trình.">
-                <div className="text-[10px] text-emerald-700 font-medium flex items-center justify-center gap-1">
-                  💾 Tự động lưu tiến trình
-                </div>
-              </div>
-
-              {/* Legend */}
-              <div className="flex flex-wrap gap-2 text-[10px] text-gray-600">
-                <span className="inline-flex items-center gap-1">
-                  <span className="w-3 h-3 rounded bg-purple-600" /> Đang làm
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <span className="w-3 h-3 rounded bg-emerald-500" /> Đã trả lời
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <span className="w-3 h-3 rounded bg-gray-200 border border-gray-300" /> Chưa trả lời
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <span className="w-3 h-3 rounded bg-amber-400" /> Đánh dấu
-                </span>
-              </div>
-
-              {/* Grid */}
-              <div className="flex-1 min-h-0 overflow-auto">
-                <div className="grid grid-cols-6 sm:grid-cols-5 gap-2 hidden sm:grid">
-                  {questions.map((q, idx) => {
-                    const answered = (userAnswers[q._id] || []).length > 0;
-                    const current = idx === currentQuestionIndex;
-                    const marked = !!markedQuestions[q._id];
-
-                    let cls =
-                      "w-8 h-8 sm:w-9 sm:h-9 rounded-lg text-xs font-semibold flex items-center justify-center transition-all ";
-                    if (current) cls += "bg-purple-600 text-white shadow ring-2 ring-purple-300";
-                    else if (marked) cls += "bg-amber-400 text-white hover:bg-amber-500";
-                    else if (answered) cls += "bg-emerald-500 text-white hover:bg-emerald-600";
-                    else cls += "bg-gray-100 text-gray-600 border border-gray-300 hover:bg-gray-200";
-
-                    const disabled = settings.testMode === "question_timer" && idx !== currentQuestionIndex;
-
-                    return (
-                      <button
-                        key={q._id}
-                        type="button"
-                        className={cls}
-                        onClick={() => {
-                          if (settings.testMode === "flexible") {
-                            setCurrentQuestionIndex(idx);
-                            window.scrollTo({ top: 0, behavior: "smooth" });
-                          }
-                        }}
-                        disabled={disabled}
-                        title={marked ? "Đã đánh dấu xem lại" : ""}
-                      >
-                        {idx + 1}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* SUBMIT - Desktop only */}
-              <button
-                type="button"
-                onClick={handleSubmitClick}
-                disabled={answeredCount === 0}
-                className={`mt-auto w-full px-4 py-3 rounded-lg text-sm font-semibold hidden md:block ${
-                  answeredCount === 0
-                    ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                    : "bg-red-600 text-white hover:bg-red-700"
-                }`}
-              >
-                Nộp bài ({answeredCount}/{questions.length})
-              </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* BOTTOM ACTION BAR */}
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-300 bg-white/95 backdrop-blur-sm">
-        <div className="max-w-6xl mx-auto px-3 sm:px-4 py-2.5">
-          <div className="flex flex-row sm:flex-row gap-2 sm:gap-3">
-            <div className="flex w-full flex-row gap-2 sm:gap-3">
-              {settings.testMode === "flexible" && (
-                <button
-                  type="button"
-                  onClick={handlePrev}
-                  disabled={!canGoPrev}
-                  className={`block w-1/3 sm:w-1/3 md:w-1/3 px-3 py-2 rounded-lg text-sm border ${
-                    !canGoPrev
-                      ? "bg-gray-100 text-gray-400 border-slate-300 cursor-not-allowed"
-                      : "bg-white text-gray-800 border-gray-300 hover:bg-gray-50"
-                  }`}
-                >
-                  Câu trước
-                </button>
-              )}
-
-              {!currentComputed && selectedForQ.length > 0 && (
-                <button
-                  type="button"
-                  onClick={handleCheckAnswer}
-                  className="block md:block w-1/3 px-3 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700"
-                >
-                  Kiểm tra đáp án
-                </button>
-              )}
-
-              {/* Mobile Submit Button */}
-              <button
-                type="button"
-                onClick={handleSubmitClick}
-                disabled={answeredCount === 0}
-                className={`block md:hidden w-1/3 px-3 py-2 rounded-lg text-sm font-semibold ${
-                  answeredCount === 0
-                    ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                    : "bg-red-600 text-white hover:bg-red-700"
+      {/* MOBILE STICKY BOTTOM BAR */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t-[3px] border-indigo-300 shadow-2xl px-3 pt-2 pb-safe pb-2">
+        {/* Progress bar */}
+        <div className="mb-2 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-gradient-to-r from-indigo-600 to-blue-700 transition-all"
+            style={{ width: `${(answeredCount / Math.max(questions.length, 1)) * 100}%` }}
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          {/* Center: progress + timer */}
+          <div className="flex-1 flex flex-col items-center gap-0.5 min-w-0">
+            <span className="text-xs font-extrabold text-slate-700">
+              {answeredCount}/{questions.length} câu đã làm
+            </span>
+            {settings.showTimer && (
+              <span
+                className={`inline-flex items-center gap-2 rounded-xl border-[3px] px-3 py-1.5 text-sm font-black shadow-md ${
+                  timeWarnLevel === "danger"
+                    ? "border-red-900 bg-red-50 text-red-800 ring-2 ring-red-200 animate-pulse"
+                    : timeWarnLevel === "warn"
+                    ? "border-amber-900 bg-amber-50 text-amber-800 ring-2 ring-amber-200"
+                    : "border-indigo-900 bg-indigo-50 text-indigo-800 ring-2 ring-indigo-200"
                 }`}
+                title="Thời gian còn lại"
               >
-                Nộp bài ({answeredCount}/{questions.length})
-              </button>
-
-              {canGoNext && !(selectedForQ.length > 0 && !currentComputed) && (
-                <button
-                  type="button"
-                  onClick={handleNext}
-                  className="block w-1/3 sm:w-1/3 md:w-1/3 px-3 py-2 rounded-lg bg-purple-600 text-white text-sm font-semibold hover:bg-purple-700"
-                >
-                  Câu tiếp theo
-                </button>
-              )}
-            </div>
+                ⏱ <span className="tabular-nums">{formatTime(timeRemaining)}</span>
+              </span>
+            )}
           </div>
+
+          {/* Submit */}
+          <button
+            type="button"
+            onClick={handleSubmitClick}
+            disabled={answeredCount === 0}
+            className="shrink-0 inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-orange-600 to-rose-700 border-[3px] border-red-900 px-3 py-1.5 text-xs font-extrabold text-white shadow-lg disabled:opacity-40"
+          >
+            Nộp bài
+          </button>
         </div>
       </div>
 

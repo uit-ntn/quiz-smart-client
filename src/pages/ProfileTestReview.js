@@ -9,26 +9,38 @@ import ErrorMessage from '../components/ErrorMessage';
 const scoreTone = (pct) => {
   if (pct >= 90)
     return {
-      badge: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-      ring: 'ring-emerald-200',
+      badge: 'border-2 border-emerald-800 bg-emerald-600 text-white',
       bar: 'bg-emerald-600',
+      label: '🏆 Xuất sắc',
+      cardBorder: 'border-emerald-400',
+      cardRing: 'ring-emerald-100',
+      headerGrad: 'from-emerald-600 to-teal-700',
     };
   if (pct >= 75)
     return {
-      badge: 'bg-blue-50 text-blue-700 border-blue-200',
-      ring: 'ring-blue-200',
-      bar: 'bg-blue-600',
+      badge: 'border-2 border-sky-800 bg-sky-600 text-white',
+      bar: 'bg-sky-600',
+      label: '🎯 Tốt',
+      cardBorder: 'border-sky-400',
+      cardRing: 'ring-sky-100',
+      headerGrad: 'from-sky-600 to-indigo-700',
     };
   if (pct >= 50)
     return {
-      badge: 'bg-amber-50 text-amber-800 border-amber-200',
-      ring: 'ring-amber-200',
-      bar: 'bg-amber-600',
+      badge: 'border-2 border-amber-800 bg-amber-500 text-white',
+      bar: 'bg-amber-500',
+      label: '👍 Khá',
+      cardBorder: 'border-amber-400',
+      cardRing: 'ring-amber-100',
+      headerGrad: 'from-amber-500 to-orange-600',
     };
   return {
-    badge: 'bg-rose-50 text-rose-700 border-rose-200',
-    ring: 'ring-rose-200',
+    badge: 'border-2 border-rose-800 bg-rose-600 text-white',
     bar: 'bg-rose-600',
+    label: '💪 Cần cố gắng',
+    cardBorder: 'border-rose-400',
+    cardRing: 'ring-rose-100',
+    headerGrad: 'from-rose-600 to-red-700',
   };
 };
 
@@ -121,8 +133,7 @@ const ProfileTestReview = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // UI state
-  const [tab, setTab] = useState('all'); // all | wrong | correct
+  const [tab, setTab] = useState('all');
   const [q, setQ] = useState('');
   const [expanded, setExpanded] = useState(() => new Set());
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -151,7 +162,6 @@ const ProfileTestReview = () => {
   const filtered = useMemo(() => {
     if (!normalized) return [];
     const text = (q || '').trim().toLowerCase();
-
     return normalized.answers.filter((a) => {
       if (tab === 'wrong' && a.isCorrect) return false;
       if (tab === 'correct' && !a.isCorrect) return false;
@@ -212,400 +222,203 @@ const ProfileTestReview = () => {
 
   return (
     <ProfileLayout>
-      {/* Wrapper duy nhất để tránh lỗi “Adjacent JSX elements...” khi lỡ lệch thẻ */}
       <div className="relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
           {/* Page Header */}
-          <div className="mb-8">
-            <div className="bg-white/70 backdrop-blur-sm rounded-2xl p-6 border border-white/20 shadow-lg">
-              <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/25">
-                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                      </svg>
-                    </div>
-                    <div>
-                      <div className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
-                        <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+          <div className="mb-5">
+            <div className={`bg-white rounded-2xl border-[3px] ${tone.cardBorder} ring-2 ${tone.cardRing} shadow-lg overflow-hidden`}>
+              <div className={`bg-gradient-to-r ${tone.headerGrad} px-5 py-4`}>
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                      <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-white/40 bg-white/20 px-2.5 py-0.5 text-[11px] font-bold text-white">
+                        <span className="inline-flex h-2 w-2 rounded-full bg-lime-400 animate-pulse" />
                         Xem lại kết quả
-                      </div>
+                      </span>
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold ${tone.badge}`}>
+                        {tone.label}
+                      </span>
                     </div>
-                  </div>
-
-                  <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-3 leading-tight">
-                    {normalized.title}
-                  </h1>
-
-                  <div className="flex flex-wrap items-center gap-3">
-                    <div className="inline-flex items-center gap-2 rounded-xl bg-white/70 backdrop-blur-sm border border-white/20 px-4 py-2 text-sm font-medium text-slate-600">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M8 7V3a1 1 0 011-1h6a1 1 0 011 1v4m-6 0v1m0-1h6m-6 0H6a2 2 0 00-2 2v9a2 2 0 002 2h12a2 2 0 002-2V9a2 2 0 00-2-2h-2"
-                        />
-                      </svg>
-                      {fmtDate(normalized.createdAt)}
-                    </div>
-
-                    <div className="inline-flex items-center gap-2 rounded-xl bg-white/70 backdrop-blur-sm border border-white/20 px-4 py-2 text-sm font-medium text-slate-600">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                      </svg>
-                      {durationSec ? `${durationSec}s` : '—'}
-                    </div>
-
-                    <div
-                      className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold ${
-                        normalized.status === 'active'
-                          ? 'border-emerald-200 bg-emerald-100 text-emerald-700'
-                          : 'border-slate-200 bg-white/70 text-slate-700'
-                      }`}
-                    >
-                      {normalized.status === 'active' ? (
-                        <>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2"
-                              d="M5 13l4 4L19 7"
-                            />
-                          </svg>
-                          Đã lưu
-                        </>
-                      ) : (
-                        <>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2"
-                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                            />
-                          </svg>
-                          Nháp
-                        </>
+                    <h1 className="text-xl font-black text-white leading-tight mb-2">{normalized.title}</h1>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="inline-flex items-center gap-1 rounded-full border-2 border-white/40 bg-white/20 px-2 py-0.5 text-[10px] font-bold text-white">
+                        🕐 {fmtDate(normalized.createdAt)}
+                      </span>
+                      {durationSec > 0 && (
+                        <span className="inline-flex items-center gap-1 rounded-full border-2 border-white/40 bg-white/20 px-2 py-0.5 text-[10px] font-bold text-white">
+                          ⏱ {durationSec}s
+                        </span>
                       )}
+                      <span className="inline-flex items-center gap-1 rounded-full border-2 border-white/40 bg-white/20 px-2 py-0.5 text-[10px] font-bold text-white">
+                        {normalized.status === 'active' ? '✅ Đã lưu' : '📄 Nháp'}
+                      </span>
                     </div>
                   </div>
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-3 lg:items-start">
-                  <button
-                    onClick={() => setShowDeleteConfirm(true)}
-                    disabled={deleteLoading}
-                    className="px-4 py-3 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-xl hover:from-red-600 hover:to-rose-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold transition-all duration-200 shadow-lg shadow-red-500/25"
-                  >
-                    {deleteLoading ? (
-                      <div className="flex items-center justify-center gap-2">
-                        <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                          />
-                        </svg>
-                        Đang xóa...
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                          />
-                        </svg>
-                        Xóa kết quả
-                      </div>
-                    )}
-                  </button>
-
-                  <button
-                    onClick={() => navigate(-1)}
-                    className="px-4 py-3 bg-white/70 backdrop-blur-sm border border-white/20 text-slate-700 rounded-xl hover:bg-white transition-all duration-200 font-semibold shadow-lg"
-                  >
-                    <div className="flex items-center gap-2">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M10 19l-7-7m0 0l7-7m-7 7h18"
-                        />
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button onClick={() => navigate(-1)}
+                      className="px-3 py-1.5 bg-white/20 border-2 border-white/40 text-white rounded-xl font-extrabold text-xs hover:bg-white/30 transition-colors flex items-center gap-1.5">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                       </svg>
                       Quay lại
-                    </div>
-                  </button>
+                    </button>
+                    <button onClick={() => setShowDeleteConfirm(true)} disabled={deleteLoading}
+                      className="w-8 h-8 rounded-xl bg-rose-500 border-2 border-rose-700 flex items-center justify-center text-white hover:bg-rose-600 transition-colors disabled:opacity-50"
+                      title="Xóa kết quả">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Summary + actions */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          {/* Score + Filters */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-5">
             {/* Score card */}
-            <div className="lg:col-span-2 bg-white/70 backdrop-blur-sm rounded-2xl border border-white/20 shadow-lg overflow-hidden">
-              <div className="p-6">
-                <div className="flex items-center justify-between gap-4 mb-6">
-                  <div className="flex items-center gap-4">
-                    <div
-                      className={`h-16 w-16 rounded-2xl text-white flex items-center justify-center font-bold text-xl shadow-lg ${tone.bar}`}
-                    >
-                      {normalized.pct}%
-                    </div>
-                    <div>
-                      <div className="text-lg font-bold text-slate-900">
-                        Bạn đúng {normalized.correct}/{normalized.total} câu
-                      </div>
-                      <div className="text-sm text-slate-600 mt-1">
-                        Sai {normalized.wrong} • Tổng {normalized.total} câu hỏi
-                      </div>
-                    </div>
+            <div className={`lg:col-span-2 bg-white rounded-2xl border-[3px] ${tone.cardBorder} ring-2 ${tone.cardRing} shadow-lg overflow-hidden`}>
+              <div className="bg-slate-50 border-b-2 border-slate-200 px-5 py-3">
+                <h2 className="text-sm font-extrabold text-slate-800">📊 Kết quả tổng quan</h2>
+              </div>
+              <div className="p-5">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className={`h-16 w-16 rounded-2xl text-white flex items-center justify-center font-black text-xl shadow-lg ${tone.bar}`}>
+                    {normalized.pct}%
                   </div>
-
-                  <div className={`hidden sm:inline-flex items-center rounded-xl border px-4 py-2 text-sm font-semibold ${tone.badge}`}>
-                    {normalized.pct >= 90
-                      ? '🏆 Xuất sắc'
-                      : normalized.pct >= 75
-                      ? '🎯 Tốt'
-                      : normalized.pct >= 50
-                      ? '👍 Khá'
-                      : '💪 Cần cố gắng'}
+                  <div>
+                    <div className="text-lg font-black text-slate-900">Đúng {normalized.correct}/{normalized.total} câu</div>
+                    <div className="text-sm text-slate-500 font-medium mt-0.5">Sai {normalized.wrong} câu</div>
                   </div>
                 </div>
-
-                <div className="mb-6">
+                <div className="mb-5">
                   <div className="h-3 rounded-full bg-slate-200 overflow-hidden">
-                    <div
-                      className={`h-full transition-all duration-500 ${tone.bar}`}
-                      style={{ width: `${Math.max(0, Math.min(100, normalized.pct))}%` }}
-                    />
-                  </div>
-
-                  <div className="mt-4 grid grid-cols-3 gap-4">
-                    <div className="text-center p-3 bg-white/70 backdrop-blur-sm rounded-xl border border-white/20">
-                      <div className="text-2xl font-bold text-slate-900">{normalized.total}</div>
-                      <div className="text-xs font-semibold text-slate-600 mt-1">Tổng câu</div>
-                    </div>
-                    <div className="text-center p-3 bg-emerald-50 rounded-xl border border-emerald-200">
-                      <div className="text-2xl font-bold text-emerald-700">{normalized.correct}</div>
-                      <div className="text-xs font-semibold text-emerald-600 mt-1">Đúng</div>
-                    </div>
-                    <div className="text-center p-3 bg-rose-50 rounded-xl border border-rose-200">
-                      <div className="text-2xl font-bold text-rose-700">{normalized.wrong}</div>
-                      <div className="text-xs font-semibold text-rose-600 mt-1">Sai</div>
-                    </div>
+                    <div className={`h-full transition-all duration-700 rounded-full ${tone.bar}`}
+                      style={{ width: `${Math.max(0, Math.min(100, normalized.pct))}%` }} />
                   </div>
                 </div>
-
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <button
-                    onClick={() => {
-                      setTab('wrong');
-                      expandAllWrong();
-                    }}
-                    className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-red-500 to-rose-600 text-white px-4 py-3 font-semibold hover:from-red-600 hover:to-rose-700 transition-all duration-200 shadow-lg shadow-red-500/25"
-                  >
+                <div className="grid grid-cols-3 gap-3 mb-5">
+                  <div className="text-center p-3 bg-white rounded-xl border-[3px] border-slate-200">
+                    <div className="text-2xl font-black text-slate-900">{normalized.total}</div>
+                    <div className="text-[10px] font-extrabold text-slate-500 mt-0.5 uppercase tracking-wide">Tổng câu</div>
+                  </div>
+                  <div className="text-center p-3 bg-emerald-100 rounded-xl border-[3px] border-emerald-400">
+                    <div className="text-2xl font-black text-emerald-700">{normalized.correct}</div>
+                    <div className="text-[10px] font-extrabold text-emerald-600 mt-0.5 uppercase tracking-wide">✓ Đúng</div>
+                  </div>
+                  <div className="text-center p-3 bg-rose-100 rounded-xl border-[3px] border-rose-400">
+                    <div className="text-2xl font-black text-rose-700">{normalized.wrong}</div>
+                    <div className="text-[10px] font-extrabold text-rose-600 mt-0.5 uppercase tracking-wide">✗ Sai</div>
+                  </div>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <button onClick={() => { setTab('wrong'); expandAllWrong(); }}
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-rose-600 border-[3px] border-rose-800 text-white px-4 py-2 font-extrabold text-sm hover:bg-rose-700 transition-colors shadow-md">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
                     </svg>
-                    Xem câu sai
+                    Xem câu sai ({normalized.wrong})
                   </button>
-
-                  <button
-                    onClick={() => {
-                      setTab('all');
-                      setExpanded(new Set());
-                      setQ('');
-                    }}
-                    className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-white/70 backdrop-blur-sm border border-white/20 text-slate-700 px-4 py-3 font-semibold hover:bg-white transition-all duration-200 shadow-lg"
-                  >
+                  <button onClick={() => { setTab('all'); setExpanded(new Set()); setQ(''); }}
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-white border-[3px] border-slate-300 text-slate-700 px-4 py-2 font-extrabold text-sm hover:bg-slate-50 transition-colors">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                      />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                     </svg>
-                    Reset lọc
+                    Xem tất cả
                   </button>
                 </div>
               </div>
             </div>
 
-            {/* Filters */}
-            <div className="bg-white/70 backdrop-blur-sm rounded-2xl border border-white/20 shadow-lg p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.707A1 1 0 013 7V4z"
-                    />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-bold text-slate-900">Bộ lọc</h3>
+            {/* Filters sidebar */}
+            <div className="bg-white rounded-2xl border-[3px] border-indigo-300 ring-2 ring-indigo-100 shadow-lg overflow-hidden">
+              <div className="bg-gradient-to-r from-indigo-600 to-violet-700 px-4 py-3">
+                <h3 className="text-sm font-extrabold text-white">🔍 Bộ lọc</h3>
               </div>
-
-              <div className="space-y-4">
+              <div className="p-4 space-y-4">
                 <div>
-                  <label className="text-sm font-semibold text-slate-700 mb-2 block">Loại câu hỏi</label>
-                  <div className="flex gap-2">
-                    <TabButton active={tab === 'all'} onClick={() => setTab('all')}>
-                      Tất cả
-                    </TabButton>
-                    <TabButton active={tab === 'wrong'} onClick={() => setTab('wrong')}>
-                      Sai
-                    </TabButton>
-                    <TabButton active={tab === 'correct'} onClick={() => setTab('correct')}>
-                      Đúng
-                    </TabButton>
+                  <label className="text-xs font-extrabold text-slate-700 mb-2 block uppercase tracking-wide">Loại câu hỏi</label>
+                  <div className="flex gap-1.5">
+                    <TabButton active={tab === 'all'} onClick={() => setTab('all')}>Tất cả</TabButton>
+                    <TabButton active={tab === 'wrong'} onClick={() => setTab('wrong')}>Sai</TabButton>
+                    <TabButton active={tab === 'correct'} onClick={() => setTab('correct')}>Đúng</TabButton>
                   </div>
                 </div>
-
                 <div>
-                  <label className="text-sm font-semibold text-slate-700 mb-2 block">Tìm kiếm</label>
+                  <label className="text-xs font-extrabold text-slate-700 mb-2 block uppercase tracking-wide">Tìm kiếm</label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <svg className="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                        />
+                      <svg className="h-4 w-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                       </svg>
                     </div>
-                    <input
-                      value={q}
-                      onChange={(e) => setQ(e.target.value)}
-                      placeholder="Nhập từ/đáp án..."
-                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent bg-white/70 backdrop-blur-sm"
-                    />
+                    <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Nhập từ/đáp án..."
+                      className="w-full pl-9 pr-4 py-2 rounded-xl border-2 border-indigo-200 text-sm outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 font-medium text-slate-800 placeholder-indigo-300" />
                   </div>
-
-                  <div className="mt-2 text-xs text-slate-600 bg-slate-50 rounded-lg px-3 py-2">
-                    Hiển thị <span className="font-semibold text-slate-900">{filtered.length}</span> / {normalized.answers.length} câu
-                  </div>
+                </div>
+                <div className="rounded-xl border-2 border-indigo-200 bg-indigo-50 px-3 py-2">
+                  <p className="text-xs text-indigo-700 font-bold">
+                    Hiển thị <span className="text-indigo-900 font-black">{filtered.length}</span> / {normalized.answers.length} câu
+                  </p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* List */}
-          <div className="bg-white/70 backdrop-blur-sm rounded-2xl border border-white/20 shadow-lg overflow-hidden">
-            <div className="px-6 py-4 border-b border-white/20 bg-gradient-to-r from-slate-50/50 to-white/50">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-slate-600 to-slate-700 flex items-center justify-center">
-                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
-                      />
-                    </svg>
-                  </div>
-                  <h2 className="text-lg font-bold text-slate-900">Chi tiết từng câu</h2>
-                </div>
-                <div className="hidden sm:block text-sm text-slate-600 font-medium bg-white/70 backdrop-blur-sm rounded-lg px-3 py-1 border border-white/20">
-                  Nhấn để xem chi tiết
-                </div>
-              </div>
+          {/* Answer List */}
+          <div className="bg-white rounded-2xl border-[3px] border-slate-300 ring-2 ring-slate-100 shadow-lg overflow-hidden mb-4">
+            <div className="bg-gradient-to-r from-slate-700 to-slate-800 px-5 py-3 flex items-center justify-between">
+              <h2 className="text-sm font-extrabold text-white">📋 Chi tiết từng câu</h2>
+              <span className="inline-flex items-center rounded-full border-2 border-white/40 bg-white/20 px-2.5 py-0.5 text-[10px] font-bold text-white">
+                Nhấn để xem chi tiết
+              </span>
             </div>
-
-            <div className="divide-y divide-slate-100">
+            <div className="divide-y-2 divide-slate-100">
               {filtered.map((a) => {
                 const open = expanded.has(a.idx);
                 return (
-                  <button
-                    key={a.idx}
-                    type="button"
-                    onClick={() => toggleExpand(a.idx)}
-                    className="w-full text-left px-4 sm:px-5 py-3 hover:bg-slate-50 transition"
-                  >
+                  <button key={a.idx} type="button" onClick={() => toggleExpand(a.idx)}
+                    className={`w-full text-left px-4 sm:px-5 py-3 transition-colors ${open ? 'bg-indigo-50' : 'hover:bg-slate-50'}`}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-start gap-3 min-w-0">
-                        <div
-                          className={`mt-0.5 h-9 w-9 rounded-xl flex items-center justify-center text-white font-extrabold shrink-0 ${
-                            a.isCorrect ? 'bg-emerald-600' : 'bg-rose-600'
-                          }`}
-                        >
+                        <div className={`mt-0.5 h-8 w-8 rounded-xl flex items-center justify-center text-white font-black text-xs shrink-0 border-2 ${
+                          a.isCorrect ? 'bg-emerald-600 border-emerald-800' : 'bg-rose-600 border-rose-800'
+                        }`}>
                           {a.idx + 1}
                         </div>
-
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <div className="font-extrabold text-slate-900 truncate">{a.questionText}</div>
-                            <span
-                              className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
-                                a.isCorrect
-                                  ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                                  : 'border-rose-200 bg-rose-50 text-rose-700'
-                              }`}
-                            >
+                            <span className="font-extrabold text-slate-900 text-sm">{a.questionText}</span>
+                            <span className={`inline-flex items-center rounded-full border-2 px-2 py-0.5 text-[10px] font-bold ${
+                              a.isCorrect ? 'border-emerald-400 bg-emerald-100 text-emerald-700' : 'border-rose-400 bg-rose-100 text-rose-700'
+                            }`}>
                               {a.isCorrect ? '✓ Đúng' : '✗ Sai'}
                             </span>
                           </div>
-
-                          <div className="mt-1 text-xs text-slate-600 truncate">
-                            <span className="font-semibold">Bạn:</span> {a.userAnswer ? a.userAnswer : '(Không trả lời)'}
-                            {!a.isCorrect && a.correctAnswer ? (
-                              <>
-                                <span className="mx-2 text-slate-300">•</span>
-                                <span className="font-semibold">Đúng:</span> {a.correctAnswer}
-                              </>
-                            ) : null}
+                          <div className="mt-0.5 text-xs text-slate-500 font-medium truncate">
+                            <span className="font-bold text-slate-700">Bạn:</span> {a.userAnswer || '(Không trả lời)'}
+                            {!a.isCorrect && a.correctAnswer && (
+                              <> <span className="text-slate-300 mx-1">•</span> <span className="font-bold text-emerald-700">Đúng:</span> {a.correctAnswer}</>
+                            )}
                           </div>
                         </div>
                       </div>
-
-                      <div className="shrink-0 text-slate-400">
-                        <svg
-                          className={`w-5 h-5 transition ${open ? 'rotate-180' : ''}`}
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </div>
+                      <svg className={`w-4 h-4 text-slate-400 shrink-0 transition-transform mt-1 ${open ? 'rotate-180' : ''}`}
+                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                      </svg>
                     </div>
-
                     {open && (
                       <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <AnswerBox
-                          label="Câu trả lời của bạn"
-                          value={a.userAnswer}
-                          tone={a.isCorrect ? 'emerald' : 'rose'}
-                        />
+                        <AnswerBox label="Câu trả lời của bạn" value={a.userAnswer} tone={a.isCorrect ? 'emerald' : 'rose'} />
                         {!a.isCorrect ? (
                           <AnswerBox label="Đáp án đúng" value={a.correctAnswer} tone="emerald" />
                         ) : (
-                          <div className="rounded-xl border border-slate-200 bg-white p-3">
-                            <div className="text-xs font-semibold text-slate-600">Gợi ý</div>
-                            <div className="mt-1 text-sm font-semibold text-slate-900">Giữ vững phong độ! 🎯</div>
+                          <div className="rounded-xl border-[3px] border-sky-300 bg-sky-50 p-3">
+                            <div className="text-[10px] font-extrabold text-sky-600 uppercase tracking-wide mb-1">Gợi ý</div>
+                            <div className="text-sm font-extrabold text-sky-900">Giữ vững phong độ! 🎯</div>
                           </div>
                         )}
                       </div>
@@ -613,78 +426,54 @@ const ProfileTestReview = () => {
                   </button>
                 );
               })}
-
               {filtered.length === 0 && (
-                <div className="px-4 sm:px-5 py-10 text-center">
-                  <div className="text-sm font-extrabold text-slate-900">Không có kết quả phù hợp</div>
-                  <div className="mt-1 text-xs text-slate-600">Thử đổi bộ lọc hoặc xoá từ khoá tìm kiếm.</div>
+                <div className="px-4 py-12 text-center">
+                  <div className="w-14 h-14 rounded-2xl bg-slate-100 border-2 border-slate-200 flex items-center justify-center mx-auto mb-3 text-2xl">🔍</div>
+                  <div className="text-sm font-extrabold text-slate-900 mb-1">Không có kết quả phù hợp</div>
+                  <div className="text-xs text-slate-500">Thử đổi bộ lọc hoặc xóa từ khóa tìm kiếm.</div>
                 </div>
               )}
             </div>
           </div>
 
-          <div className="h-2" />
         </div>
 
         {/* Delete Confirmation Modal */}
         {showDeleteConfirm && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-            <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl w-full max-w-md border border-white/20">
-              <div className="p-6">
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center shadow-lg shadow-red-500/25">
-                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                      />
-                    </svg>
-                  </div>
-                  <div className="min-w-0">
-                    <h3 className="text-xl font-bold text-slate-900">Xác nhận xóa kết quả</h3>
-                    <p className="text-sm text-slate-600 mt-1">Thao tác này không thể hoàn tác</p>
+            <div className="bg-white rounded-2xl border-[3px] border-rose-500 ring-2 ring-rose-200 shadow-2xl max-w-md w-full overflow-hidden">
+              <div className="bg-gradient-to-r from-rose-600 to-red-700 px-5 py-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-white/20 border-2 border-white/40 flex items-center justify-center text-xl">🗑️</div>
+                  <div>
+                    <h3 className="text-base font-extrabold text-white">Xác nhận xóa kết quả</h3>
+                    <p className="text-xs text-rose-200 font-medium">Thao tác này không thể hoàn tác</p>
                   </div>
                 </div>
-
-                <div className="bg-slate-50 rounded-xl p-4 mb-6">
-                  <p className="text-sm text-slate-700 leading-relaxed">
-                    Bạn có chắc chắn muốn xóa kết quả bài test{' '}
-                    <span className="font-semibold text-slate-900">"{normalized.title}"</span> không?
+              </div>
+              <div className="p-5">
+                <div className="bg-rose-50 border-2 border-rose-300 rounded-xl p-3 mb-4">
+                  <p className="text-sm text-slate-800 font-bold">
+                    Bạn có chắc muốn xóa kết quả bài test{' '}
+                    <span className="text-rose-700">"{normalized.title}"</span>?
                   </p>
-                  <p className="text-xs text-slate-500 mt-2">Kết quả sẽ được chuyển vào thùng rác và có thể khôi phục sau.</p>
+                  <p className="text-xs text-slate-500 mt-1">Kết quả sẽ được chuyển vào thùng rác.</p>
                 </div>
-
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setShowDeleteConfirm(false)}
-                    disabled={deleteLoading}
-                    className="flex-1 px-4 py-3 border border-slate-200 bg-white text-slate-700 rounded-xl hover:bg-slate-50 disabled:opacity-50 font-semibold transition-all duration-200"
-                  >
+                <div className="flex gap-2">
+                  <button onClick={() => setShowDeleteConfirm(false)} disabled={deleteLoading}
+                    className="flex-1 px-4 py-2.5 text-slate-700 bg-white border-[3px] border-slate-300 rounded-xl font-extrabold text-sm hover:bg-slate-50 disabled:opacity-50 transition-colors">
                     Hủy bỏ
                   </button>
-
-                  <button
-                    onClick={handleDeleteResult}
-                    disabled={deleteLoading}
-                    className="flex-1 px-4 py-3 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-xl hover:from-red-700 hover:to-rose-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold transition-all duration-200 shadow-lg shadow-red-500/25"
-                  >
+                  <button onClick={handleDeleteResult} disabled={deleteLoading}
+                    className="flex-1 px-4 py-2.5 bg-gradient-to-r from-rose-600 to-red-600 border-[3px] border-red-900 text-white rounded-xl font-extrabold text-sm hover:from-rose-700 hover:to-red-700 disabled:opacity-50 transition-colors shadow-md">
                     {deleteLoading ? (
-                      <div className="flex items-center justify-center gap-2">
+                      <span className="flex items-center justify-center gap-2">
                         <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                          />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                         </svg>
                         Đang xóa...
-                      </div>
-                    ) : (
-                      'Xóa ngay'
-                    )}
+                      </span>
+                    ) : '🗑️ Xóa ngay'}
                   </button>
                 </div>
               </div>
@@ -696,26 +485,14 @@ const ProfileTestReview = () => {
   );
 };
 
-function MiniStat({ label, value, tone }) {
-  return (
-    <div className="rounded-xl border border-slate-200 bg-white p-3 text-center">
-      <div className={`text-lg font-extrabold ${tone}`}>{value}</div>
-      <div className="text-[11px] font-semibold text-slate-600">{label}</div>
-    </div>
-  );
-}
-
 function TabButton({ active, onClick, children }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex-1 rounded-xl px-4 py-2 text-sm font-semibold border transition-all duration-200 ${
+    <button type="button" onClick={onClick}
+      className={`flex-1 rounded-xl px-3 py-1.5 text-xs font-extrabold border-2 transition-all duration-200 ${
         active
-          ? 'bg-gradient-to-r from-violet-600 to-purple-600 text-white border-transparent shadow-lg shadow-violet-500/25'
-          : 'bg-white/70 backdrop-blur-sm text-slate-700 border-white/20 hover:bg-white hover:shadow-md'
-      }`}
-    >
+          ? 'bg-violet-600 border-violet-800 text-white shadow-md'
+          : 'bg-white text-slate-700 border-slate-300 hover:border-violet-300 hover:bg-violet-50'
+      }`}>
       {children}
     </button>
   );
@@ -724,16 +501,22 @@ function TabButton({ active, onClick, children }) {
 function AnswerBox({ label, value, tone = 'slate' }) {
   const toneCls =
     tone === 'emerald'
-      ? 'border-emerald-200 bg-gradient-to-br from-emerald-50 to-emerald-100/50'
+      ? 'border-emerald-400 bg-emerald-100'
       : tone === 'rose'
-      ? 'border-rose-200 bg-gradient-to-br from-rose-50 to-rose-100/50'
-      : 'border-slate-200 bg-gradient-to-br from-white to-slate-50/50';
+      ? 'border-rose-400 bg-rose-100'
+      : 'border-slate-300 bg-white';
+
+  const textCls =
+    tone === 'emerald' ? 'text-emerald-900' : tone === 'rose' ? 'text-rose-900' : 'text-slate-900';
+
+  const labelCls =
+    tone === 'emerald' ? 'text-emerald-700' : tone === 'rose' ? 'text-rose-700' : 'text-slate-600';
 
   return (
-    <div className={`rounded-xl border p-4 backdrop-blur-sm ${toneCls}`}>
-      <div className="text-xs font-semibold text-slate-600 mb-2">{label}</div>
-      <div className="text-sm font-semibold text-slate-900 break-words">
-        {value ? value : <span className="text-slate-500 italic">(Không trả lời)</span>}
+    <div className={`rounded-xl border-[3px] p-3 ${toneCls}`}>
+      <div className={`text-[10px] font-extrabold uppercase tracking-wide mb-1.5 ${labelCls}`}>{label}</div>
+      <div className={`text-sm font-extrabold break-words ${textCls}`}>
+        {value ? value : <span className="italic font-medium opacity-60">(Không trả lời)</span>}
       </div>
     </div>
   );
