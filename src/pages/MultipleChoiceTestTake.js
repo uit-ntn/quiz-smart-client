@@ -84,7 +84,10 @@ function renderTextWithHighlights(text, highlights = []) {
     if (idx < h.start)
       parts.push(<span key={`n-${i}-${idx}`}>{t.slice(idx, h.start)}</span>);
     parts.push(
-      <mark key={`m-${i}-${h.start}`} className="rounded px-0.5 bg-amber-500/20 text-amber-100">
+      <mark
+        key={`m-${i}-${h.start}`}
+        className="rounded px-0.5 py-0.5 bg-slate-900 text-white border border-slate-700 shadow-sm"
+      >
         {t.slice(h.start, h.end)}
       </mark>
     );
@@ -937,15 +940,91 @@ const MultipleChoiceTestTake = () => {
         return;
       }
 
-      if (e.key === "ArrowRight") handleNext();
-      if (e.key === "ArrowLeft") handlePrev();
+      if (e.key === "ArrowRight") {
+        e.preventDefault();
+        handleNext();
+        return;
+      }
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        handlePrev();
+        return;
+      }
 
-      if (e.key.toLowerCase() === "h") setIsHighlightMode((v) => !v);
+      if (e.key.toLowerCase() === "h") {
+        e.preventDefault();
+        setIsHighlightMode((v) => !v);
+        return;
+      }
+
+      // Number shortcuts: 1/2/3/4 => chọn nhanh A/B/C/D
+      const numMap = { "1": "A", "2": "B", "3": "C", "4": "D" };
+      const digit =
+        numMap[e.key] ||
+        (e.code?.startsWith("Numpad")
+          ? numMap[e.code.replace("Numpad", "")]
+          : null);
+      if (digit) {
+        if (!currentQuestion || isSubmittedRef.current || showResultModal) return;
+        const qid = currentQuestion._id;
+        if (isLocked(qid)) return;
+        const hasOption = (currentQuestion.options || []).some((op) => op.label === digit);
+        if (!hasOption) return;
+        e.preventDefault();
+        toggleAnswer(qid, digit);
+        return;
+      }
+
+      // Enter flow:
+      // 1) chưa kiểm tra -> kiểm tra
+      // 2) đang mở modal kết quả -> tiếp tục (hoặc tới xác nhận nộp ở câu cuối)
+      if (e.key === "Enter") {
+        if (!currentQuestion || isSubmittedRef.current) return;
+        e.preventDefault();
+        const hasNextQuestion =
+          currentQuestionIndex < Math.max((questionsRef.current || []).length - 1, 0);
+
+        if (showSubmitModal) return;
+
+        if (showResultModal) {
+          handleCloseResultModal();
+          if (hasNextQuestion) handleNext();
+          else handleSubmitClick();
+          return;
+        }
+
+        const qid = currentQuestion._id;
+        const selected = userAnswersRef.current[qid] || [];
+        const computed = showResult[qid];
+
+        if (!computed) {
+          if (selected.length > 0) handleCheckAnswer();
+          return;
+        }
+
+        if (hasNextQuestion) handleNext();
+        else handleSubmitClick();
+      }
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [handleNext, handlePrev, redo, undo]);
+  }, [
+    currentQuestionIndex,
+    currentQuestion,
+    handleCheckAnswer,
+    handleCloseResultModal,
+    handleNext,
+    handlePrev,
+    handleSubmitClick,
+    isLocked,
+    redo,
+    showResult,
+    showResultModal,
+    showSubmitModal,
+    toggleAnswer,
+    undo,
+  ]);
 
   // ===================== timer UI helpers =====================
   const timePercent = useMemo(() => {
@@ -1126,12 +1205,12 @@ const MultipleChoiceTestTake = () => {
                         onClick={toggleMarkCurrent}
                         className={`hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-extrabold border-2 transition ${
                           isMarked(qid)
-                            ? "bg-amber-500 border-amber-800 text-amber-950 shadow-md"
-                            : "bg-amber-100 border-amber-400 text-amber-800 hover:bg-amber-200"
+                            ? "bg-fuchsia-600 border-fuchsia-900 text-white shadow-md"
+                            : "bg-fuchsia-100 border-fuchsia-400 text-fuchsia-800 hover:bg-fuchsia-200"
                         }`}
                         title="Đánh dấu để xem lại"
                       >
-                        {isMarked(qid) ? "★ Đánh dấu" : "☆ Đánh dấu"}
+                        {isMarked(qid) ? "★ Đánh dấu câu hỏi" : "☆ Đánh dấu câu hỏi"}
                       </button>
                     </div>
                   </div>
@@ -1207,7 +1286,7 @@ const MultipleChoiceTestTake = () => {
                       className={`px-3 py-1.5 rounded-lg text-xs font-extrabold border-2 transition flex items-center gap-1.5 ${
                         isHighlightMode ? "bg-amber-500 border-amber-800 text-amber-950 shadow-md" : "bg-amber-100 border-amber-400 text-amber-800 hover:bg-amber-200"
                       }`}>
-                      ✏️ {isHighlightMode ? "Đang đánh dấu" : "Bật đánh dấu"}
+                      ✏️ {isHighlightMode ? "Đang hightlight văn bản" : "Bật hightlight văn bản"}
                     </button>
                     <button type="button" onClick={clearHighlightsCurrent}
                       className="px-3 py-1.5 rounded-lg text-xs font-extrabold border-2 border-rose-700 bg-rose-500 text-white hover:bg-rose-600 flex items-center gap-1.5 transition shadow-md">
@@ -1225,7 +1304,7 @@ const MultipleChoiceTestTake = () => {
 
                   {/* ACTION BUTTONS — same position as VocabularyTestTake */}
                   <div className="mt-auto pt-3 shrink-0 w-full">
-                    <div className="grid grid-cols-3 gap-1.5">
+                    <div className="hidden lg:grid grid-cols-2 gap-1.5">
                       <button
                         type="button"
                         onClick={handleCheckAnswer}
@@ -1244,15 +1323,6 @@ const MultipleChoiceTestTake = () => {
                         Nộp bài
                       </button>
 
-                      <button
-                        type="button"
-                        onClick={toggleMarkCurrent}
-                        className={`w-full inline-flex items-center justify-center rounded-lg px-2 py-2 text-xs font-extrabold border-[3px] transition ${
-                          isMarked(qid) ? "bg-amber-500 border-amber-800 text-amber-950 shadow-md" : "bg-amber-100 border-amber-400 text-amber-800 hover:bg-amber-200"
-                        }`}
-                      >
-                        {isMarked(qid) ? "★ Đánh dấu" : "☆ Đánh dấu"}
-                      </button>
                     </div>
 
                   </div>
@@ -1327,7 +1397,7 @@ const MultipleChoiceTestTake = () => {
                     <span className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-violet-500 border border-violet-800" /> Đang làm</span>
                     <span className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-emerald-500 border border-emerald-800" /> Đã trả lời</span>
                     <span className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-amber-400 border border-amber-700" /> Chưa trả lời</span>
-                    <span className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-orange-600 border border-orange-900" /> Đánh dấu</span>
+                    <span className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-fuchsia-600 border border-fuchsia-900" /> Đánh dấu</span>
                   </div>
 
                   {/* Question grid */}
@@ -1340,7 +1410,7 @@ const MultipleChoiceTestTake = () => {
 
                       let cls = "w-6 h-6 rounded-md flex items-center justify-center text-[9px] font-extrabold transition border-2 ";
                       if (current) cls += "bg-violet-500 text-white border-violet-800 shadow-md ring-[3px] ring-blue-700 ring-offset-2 ring-offset-amber-100 scale-105";
-                      else if (marked) cls += "bg-orange-600 text-white border-orange-900 shadow-sm hover:brightness-95";
+                      else if (marked) cls += "bg-fuchsia-600 text-white border-fuchsia-900 shadow-sm hover:brightness-95";
                       else if (answered) cls += "bg-emerald-500 text-white border-emerald-800 shadow-md hover:brightness-95";
                       else cls += "bg-amber-400 text-amber-950 border-amber-700 shadow-sm hover:brightness-95";
 
@@ -1419,28 +1489,42 @@ const MultipleChoiceTestTake = () => {
             <span className="text-xs font-extrabold text-slate-700">
               {answeredCount}/{questions.length} câu đã làm
             </span>
-            {settings.showTimer && (
-              <span
-                className={`inline-flex items-center gap-2 rounded-xl border-[3px] px-3 py-1.5 text-sm font-black shadow-md ${
-                  timeWarnLevel === "danger"
-                    ? "border-red-900 bg-red-50 text-red-800 ring-2 ring-red-200 animate-pulse"
-                    : timeWarnLevel === "warn"
-                    ? "border-amber-900 bg-amber-50 text-amber-800 ring-2 ring-amber-200"
-                    : "border-indigo-900 bg-indigo-50 text-indigo-800 ring-2 ring-indigo-200"
-                }`}
-                title="Thời gian còn lại"
-              >
-                ⏱ <span className="tabular-nums">{formatTime(timeRemaining)}</span>
-              </span>
-            )}
           </div>
+        </div>
 
-          {/* Submit */}
+        {/* Mobile action row */}
+        <div className="mt-2 grid grid-cols-4 gap-1.5">
+          <button
+            type="button"
+            onClick={handlePrev}
+            disabled={currentQuestionIndex <= 0 || settings.testMode !== "flexible"}
+            className="inline-flex items-center justify-center rounded-lg border-[3px] border-teal-900 bg-teal-600 px-2 py-1.5 text-[11px] font-extrabold text-white shadow-md disabled:opacity-40"
+            title="Câu trước"
+          >
+            ← Trước
+          </button>
+          <button
+            type="button"
+            onClick={handleCheckAnswer}
+            disabled={!!currentComputed || selectedForQ.length === 0}
+            className="inline-flex items-center justify-center rounded-lg bg-blue-700 border-[3px] border-blue-900 px-2 py-1.5 text-[11px] font-extrabold text-white shadow-md disabled:opacity-40"
+          >
+            Kiểm tra
+          </button>
+          <button
+            type="button"
+            onClick={handleNext}
+            disabled={currentQuestionIndex >= questions.length - 1 || settings.testMode !== "flexible"}
+            className="inline-flex items-center justify-center rounded-lg border-[3px] border-fuchsia-900 bg-fuchsia-600 px-2 py-1.5 text-[11px] font-extrabold text-white shadow-md disabled:opacity-40"
+            title="Câu sau"
+          >
+            Sau →
+          </button>
           <button
             type="button"
             onClick={handleSubmitClick}
             disabled={answeredCount === 0}
-            className="shrink-0 inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-orange-600 to-rose-700 border-[3px] border-red-900 px-3 py-1.5 text-xs font-extrabold text-white shadow-lg disabled:opacity-40"
+            className="inline-flex items-center justify-center rounded-lg bg-gradient-to-r from-orange-600 to-rose-700 border-[3px] border-red-900 px-2 py-1.5 text-[11px] font-extrabold text-white shadow-md disabled:opacity-40"
           >
             Nộp bài
           </button>
