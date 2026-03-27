@@ -37,17 +37,37 @@ const AdminMCPQuestionModal = ({ isOpen, onClose, testId, question = null, onQue
     setParseError('');
 
     if (isEditMode && question) {
+      const normalizeToPlainMap = (raw) => {
+        const out = {};
+        if (!raw) return out;
+
+        if (raw instanceof Map) {
+          raw.forEach((v, k) => {
+            const key = String(k || "").trim();
+            if (!key) return;
+            out[key] = String(v || "").trim();
+          });
+          return out;
+        }
+
+        if (typeof raw === "object" && !Array.isArray(raw)) {
+          Object.entries(raw).forEach(([k, v]) => {
+            const key = String(k || "").trim();
+            if (!key) return;
+            out[key] = String(v || "").trim();
+          });
+          return out;
+        }
+
+        return out;
+      };
+
       const editData = {
         test_id: question.test_id || testId,
         question_text: question.question_text || "",
         options: question.options || [],
         correct_answers: question.correct_answers || [],
-        explanation: (() => {
-          const expl = question.explanation || { correct: {}, incorrect_choices: {} };
-          if (typeof expl.correct === 'string') expl.correct = {};
-          if (!expl.correct || typeof expl.correct !== 'object') expl.correct = {};
-          return expl;
-        })(),
+        explanation: { correct: {}, incorrect_choices: {} },
         difficulty: question.difficulty || "easy",
         status: question.status || "active",
       };
@@ -61,6 +81,30 @@ const AdminMCPQuestionModal = ({ isOpen, onClose, testId, question = null, onQue
         editData.correct_answers = Array.isArray(question.correct_answers)
           ? question.correct_answers : [question.correct_answers];
       }
+
+      // Keep original explanation data when editing:
+      // - correct can be string or map/object
+      // - incorrect_choices can be map/object
+      const correctLabels = getCorrectAnswerLabels(editData.correct_answers || []);
+      const expl = question.explanation || {};
+      const correctRaw = expl.correct;
+      const incorrectRaw = expl.incorrect_choices;
+
+      const correctMap = normalizeToPlainMap(correctRaw);
+      const incorrectMap = normalizeToPlainMap(incorrectRaw);
+
+      // Legacy case: explanation.correct is a plain string => attach to all correct labels
+      if (typeof correctRaw === "string" && correctRaw.trim()) {
+        correctLabels.forEach((lb) => {
+          if (lb) correctMap[lb] = correctRaw.trim();
+        });
+      }
+
+      editData.explanation = {
+        correct: correctMap,
+        incorrect_choices: incorrectMap,
+      };
+
       setFormData(editData);
     } else {
       setFormData(getDefaultMCPData(testId));
@@ -165,7 +209,88 @@ const AdminMCPQuestionModal = ({ isOpen, onClose, testId, question = null, onQue
     setErrorBanner(null);
     try {
       const payload = { ...formData };
-      payload.options = (formData.options || []).filter(opt => opt?.text?.trim());
+
+      // Normalize options to stable A-E labels and plain strings
+      const normalizedOptions = (formData.options || [])
+        .filter((opt) => opt?.text?.trim())
+        .map((opt, idx) => ({
+          label: String(opt?.label || ["A", "B", "C", "D", "E"][idx] || "").trim(),
+          text: String(opt?.text || "").trim(),
+        }))
+        .filter((opt) => opt.label && opt.text);
+      payload.options = normalizedOptions;
+
+      const validLabels = new Set(normalizedOptions.map((opt) => opt.label));
+      payload.correct_answers = getCorrectAnswerLabels(formData.correct_answers || []).filter((lb) =>
+        validLabels.has(lb)
+      );
+
+      // Ensure test_id is always an id string (not populated object)
+      if (payload.test_id && typeof payload.test_id === "object") {
+        payload.test_id = payload.test_id._id || payload.test_id.id || "";
+      }
+      if (payload.test_id != null) payload.test_id = String(payload.test_id);
+
+      // Convert explanation maps to plain object with string keys only
+      const toPlainMap = (raw) => {
+        const out = {};
+        if (!raw) return out;
+
+        if (raw instanceof Map) {
+          raw.forEach((v, k) => {
+            const key = String(k || "").trim();
+            if (!key) return;
+            out[key] = String(v || "").trim();
+          });
+          return out;
+        }
+
+        if (Array.isArray(raw)) {
+          raw.forEach((entry) => {
+            if (Array.isArray(entry) && entry.length >= 2) {
+              const key = String(entry[0] || "").trim();
+              if (!key) return;
+              out[key] = String(entry[1] || "").trim();
+              return;
+            }
+            if (entry && typeof entry === "object") {
+              const key = String(entry.key ?? entry.label ?? "").trim();
+              const val = String(entry.value ?? entry.text ?? "").trim();
+              if (key) out[key] = val;
+            }
+          });
+          return out;
+        }
+
+        if (typeof raw === "object") {
+          Object.entries(raw).forEach(([k, v]) => {
+            const key = String(k || "").trim();
+            if (!key) return;
+            out[key] = String(v || "").trim();
+          });
+          return out;
+        }
+
+        return out;
+      };
+
+      const correctMapRaw = toPlainMap(formData.explanation?.correct);
+      const incorrectMapRaw = toPlainMap(formData.explanation?.incorrect_choices);
+      const correctMap = {};
+      const incorrectMap = {};
+
+      Object.entries(correctMapRaw).forEach(([k, v]) => {
+        if (validLabels.has(k) && v) correctMap[k] = v;
+      });
+      Object.entries(incorrectMapRaw).forEach(([k, v]) => {
+        if (validLabels.has(k) && v) incorrectMap[k] = v;
+      });
+
+      payload.explanation = {
+        correct: correctMap,
+        incorrect_choices: incorrectMap,
+      };
+
       if (isEditMode && payload.hasOwnProperty('difficulty')) delete payload.difficulty;
       const response = isEditMode
         ? await multipleChoiceService.updateMultipleChoice(question._id, payload)

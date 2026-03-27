@@ -24,8 +24,7 @@ const MultipleChoiceTestReview = () => {
   const [score, setScore] = useState(0);
   const [selectedQuestion, setSelectedQuestion] = useState(0);
 
-  const [questionPage, setQuestionPage] = useState(0);
-  const questionsPerPage = 24;
+  const questionPage = 0;
 
   const [draftResultId, setDraftResultId] = useState(null);
   const [isSaved, setIsSaved] = useState(false);
@@ -345,10 +344,8 @@ const MultipleChoiceTestReview = () => {
     ? userAnswers[currentQuestion._id]
     : [];
 
-  const totalQuestionPages = Math.ceil(questions.length / questionsPerPage);
-  const startIndex = questionPage * questionsPerPage;
-  const endIndex = startIndex + questionsPerPage;
-  const questionsToDisplay = questions.slice(startIndex, endIndex);
+  const startIndex = 0;
+  const questionsToDisplay = questions;
 
   const goPrev = useCallback(() => setSelectedQuestion((x) => Math.max(0, x - 1)), []);
   const goNext = useCallback(
@@ -492,27 +489,29 @@ const MultipleChoiceTestReview = () => {
                   <span className="text-xs font-extrabold text-orange-100">{questions.length} câu</span>
                 </div>
 
-                <div className="p-3 max-h-52 sm:max-h-60 overflow-y-auto">
-                  <div className="grid grid-cols-10 sm:grid-cols-12 lg:grid-cols-10 gap-1">
+                <div className="p-3">
+                  <div className="max-h-[8.25rem] sm:max-h-[8.5rem] overflow-y-auto pr-1">
+                    <div className="grid grid-cols-10 sm:grid-cols-12 lg:grid-cols-10 gap-1 auto-rows-[2.5rem]">
                     {questionsToDisplay.map((question, i) => {
                       const actualIndex = startIndex + i;
                       const result = results[actualIndex];
                       const isCurrent = actualIndex === selectedQuestion;
                       const answered = isAnswered(result.userAnswer);
 
-                      let cls = "aspect-square rounded-lg text-white text-[10px] font-extrabold shadow transition border-2 ";
+                      let cls = "rounded-lg text-white text-[10px] font-extrabold shadow transition border-2 ";
                       if (result.isCorrect) cls += "bg-emerald-500 border-emerald-800";
                       else if (answered) cls += "bg-rose-500 border-rose-800";
                       else cls += "bg-amber-400 text-amber-950 border-amber-700";
 
                       return (
                         <button key={String(question._id)} onClick={() => setSelectedQuestion(actualIndex)}
-                          className={`${cls} ${isCurrent ? "ring-[3px] ring-blue-700 ring-offset-1 ring-offset-amber-100 scale-105" : "hover:brightness-95"}`}
+                          className={`h-10 ${cls} ${isCurrent ? "ring-[3px] ring-blue-700 ring-offset-1 ring-offset-amber-100 scale-105" : "hover:brightness-95"}`}
                           title={`Câu ${actualIndex + 1}`}>
                           {actualIndex + 1}
                         </button>
                       );
                     })}
+                    </div>
                   </div>
 
                   <div className="mt-2 flex flex-wrap gap-2 text-[10px] text-slate-900 font-bold">
@@ -520,20 +519,6 @@ const MultipleChoiceTestReview = () => {
                     <LegendDot color="bg-rose-500 border border-rose-800" label={`Sai (${incorrectCount})`} />
                     <LegendDot color="bg-amber-400 border border-amber-700" label={`Chưa làm (${unansweredCount})`} />
                   </div>
-
-                  {totalQuestionPages > 1 && (
-                    <div className="mt-2 flex items-center justify-between gap-2">
-                      <button onClick={() => setQuestionPage((p) => Math.max(0, p - 1))} disabled={questionPage === 0}
-                        className="px-2.5 py-1 text-xs font-extrabold text-white bg-teal-600 border-2 border-teal-900 rounded-lg hover:bg-teal-500 disabled:opacity-50">
-                        ← Trước
-                      </button>
-                      <span className="text-xs font-bold text-slate-900">Trang {questionPage + 1}/{totalQuestionPages}</span>
-                      <button onClick={() => setQuestionPage((p) => Math.min(totalQuestionPages - 1, p + 1))} disabled={questionPage === totalQuestionPages - 1}
-                        className="px-2.5 py-1 text-xs font-extrabold text-white bg-fuchsia-600 border-2 border-fuchsia-900 rounded-lg hover:bg-fuchsia-500 disabled:opacity-50">
-                        Sau →
-                      </button>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>

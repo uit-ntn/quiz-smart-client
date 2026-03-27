@@ -69,13 +69,13 @@ const QuestionResultModal = ({
 
         <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3">
           {/* Question */}
-          <div className="rounded-xl border-2 border-indigo-200 bg-indigo-50 p-3">
-            <p className="text-[10px] font-extrabold text-indigo-600 mb-1.5 uppercase tracking-wide">Câu hỏi</p>
-            <p className="text-xs sm:text-sm text-slate-900 font-semibold leading-snug">{resultData.questionText}</p>
+          <div className="rounded-xl border-2 border-slate-300 bg-slate-50 p-3">
+            <p className="text-[10px] font-extrabold text-slate-700 mb-1.5 uppercase tracking-wide">Câu hỏi</p>
+            <p className="text-xs sm:text-sm text-slate-900 font-semibold leading-snug break-words">{resultData.questionText}</p>
           </div>
 
           {/* Answer Comparison */}
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <div className="rounded-xl border-[3px] border-emerald-500 bg-emerald-100 p-2.5">
               <p className="text-[10px] font-extrabold text-emerald-700 mb-2 uppercase tracking-wide">✓ Đáp án đúng</p>
               <div className="flex flex-wrap gap-1.5">
@@ -118,8 +118,8 @@ const QuestionResultModal = ({
 
           {/* Explanation */}
           {resultData.explanation && (
-            <div className="rounded-xl border-2 border-indigo-300 bg-indigo-50 p-3 space-y-2.5">
-              <p className="text-xs font-extrabold text-indigo-700 uppercase tracking-wide">📖 Giải thích</p>
+            <div className="rounded-xl border-2 border-amber-300 bg-amber-50 p-3 space-y-2.5">
+              <p className="text-xs font-extrabold text-amber-800 uppercase tracking-wide">📖 Giải thích</p>
 
               {resultData.explanation.correct && (
                 <div className="p-2.5 bg-emerald-100 border-2 border-emerald-500 rounded-xl">
@@ -131,12 +131,12 @@ const QuestionResultModal = ({
                       {Object.entries(resultData.explanation.correct).map(([opt, text]) => (
                         <div key={opt} className="flex items-start gap-1.5 bg-white rounded-lg p-2 border-2 border-emerald-200">
                           <span className="w-5 h-5 rounded-lg bg-emerald-600 border border-emerald-800 text-white font-extrabold text-[10px] flex items-center justify-center shrink-0">{opt}</span>
-                          <p className="text-xs text-emerald-800 leading-snug flex-1">{typeof text === 'string' ? text : String(text || '')}</p>
+                          <p className="text-xs text-emerald-800 leading-snug break-words flex-1">{typeof text === 'string' ? text : String(text || '')}</p>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <p className="text-xs text-emerald-800 leading-snug">{typeof resultData.explanation.correct === 'string' ? resultData.explanation.correct : String(resultData.explanation.correct || '')}</p>
+                    <p className="text-xs text-emerald-800 leading-snug break-words">{typeof resultData.explanation.correct === 'string' ? resultData.explanation.correct : String(resultData.explanation.correct || '')}</p>
                   )}
                 </div>
               )}
@@ -153,7 +153,7 @@ const QuestionResultModal = ({
                       {incorrectEntries.map(([choice, exp]) => (
                         <div key={choice} className="flex items-start gap-1.5 bg-white rounded-lg p-2 border-2 border-rose-200">
                           <span className="w-5 h-5 rounded-lg bg-rose-600 border border-rose-800 text-white font-extrabold text-[10px] flex items-center justify-center shrink-0">{choice}</span>
-                          <p className="text-xs text-rose-800 leading-snug flex-1">{typeof exp === 'string' ? exp : String(exp || '')}</p>
+                          <p className="text-xs text-rose-800 leading-snug break-words flex-1">{typeof exp === 'string' ? exp : String(exp || '')}</p>
                         </div>
                       ))}
                     </div>
@@ -172,7 +172,7 @@ const QuestionResultModal = ({
           </button>
           {onPreview && (
             <button onClick={onPreview}
-              className="px-3 py-1.5 rounded-xl border-[3px] border-indigo-300 bg-indigo-50 text-indigo-700 font-extrabold text-xs hover:bg-indigo-100 transition-colors">
+              className="px-3 py-1.5 rounded-xl border-[3px] border-slate-300 bg-white text-slate-700 font-extrabold text-xs hover:bg-slate-100 transition-colors">
               Xem trước
             </button>
           )}
