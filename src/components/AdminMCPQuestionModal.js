@@ -73,13 +73,12 @@ const AdminMCPQuestionModal = ({ isOpen, onClose, testId, question = null, onQue
       };
       if (question.options && Array.isArray(question.options)) {
         editData.options = question.options.map((opt, idx) => ({
-          label: opt.label || ["A", "B", "C", "D", "E"][idx],
+          label: String(opt?.label || ["A", "B", "C", "D", "E"][idx] || "").trim(),
           text: opt.text || opt || "",
         }));
       }
       if (question.correct_answers) {
-        editData.correct_answers = Array.isArray(question.correct_answers)
-          ? question.correct_answers : [question.correct_answers];
+        editData.correct_answers = getCorrectAnswerLabels(question.correct_answers);
       }
 
       // Keep original explanation data when editing:
