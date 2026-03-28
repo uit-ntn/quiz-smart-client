@@ -252,6 +252,36 @@ const VocabularyTestTake = () => {
     [answers]
   );
 
+  /** Khi đổi câu: nếu câu đích đã trả lời thì khôi phục trạng thái đã chấm — không cho làm lại. */
+  const applyNavigationStateForIndex = useCallback(
+    (nextIndex) => {
+      const question = items[nextIndex];
+      const stored = answers[nextIndex];
+      if (stored && question) {
+        setCurrentAnswer(stored.userAnswer ?? "");
+        setShowAnswer(true);
+        setLastAnswerResult({
+          isCorrect: !!stored.isCorrect,
+          correctAnswer: getCorrectAnswer(question),
+          userAnswer: stored.userAnswer ?? "",
+          question,
+          timeSpentSec: Math.max(0, stored.timeSpentSec ?? 0),
+          questionIndex: nextIndex + 1,
+          totalQuestions: items.length,
+        });
+        setIsPaused(true);
+        setTimeLeft(settings.timePerQuestion || DEFAULT_TIME_PER_QUESTION);
+      } else {
+        setCurrentAnswer("");
+        setShowAnswer(false);
+        setLastAnswerResult(null);
+        setIsPaused(false);
+        setTimeLeft(settings.timePerQuestion || DEFAULT_TIME_PER_QUESTION);
+      }
+    },
+    [answers, getCorrectAnswer, items, settings.timePerQuestion]
+  );
+
   // ===== voices load =====
   useEffect(() => {
     const loadVoices = () => setAvailableVoices(speechSynthesis.getVoices() || []);
@@ -547,6 +577,7 @@ const VocabularyTestTake = () => {
     (answerText) => {
       if (!current) return;
       if (showAnswer) return;
+      if (answers[index]) return;
 
       timerRef.current && clearInterval(timerRef.current);
 
@@ -595,44 +626,30 @@ const VocabularyTestTake = () => {
   );
 
   const moveNextAfterReveal = useCallback(async () => {
-    setShowAnswer(false);
-    setLastAnswerResult(null);
-    setIsPaused(false);
-
     if (index < items.length - 1) {
-      setIndex((i) => i + 1);
-      setCurrentAnswer("");
-      setTimeLeft(settings.timePerQuestion || DEFAULT_TIME_PER_QUESTION);
+      const nextIndex = index + 1;
+      setIndex(nextIndex);
+      applyNavigationStateForIndex(nextIndex);
       return;
     }
-
-    // last question => submit
     setShowSubmitConfirm(true);
-  }, [index, items.length, settings.timePerQuestion]);
+  }, [index, items.length, applyNavigationStateForIndex]);
 
   const handlePrev = useCallback(() => {
     if (index <= 0) return;
     pushHistory();
-    setIndex((i) => i - 1);
-    setCurrentAnswer("");
-    setShowAnswer(false);
-    setLastAnswerResult(null);
-    setIsPaused(false);
-    setTimeLeft(settings.timePerQuestion || DEFAULT_TIME_PER_QUESTION);
-
-  }, [index, pushHistory, settings.timePerQuestion]);
+    const nextIndex = index - 1;
+    setIndex(nextIndex);
+    applyNavigationStateForIndex(nextIndex);
+  }, [index, pushHistory, applyNavigationStateForIndex]);
 
   const handleNext = useCallback(() => {
     if (index >= items.length - 1) return;
     pushHistory();
-    setIndex((i) => i + 1);
-    setCurrentAnswer("");
-    setShowAnswer(false);
-    setLastAnswerResult(null);
-    setIsPaused(false);
-    setTimeLeft(settings.timePerQuestion || DEFAULT_TIME_PER_QUESTION);
-
-  }, [index, items.length, pushHistory, settings.timePerQuestion]);
+    const nextIndex = index + 1;
+    setIndex(nextIndex);
+    applyNavigationStateForIndex(nextIndex);
+  }, [index, items.length, pushHistory, applyNavigationStateForIndex]);
 
   // ===== submit =====
   const completeTest = useCallback(
@@ -796,9 +813,9 @@ const VocabularyTestTake = () => {
       onExit={handleExit}
       maxWidth="full"
       hideHeader
-      containerClassName="!px-3 !pt-4 !pb-20 sm:!px-4 sm:!pt-5 sm:!pb-20 lg:!px-5 lg:!pb-4 flex flex-col flex-1 min-h-0 bg-gradient-to-br from-sky-200 via-blue-100 to-emerald-200"
+      containerClassName="!px-3 !pt-4 !pb-[11rem] sm:!px-4 sm:!pt-5 sm:!pb-[11rem] lg:!px-5 lg:!pb-4 flex flex-col flex-1 min-h-0 bg-gradient-to-br from-sky-200 via-blue-100 to-emerald-200"
     >
-      <div className="flex flex-col flex-1 min-h-0 w-full bg-gradient-to-b from-sky-100/80 to-blue-50/90">
+      <div className="flex flex-col flex-1 min-h-0 w-full bg-gradient-to-b from-sky-100/80 to-blue-50/90 lg:w-[80vw] lg:max-w-[80vw] lg:h-[80vh] lg:max-h-[80vh] lg:mx-auto lg:my-auto lg:overflow-hidden">
         <div className="w-full max-w-full flex-1 flex flex-col min-h-0 px-0 py-0">
           {/* TOP BAR */}
           <div className="mb-2 flex flex-col gap-1.5 md:flex-row md:items-center md:justify-between">
@@ -813,12 +830,12 @@ const VocabularyTestTake = () => {
               </span>
 
               <span
-                className={`inline-flex items-center gap-2 rounded-xl border-[3px] px-3 py-1.5 text-sm font-black shadow-lg lg:hidden ${
+                className={`inline-flex items-center gap-1.5 rounded-full border-2 px-2.5 py-0.5 text-[11px] font-bold text-white shadow-md lg:hidden ${
                   timeWarnLevel === "danger"
-                    ? "border-red-900 bg-red-600 text-white ring-2 ring-red-300 animate-pulse"
+                    ? "border-red-900 bg-red-600 ring-1 ring-red-300/80 animate-pulse"
                     : timeWarnLevel === "warn"
-                    ? "border-amber-900 bg-amber-500 text-amber-950 ring-2 ring-amber-200"
-                    : "border-indigo-900 bg-indigo-600 text-white ring-2 ring-indigo-200"
+                    ? "border-amber-900 bg-amber-500 text-amber-950 ring-1 ring-amber-200"
+                    : "border-indigo-900 bg-indigo-600 ring-1 ring-indigo-200/70"
                 }`}
                 title="Thời gian còn lại"
               >
@@ -926,6 +943,42 @@ const VocabularyTestTake = () => {
                                 Chưa có CEFR
                               </span>
                             )}
+                          </div>
+                        )}
+
+                        {current?.example_sentence && String(current.example_sentence).trim() !== "" && (
+                          <div className="mt-3 w-full max-w-xl mx-auto">
+                            <div className="rounded-lg border-2 border-indigo-500 bg-gradient-to-br from-sky-100 via-white to-indigo-100 shadow-md shadow-indigo-200/40 ring-1 ring-indigo-300/60">
+                              <div className="border-l-[4px] border-indigo-600 pl-2.5 pr-2 py-2 sm:pl-3 sm:pr-2.5 sm:py-2.5">
+                                <div className="mb-1.5 flex items-center justify-center sm:justify-start">
+                                  <span className="inline-flex items-center gap-0.5 rounded-full bg-gradient-to-r from-indigo-600 to-violet-700 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-white shadow-sm">
+                                    Câu ví dụ
+                                  </span>
+                                </div>
+                                <div className="flex items-start gap-2">
+                                  <p className="min-w-0 flex-1 text-left text-sm sm:text-[0.95rem] font-medium text-slate-900 leading-snug">
+                                    {current.example_sentence}
+                                  </p>
+                                  <button
+                                    type="button"
+                                    onClick={() => playAudio(current.example_sentence)}
+                                    disabled={isPlaying || !current?.example_sentence}
+                                    className="mt-0.5 shrink-0 inline-flex items-center justify-center rounded-full border-2 border-violet-900 bg-violet-600 p-1.5 text-white shadow-sm hover:bg-violet-500 disabled:opacity-50"
+                                    title="Nghe câu ví dụ"
+                                    aria-label="Nghe câu ví dụ"
+                                  >
+                                    <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth="2"
+                                        d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M6 10v4a1 1 0 001 1h1l4 4V5l-4 4H7a1 1 0 00-1 1z"
+                                      />
+                                    </svg>
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
                           </div>
                         )}
                       </>
@@ -1187,8 +1240,8 @@ const VocabularyTestTake = () => {
                 </div>
               </div>
 
-              {/* ACTION BUTTONS — mt-auto: đẩy xuống đáy cột khi còn khoảng trống dọc */}
-              <div className="mt-auto pt-2 shrink-0 w-full">
+              {/* ACTION BUTTONS — desktop: trong luồng; mobile: ẩn (dùng thanh cố định dưới cùng) */}
+              <div className="mt-auto pt-2 shrink-0 w-full hidden lg:block">
                 <div className="grid grid-cols-3 gap-1.5">
                   <button
                     type="button"
@@ -1218,7 +1271,7 @@ const VocabularyTestTake = () => {
                   </button>
                 </div>
 
-                <div className="mt-1.5 hidden sm:grid grid-cols-2 gap-1.5">
+                <div className="mt-1.5 grid grid-cols-2 gap-1.5">
                   <button
                     type="button"
                     onClick={handlePrev}
@@ -1243,8 +1296,8 @@ const VocabularyTestTake = () => {
             </div>
 
             {/* RIGHT */}
-            <div className="lg:col-span-1 hidden lg:flex lg:flex-col min-w-0 min-h-0 lg:overflow-y-auto lg:max-h-[min(100%,calc(100dvh-4.5rem))]">
-              <div className="space-y-3 flex flex-col min-h-0">
+            <div className="lg:col-span-1 hidden lg:flex lg:flex-col min-w-0 min-h-0 lg:h-full lg:max-h-full lg:overflow-hidden">
+              <div className="space-y-3 flex flex-col min-h-0 h-full">
                 {/* Voice */}
                 <div className="rounded-xl border-[3px] border-fuchsia-500 bg-gradient-to-br from-fuchsia-200 to-purple-300 shadow-lg p-3 ring-2 ring-fuchsia-300/80">
                   <div className="flex items-center justify-between gap-2">
@@ -1280,7 +1333,7 @@ const VocabularyTestTake = () => {
                 </div>
 
                 {/* Progress */}
-                <div className="rounded-2xl border-[3px] border-orange-600 bg-gradient-to-br from-amber-200 to-orange-300 shadow-lg p-4 ring-2 ring-orange-400">
+                <div className="rounded-2xl border-[3px] border-orange-600 bg-gradient-to-br from-amber-200 to-orange-300 shadow-lg p-4 ring-2 ring-orange-400 flex-1 min-h-0 overflow-y-auto">
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-extrabold text-slate-900">Tiến độ</h3>
                     <span className="text-xs font-extrabold text-orange-800 bg-white/80 px-2 py-0.5 rounded-full border-2 border-orange-600">
@@ -1307,11 +1360,7 @@ const VocabularyTestTake = () => {
                           onClick={() => {
                             pushHistory();
                             setIndex(idx);
-                            setCurrentAnswer("");
-                            setShowAnswer(false);
-                            setLastAnswerResult(null);
-                            setIsPaused(false);
-                            setTimeLeft(settings.timePerQuestion || DEFAULT_TIME_PER_QUESTION);
+                            applyNavigationStateForIndex(idx);
                           }}
                           className={`w-6 h-6 rounded-md ${base} flex items-center justify-center text-[9px] transition ${
                             isCurrent ? "ring-[3px] ring-blue-700 ring-offset-2 ring-offset-amber-100 scale-105" : "hover:brightness-95"
@@ -1348,45 +1397,75 @@ const VocabularyTestTake = () => {
             </div>
           </div>
 
-          {/* MOBILE STICKY BOTTOM BAR */}
-          <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t-[3px] border-indigo-300 shadow-2xl px-3 pt-2 pb-2">
-            {/* Progress bar */}
-            <div className="mb-2 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+          {/* MOBILE STICKY BOTTOM BAR — 5 nút cùng hàng + timer / tiến độ */}
+          <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t-[3px] border-indigo-300 shadow-2xl px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+            <div className="mb-1.5 h-1.5 bg-slate-200 rounded-full overflow-hidden">
               <div className="h-full bg-gradient-to-r from-indigo-600 to-blue-700 transition-all" style={{ width: `${progressPct}%` }} />
             </div>
-            <div className="flex items-center gap-2">
-              {/* Timer */}
+            <div className="mb-2 flex items-center justify-center gap-2 sm:gap-3 flex-wrap text-[10px] sm:text-[11px]">
               <span
-                className={`shrink-0 inline-flex items-center gap-2 rounded-xl border-[3px] px-3 py-2 text-sm font-black shadow-lg ${
+                className={`inline-flex items-center gap-1 rounded-lg border-2 px-2 py-1 font-black tabular-nums ${
                   timeWarnLevel === "danger"
-                    ? "border-red-900 bg-red-600 text-white ring-2 ring-red-300 animate-pulse"
+                    ? "border-red-900 bg-red-600 text-white"
                     : timeWarnLevel === "warn"
-                    ? "border-amber-900 bg-amber-500 text-amber-950 ring-2 ring-amber-200"
-                    : "border-indigo-900 bg-indigo-600 text-white ring-2 ring-indigo-200"
+                    ? "border-amber-900 bg-amber-500 text-amber-950"
+                    : "border-indigo-900 bg-indigo-600 text-white"
                 }`}
                 title="Thời gian còn lại"
               >
-                ⏱ <span className="tabular-nums">{timeLeft}s</span>
+                ⏱ <span>{timeLeft}s</span>
               </span>
-
-              {/* Center info */}
-              <div className="flex-1 flex flex-col items-center min-w-0">
-                <span className="text-xs font-extrabold text-slate-700">
-                  Câu {index + 1}/{items.length} · {progressPct}%
-                </span>
-                <span className="text-[11px] text-slate-500">
-                  ✅ {correctSoFar} đúng · ❌ {wrongSoFar} sai
-                </span>
-              </div>
-
-              {/* Submit */}
+              <span className="font-extrabold text-slate-700">
+                Câu {index + 1}/{items.length} · {progressPct}%
+              </span>
+              <span className="text-slate-600 font-bold">
+                ✅ {correctSoFar} · ❌ {wrongSoFar}
+              </span>
+            </div>
+            <div className="grid grid-cols-5 gap-1">
+              <button
+                type="button"
+                onClick={handlePrev}
+                disabled={index <= 0 || isSubmitting}
+                className="min-h-[2.65rem] inline-flex flex-col items-center justify-center rounded-md border-2 border-teal-800 bg-teal-600 px-0.5 py-1 text-[9px] sm:text-[10px] font-extrabold text-white shadow-md leading-tight hover:bg-teal-500 disabled:opacity-50"
+                title="Câu trước (←)"
+              >
+                <span className="leading-none">←</span>
+                <span className="mt-0.5">Trước</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => revealAnswer(currentAnswer)}
+                disabled={showAnswer || isSubmitting || (!currentAnswer.trim() && settings.mode !== "listen_and_write_sentence")}
+                className="min-h-[2.65rem] inline-flex items-center justify-center rounded-md bg-blue-700 px-0.5 py-1 text-[9px] sm:text-[10px] font-extrabold text-white shadow-md border-2 border-blue-900 leading-tight hover:bg-blue-600 disabled:opacity-50"
+              >
+                Kiểm tra
+              </button>
+              <button
+                type="button"
+                onClick={() => revealAnswer("")}
+                disabled={showAnswer || isSubmitting}
+                className="min-h-[2.65rem] inline-flex items-center justify-center rounded-md border-[3px] border-amber-800 bg-amber-600 px-0.5 py-1 text-[9px] sm:text-[10px] font-extrabold text-amber-950 shadow-md leading-tight hover:bg-amber-500 disabled:opacity-50"
+              >
+                Bỏ qua
+              </button>
               <button
                 type="button"
                 onClick={submitNow}
                 disabled={isSubmitting}
-                className="shrink-0 inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-orange-600 to-rose-700 border-[3px] border-red-900 px-3 py-1.5 text-xs font-extrabold text-white shadow-lg disabled:opacity-40"
+                className="min-h-[2.65rem] inline-flex items-center justify-center rounded-md bg-gradient-to-r from-orange-600 via-red-600 to-rose-700 px-0.5 py-1 text-[9px] sm:text-[10px] font-extrabold text-white shadow-md border-2 border-red-900 leading-tight hover:brightness-110 disabled:opacity-60"
               >
                 Nộp bài
+              </button>
+              <button
+                type="button"
+                onClick={handleNext}
+                disabled={index >= items.length - 1 || isSubmitting}
+                className="min-h-[2.65rem] inline-flex flex-col items-center justify-center rounded-md border-2 border-fuchsia-900 bg-fuchsia-600 px-0.5 py-1 text-[9px] sm:text-[10px] font-extrabold text-white shadow-md leading-tight hover:bg-fuchsia-500 disabled:opacity-50"
+                title="Câu sau (→)"
+              >
+                <span className="leading-none">→</span>
+                <span className="mt-0.5">Sau</span>
               </button>
             </div>
           </div>

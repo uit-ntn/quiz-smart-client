@@ -1125,9 +1125,9 @@ const MultipleChoiceTestTake = () => {
 
   // ===================== UI =====================
   return (
-    <div className="min-h-screen flex flex-col text-slate-900" style={{ background: "linear-gradient(to bottom right, #bae6fd, #dbeafe, #d1fae5)" }}>
-      <div className="flex flex-col flex-1 min-h-0 w-full bg-gradient-to-b from-sky-100/80 to-blue-50/90">
-        <div className="w-full max-w-full flex-1 flex flex-col min-h-0 px-3 sm:px-4 lg:px-5 pt-3 sm:pt-4 lg:pt-5 pb-20 sm:pb-20 lg:pb-4">
+    <div className="h-[100dvh] flex flex-col overflow-hidden text-slate-900" style={{ background: "linear-gradient(to bottom right, #bae6fd, #dbeafe, #d1fae5)" }}>
+      <div className="flex flex-col flex-1 min-h-0 w-full overflow-hidden bg-gradient-to-b from-sky-100/80 to-blue-50/90">
+        <div className="w-full max-w-full flex-1 flex flex-col min-h-0 px-3 sm:px-4 lg:px-5 pt-3 sm:pt-4 lg:pt-5 pb-20 sm:pb-20 lg:pb-4 overflow-hidden">
 
           {/* TOP BAR */}
           <div className="mb-2 flex flex-col gap-1.5 md:flex-row md:items-center md:justify-between">
@@ -1215,10 +1215,10 @@ const MultipleChoiceTestTake = () => {
                     </div>
                   </div>
 
-                  {/* question text — scrollable middle area */}
-                  <div className="flex-1 flex flex-col min-h-0 py-1 sm:py-2 overflow-y-auto">
+                  {/* question + options — keep actions visible; options can scroll */}
+                  <div className="flex-1 flex flex-col min-h-0 py-1 sm:py-2 overflow-hidden">
                     <div className="w-full">
-                      <h2 className="text-base sm:text-lg font-semibold mb-3 text-slate-900 leading-snug">
+                      <h2 className="text-base sm:text-lg font-semibold mb-2 text-slate-900 leading-snug line-clamp-3">
                         <span
                           ref={questionTextRef}
                           onMouseUp={() => addHighlightFromSelection("question")}
@@ -1233,7 +1233,7 @@ const MultipleChoiceTestTake = () => {
                       )}
 
                       {/* OPTIONS */}
-                      <div className="space-y-2 sm:space-y-2.5">
+                      <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-2 sm:space-y-2.5">
                         {currentQuestion?.options?.map((op) => {
                           const isSelected = selectedForQ.includes(op.label);
                           return (
@@ -1304,7 +1304,7 @@ const MultipleChoiceTestTake = () => {
 
                   {/* ACTION BUTTONS — same position as VocabularyTestTake */}
                   <div className="mt-auto pt-3 shrink-0 w-full">
-                    <div className="hidden lg:grid grid-cols-2 gap-1.5">
+                    <div className="hidden lg:grid grid-cols-2 gap-1.5 sticky bottom-0 bg-white/95 backdrop-blur border-t border-slate-100 pt-3">
                       <button
                         type="button"
                         onClick={handleCheckAnswer}
