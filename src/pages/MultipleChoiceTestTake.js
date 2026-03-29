@@ -298,16 +298,19 @@ const MultipleChoiceTestTake = () => {
     // Normalize explanation format: ensure correct is always an object (backward compatibility)
     const explanation = q.explanation || {};
     
-    // Normalize correct explanations
+    // Normalize correct explanations (chỉ giữ các key thuộc đáp án đúng)
     let normalizedCorrect = {};
     if (explanation.correct) {
-      // If it's already an object, use it
+      // If it's already an object, keep only keys that are correct labels
       if (typeof explanation.correct === 'object' && !Array.isArray(explanation.correct)) {
-        normalizedCorrect = { ...explanation.correct };
+        Object.entries(explanation.correct || {}).forEach(([label, text]) => {
+          const t = typeof text === "string" ? text : String(text || "");
+          if (t.trim() && correctSet.has(label)) normalizedCorrect[label] = t;
+        });
       }
       // If it's a string (old format), convert to object by assigning to all correct labels
       else if (typeof explanation.correct === 'string' && explanation.correct.trim()) {
-        correctLabels.forEach(label => {
+        correctLabels.forEach((label) => {
           normalizedCorrect[label] = explanation.correct;
         });
       }

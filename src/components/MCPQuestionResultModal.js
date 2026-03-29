@@ -24,6 +24,16 @@ const QuestionResultModal = ({
     return () => window.removeEventListener('keydown', handleEscape);
   }, [isOpen, onClose]);
 
+  // Lock body scroll while modal open (avoid double scroll / background scroll)
+  useEffect(() => {
+    if (!isOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [isOpen]);
+
   if (!isOpen || !resultData) return null;
 
   const handleNextQuestion = () => {
@@ -34,10 +44,21 @@ const QuestionResultModal = ({
   const isCorrect = resultData.isCorrect;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-2 sm:p-3">
-      <div className={`bg-white rounded-2xl border-[3px] shadow-2xl w-full max-w-xl max-h-[90vh] overflow-hidden flex flex-col ${
+    <div
+      className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-2 sm:p-3"
+      role="dialog"
+      aria-modal="true"
+      onMouseDown={(e) => {
+        // click backdrop to close
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        className={`bg-white rounded-2xl border-[3px] shadow-2xl w-full max-w-xl max-h-[90vh] overflow-hidden flex flex-col ${
         isCorrect ? 'border-emerald-400 ring-2 ring-emerald-200' : 'border-rose-400 ring-2 ring-rose-200'
-      }`}>
+      }`}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className={`px-4 py-3 flex items-center justify-between flex-shrink-0 ${
           isCorrect
