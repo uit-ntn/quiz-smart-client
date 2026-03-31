@@ -197,6 +197,7 @@ const VocabularyTestTake = () => {
 
   // ===== refs =====
   const timerRef = useRef(null);
+  const answerInputRef = useRef(null);
   const startTimeRef = useRef(Date.now());
 
   const STORE_KEY = `vocab_take_state_${testId}`;
@@ -237,7 +238,12 @@ const VocabularyTestTake = () => {
     if (!item) return false;
     const ua = normalize(answer);
     // Câu ví dụ tiếng Anh thường có dấu phẩy → chỉ so khớp nguyên chuỗi
-    if (mode === "listen_and_write_sentence") return ua === normalize(item.example_sentence);
+    if (mode === "listen_and_write_sentence") {
+      // Allow minor punctuation diffs at the end (e.g. missing trailing ".")
+      const u = ua.replace(/[.!?]+$/g, "");
+      const c = normalize(item.example_sentence).replace(/[.!?]+$/g, "");
+      return u === c;
+    }
     if (mode === "word_to_meaning") return userMatchesCommaSeparated(answer, item.meaning);
     if (mode === "meaning_to_word") return userMatchesCommaSeparated(answer, item.word);
     return false;
@@ -296,6 +302,11 @@ const VocabularyTestTake = () => {
     );
     return [...list].sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
   }, [availableVoices]);
+
+  const englishVoiceRowValues = useMemo(
+    () => englishVoices.map((v) => voiceRowValue(v)),
+    [englishVoices]
+  );
 
   const pickVoice = useCallback(() => {
     if (!voiceId) return null;
@@ -577,7 +588,27 @@ const VocabularyTestTake = () => {
     (answerText) => {
       if (!current) return;
       if (showAnswer) return;
-      if (answers[index]) return;
+      // Nếu đã có dữ liệu trả lời trong answers (restore / navigate),
+      // thì chỉ khôi phục UI kết quả thay vì cho người dùng "làm lại".
+      const stored = answers[index];
+      if (stored) {
+        timerRef.current && clearInterval(timerRef.current);
+
+        setCurrentAnswer(stored.userAnswer ?? "");
+        setLastAnswerResult({
+          isCorrect: !!stored.isCorrect,
+          correctAnswer: getCorrectAnswer(current),
+          userAnswer: stored.userAnswer ?? "",
+          question: current,
+          timeSpentSec: Math.max(0, stored.timeSpentSec ?? 0),
+          questionIndex: index + 1,
+          totalQuestions: items.length,
+        });
+        setShowAnswer(true);
+        setIsPaused(true);
+        setTimeLeft(settings.timePerQuestion || DEFAULT_TIME_PER_QUESTION);
+        return;
+      }
 
       timerRef.current && clearInterval(timerRef.current);
 
@@ -734,6 +765,18 @@ const VocabularyTestTake = () => {
     await completeTest(remain);
   }, [answers, completeTest, index, items]);
 
+  // ===== quick voice switch =====
+  const setVoiceQuick = useCallback(
+    (nextVoiceId, toastLabel) => {
+      setVoiceId(nextVoiceId);
+      try {
+        localStorage.setItem(`vocab_voice_${testId}`, nextVoiceId);
+      } catch (e) {}
+      if (toastLabel) showToastMsg(toastLabel, "success");
+    },
+    [showToastMsg, testId]
+  );
+
   // ===== keyboard shortcuts (global) =====
   useEffect(() => {
     const onKeyDown = (e) => {
@@ -743,7 +786,18 @@ const VocabularyTestTake = () => {
       // ignore when typing input (we handle Enter in input itself)
       const tag = e.target?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") {
-        // still allow arrows & P maybe? skip
+        // Allow Ctrl+Space even while focused in input
+        const isCtrlSpace = e.ctrlKey && (e.code === "Space" || e.key === " ");
+        if (!isCtrlSpace) return;
+      }
+
+      // Enter (ngoài ô input) => focus vào ô nhập
+      if (e.key === "Enter") {
+        const active = document.activeElement;
+        if (answerInputRef.current && active !== answerInputRef.current) {
+          e.preventDefault();
+          answerInputRef.current.focus();
+        }
         return;
       }
 
@@ -763,11 +817,60 @@ const VocabularyTestTake = () => {
           playAudio(current.word);
         }
       }
+
+      // Ctrl + Space => nghe theo mode
+      if (e.ctrlKey && (e.code === "Space" || e.key === " ")) {
+        e.preventDefault();
+        if (settings.mode === "listen_and_write_sentence" && current?.example_sentence) {
+          playAudio(current.example_sentence);
+        } else if (current?.word) {
+          playAudio(current.word);
+        }
+      }
+
+      // Alt+ArrowUp/Down => đổi giọng tiếng Anh (duyệt trong danh sách EN)
+      if (e.altKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
+        if (!englishVoiceRowValues.length) return;
+        e.preventDefault();
+
+        const dir = e.key === "ArrowDown" ? 1 : -1;
+        const currentIdx = englishVoiceRowValues.indexOf(voiceId);
+        const baseIdx = currentIdx >= 0 ? currentIdx : 0;
+        const nextIdx = Math.max(0, Math.min(englishVoiceRowValues.length - 1, baseIdx + dir));
+        const nextVoiceId = englishVoiceRowValues[nextIdx] || "";
+
+        const v = englishVoices[nextIdx];
+        setVoiceQuick(
+          nextVoiceId,
+          v?.name && v?.lang ? `Giọng: ${v.name} — ${v.lang}` : "Đã đổi giọng đọc"
+        );
+      }
+
+      // 1/2/3 => chọn nhanh 3 giọng: 1 mặc định, 2 en-US, 3 en-GB
+      if (!e.altKey && !e.shiftKey && (e.key === "1" || e.key === "2" || e.key === "3")) {
+        e.preventDefault();
+        const map = { "1": "", "2": "en-US-1", "3": "en-GB-1" };
+        const next = map[e.key] ?? "";
+        setVoiceQuick(next, e.key === "1" ? "Giọng: mặc định" : `Giọng nhanh: ${map[e.key]}`);
+      }
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [current?.word, current?.example_sentence, settings.mode, handleNext, handlePrev, playAudio, showExitConfirm, showSubmitConfirm]);
+  }, [
+    current?.word,
+    current?.example_sentence,
+    settings.mode,
+    handleNext,
+    handlePrev,
+    playAudio,
+    showExitConfirm,
+    showSubmitConfirm,
+    voiceId,
+    englishVoiceRowValues,
+    englishVoices,
+    setVoiceQuick,
+  ]);
 
   // ===== exit =====
   const handleExit = () => setShowExitConfirm(true);
@@ -1096,6 +1199,7 @@ const VocabularyTestTake = () => {
                     <div className="rounded-xl border-[3px] border-emerald-600 bg-emerald-200/90 shadow-lg p-3 sm:p-4 ring-2 ring-emerald-400/60">
                       <input
                         type="text"
+                        ref={answerInputRef}
                         value={currentAnswer}
                         onChange={(e) => setCurrentAnswer(e.target.value)}
                         onKeyDown={(e) => {
