@@ -7,6 +7,35 @@ import topicService from '../services/topicService';
 import MultipleChoiceService from '../services/multipleChoiceService';
 import { getCorrectAnswerLabels } from '../utils/correctAnswerHelpers';
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const isLikelyColdStartNetworkError = (err) => {
+  const msg = String(err?.message || err || '').toLowerCase();
+  return (
+    msg.includes('failed to fetch') ||
+    msg.includes('networkerror') ||
+    msg.includes('network error') ||
+    msg.includes('load failed') ||
+    msg.includes('the network connection was lost') ||
+    msg.includes('timeout') ||
+    msg.includes('timed out')
+  );
+};
+
+const withRetry = async (fn, { attempts = 3, baseDelayMs = 1500 } = {}) => {
+  let lastErr;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn(i);
+    } catch (e) {
+      lastErr = e;
+      if (!isLikelyColdStartNetworkError(e) || i === attempts - 1) throw e;
+      await sleep(baseDelayMs * Math.pow(2, i));
+    }
+  }
+  throw lastErr;
+};
+
 /** Ví dụ mẫu cho multiple choice */
 const SAMPLE_QUESTIONS = `What is the capital of France?
 London; The capital of United Kingdom
@@ -49,6 +78,7 @@ export default function CreateMultipleChoiceTestButton({ label = "Tạo bài tes
   const [currentStep, setCurrentStep] = useState('test-info');
   const [loading, setLoading] = useState(false);
   const [errMsg, setErrMsg] = useState('');
+  const [warmupSecLeft, setWarmupSecLeft] = useState(0);
 
   // Step 1: Test Info
   const [testInfo, setTestInfo] = useState({
@@ -214,6 +244,7 @@ export default function CreateMultipleChoiceTestButton({ label = "Tạo bài tes
     setShowCustomSubTopic(false);
     setErrMsg('');
     setLoading(false);
+    setWarmupSecLeft(0);
     setHasSeededSample(false);
     setIsSampleActive(false);
     setCreatedTest(null);
@@ -363,6 +394,7 @@ export default function CreateMultipleChoiceTestButton({ label = "Tạo bài tes
   const handleCreateTest = async () => {
     setLoading(true);
     setErrMsg('');
+    setWarmupSecLeft(0);
     setCurrentStep('creating');
 
     try {
@@ -534,6 +566,16 @@ export default function CreateMultipleChoiceTestButton({ label = "Tạo bài tes
 
       setCreatedTest(newTest);
 
+      // Cold start warm-up: đợi 5–10s trước khi bắn hàng loạt request tạo câu hỏi
+      const WARMUP_SECONDS = 7;
+      setWarmupSecLeft(WARMUP_SECONDS);
+      for (let s = WARMUP_SECONDS; s > 0; s--) {
+        if (!mountedRef.current) return;
+        setWarmupSecLeft(s);
+        await sleep(1000);
+      }
+      setWarmupSecLeft(0);
+
       // Step 1: Create individual questions
       const questionPromises = parsedQuestions.map((q, index) => {
         const questionData = {
@@ -589,7 +631,10 @@ export default function CreateMultipleChoiceTestButton({ label = "Tạo bài tes
         };
         
         console.log(`Creating question ${index + 1}:`, questionData);
-        return MultipleChoiceService.createMultipleChoice(questionData);
+        return withRetry(() => MultipleChoiceService.createMultipleChoice(questionData), {
+          attempts: 3,
+          baseDelayMs: 1500,
+        });
       });
 
       await Promise.all(questionPromises);
@@ -1149,7 +1194,11 @@ B`}
               <div className="text-center py-12">
                 <div className="animate-spin rounded-full h-12 w-12 border-2 border-neutral-200 border-t-emerald-600 mx-auto mb-4" />
                 <h3 className="text-base font-medium text-neutral-900 mb-2">Đang tạo bài test...</h3>
-                <p className="text-sm text-neutral-700">Đang tạo bài test với {parsedQuestions.length} câu hỏi</p>
+                <p className="text-sm text-neutral-700">
+                  {warmupSecLeft > 0
+                    ? `Đang khởi động server... (${warmupSecLeft}s) — sau đó sẽ tạo ${parsedQuestions.length} câu hỏi`
+                    : `Đang tạo bài test với ${parsedQuestions.length} câu hỏi`}
+                </p>
               </div>
             )}
 
