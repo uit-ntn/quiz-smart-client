@@ -13,6 +13,36 @@ colleague;noun;B2;đồng nghiệp;I discussed the project with my colleague.
 opportunity;noun;B2;cơ hội;This is a great opportunity for you to learn.
 environment;noun;B1;môi trường;We need to protect the environment for future generations.`;
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const isLikelyColdStartNetworkError = (err) => {
+  const msg = String(err?.message || err || '').toLowerCase();
+  // common browser/axios/fetch network strings
+  return (
+    msg.includes('failed to fetch') ||
+    msg.includes('networkerror') ||
+    msg.includes('network error') ||
+    msg.includes('load failed') ||
+    msg.includes('the network connection was lost') ||
+    msg.includes('timeout') ||
+    msg.includes('timed out')
+  );
+};
+
+const withRetry = async (fn, { attempts = 3, baseDelayMs = 1500 } = {}) => {
+  let lastErr;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn(i);
+    } catch (e) {
+      lastErr = e;
+      if (!isLikelyColdStartNetworkError(e) || i === attempts - 1) throw e;
+      await sleep(baseDelayMs * Math.pow(2, i)); // 1.5s, 3s, 6s...
+    }
+  }
+  throw lastErr;
+};
+
 /** Chiều cao đồng nhất cho 2 panel bước 1 (px) */
 const PANEL_HEIGHT = 520;
 
@@ -27,6 +57,7 @@ const CreateVocabularyTestButton = ({ className = '' }) => {
   const [currentStep, setCurrentStep] = useState('test-info');
   const [loading, setLoading] = useState(false);
   const [errMsg, setErrMsg] = useState('');
+  const [warmupSecLeft, setWarmupSecLeft] = useState(0);
 
   // Step
   const [vocabularyText, setVocabularyText] = useState('');
@@ -184,6 +215,7 @@ const CreateVocabularyTestButton = ({ className = '' }) => {
     setShowCustomSubTopic(false);
     setErrMsg('');
     setLoading(false);
+    setWarmupSecLeft(0);
     setHasSeededSample(false);
     setIsSampleActive(false);
     setCreatedTest(null);
@@ -377,6 +409,7 @@ const CreateVocabularyTestButton = ({ className = '' }) => {
   const handleCreateTest = async () => {
     setLoading(true);
     setErrMsg('');
+    setWarmupSecLeft(0);
     setCurrentStep('creating');
     try {
       // Validate user authentication
@@ -554,12 +587,27 @@ const CreateVocabularyTestButton = ({ className = '' }) => {
 
       if (!mountedRef.current) return;
 
+      // Cold start warm-up: đợi 5–10s trước khi bắn hàng loạt request tạo từ vựng
+      // (tránh "Failed to fetch" khi server vừa ngủ dậy).
+      const WARMUP_SECONDS = 7;
+      setWarmupSecLeft(WARMUP_SECONDS);
+      for (let s = WARMUP_SECONDS; s > 0; s--) {
+        if (!mountedRef.current) return;
+        setWarmupSecLeft(s);
+        await sleep(1000);
+      }
+      setWarmupSecLeft(0);
+
       const vocabularyPromises = parsedVocabularies.map((vocab, index) => {
         console.debug(`CreateVocabularyTestButton - creating vocabulary ${index + 1}:`, vocab);
-        return vocabularyService.createVocabulary({
-          ...vocab,
-          test_id: testId,
-        });
+        return withRetry(
+          () =>
+            vocabularyService.createVocabulary({
+              ...vocab,
+              test_id: testId,
+            }),
+          { attempts: 3, baseDelayMs: 1500 }
+        );
       });
 
       console.debug('CreateVocabularyTestButton - starting vocabulary creation for', parsedVocabularies.length, 'items');
@@ -1118,7 +1166,11 @@ const CreateVocabularyTestButton = ({ className = '' }) => {
               <div className="text-center py-12">
                 <div className="animate-spin rounded-full h-12 w-12 border-2 border-neutral-200 border-t-indigo-600 mx-auto mb-4" />
                 <h3 className="text-base font-medium text-neutral-900 mb-2">Đang tạo bài test...</h3>
-                <p className="text-sm text-neutral-700">Đang tạo bài test và {parsedVocabularies.length} từ vựng</p>
+                <p className="text-sm text-neutral-700">
+                  {warmupSecLeft > 0
+                    ? `Đang khởi động server... (${warmupSecLeft}s) — sau đó sẽ tạo ${parsedVocabularies.length} từ vựng`
+                    : `Đang tạo bài test và ${parsedVocabularies.length} từ vựng`}
+                </p>
               </div>
             )}
 
